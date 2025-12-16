@@ -1,17 +1,15 @@
 <script>
-    let count = $state(0);
-
-    function increment() {
-        count += 1;
-    }
+    import { onMount } from "svelte";
 </script>
 
-<h1>Welcome to SvelteKit</h1>
-<p>
-    Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the
-    documentation
-</p>
+<div class="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+    <h1 class="text-4xl font-bold text-blue-600 mb-4">메인 페이지</h1>
+    <p class="text-xl text-gray-600">로그인에 성공하셨습니다!</p>
 
-<button onclick={increment}>
-    Clicks: {count}
-</button>
+    <a
+        href="/login"
+        class="mt-8 px-6 py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+    >
+        로그인 페이지로 돌아가기
+    </a>
+</div>
