@@ -23,7 +23,7 @@
     let service = $state("");
     // @ts-ignore
     let serverType = $state<ServerType>("");
-    let prodServer = $state(PROD_SERVER_DOMAINS.GLB);
+    let prodServer = $state("");
     let loginSite = $state("");
     let channel = $state("");
 
@@ -49,12 +49,27 @@
     let showProdModal = $state(false);
     let showMissingFields = $state(false);
 
-    // Watch for Server Type change to PROD
-    function handleServerChange() {
-        if (serverType === SERVER_TYPES.PROD) {
+    // Watch for Server Type click
+    function handleServerClick(value: string) {
+        if (value === SERVER_TYPES.PROD) {
             showProdModal = true;
+        } else {
+            prodServer = "";
         }
     }
+
+    // Reactive Server Options with Labels
+    let serverOptionsWithLabels = $derived(
+        serverOptions.map((type) => {
+            if (type === SERVER_TYPES.PROD) {
+                const label = prodServer
+                    ? `${type} (${prodServer})`
+                    : `${type}`;
+                return { value: type, label };
+            }
+            return type;
+        }),
+    );
 
     // Reset child selections when parent changes
     $effect(() => {
@@ -78,7 +93,7 @@
             const data = JSON.parse(saved);
             service = data.service ?? "";
             serverType = data.serverType ?? "";
-            prodServer = data.prodServer ?? PROD_SERVER_DOMAINS.GLB;
+            prodServer = data.prodServer ?? "";
             loginSite = data.loginSite ?? "";
             channel = data.channel ?? "";
             loginId = data.loginId ?? "";
@@ -127,7 +142,11 @@
 
     // Validation
     let isValid = $derived(
-        !!service && !!serverType && !!loginSite && !!channel,
+        !!service &&
+            !!serverType &&
+            (serverType !== SERVER_TYPES.PROD || !!prodServer) &&
+            !!loginSite &&
+            !!channel,
     );
 </script>
 
@@ -163,31 +182,17 @@
                 <span class="block text-sm font-medium text-gray-700 mb-2"
                     >Server</span
                 >
-                <!-- Custom wrapper to detect change for Modal -->
+                <!-- Custom wrapper for validation styles -->
                 <div
-                    onchange={handleServerChange}
-                    role="none"
-                    class={`border-2 rounded p-1 transition-colors ${showMissingFields && !serverType ? "border-red-500" : "border-transparent"}`}
+                    class={`border-2 rounded-md py-2 px-3 transition-colors ${showMissingFields && !serverType ? "border-red-500" : "border-transparent"}`}
                 >
                     <RadioGroup
-                        options={serverOptions}
+                        options={serverOptionsWithLabels}
                         groupName="serverType"
                         bind:selected={serverType}
+                        onOptionClick={handleServerClick}
                     />
                 </div>
-
-                {#if serverType === SERVER_TYPES.PROD}
-                    <div
-                        class="mt-2 text-sm font-normal text-[oklch(0.71_0.07_268.76)] bg-[oklch(0.97_0.014_254.604)] p-2 rounded"
-                    >
-                        선택된 서버: <strong>{prodServer}</strong>
-                        <button
-                            type="button"
-                            class="ml-2 underline text-sm font-normal text-[oklch(0.71_0.07_268.76)] bg-transparent border-none cursor-pointer"
-                            onclick={() => (showProdModal = true)}>변경</button
-                        >
-                    </div>
-                {/if}
             </div>
 
             <!-- Login Site -->
