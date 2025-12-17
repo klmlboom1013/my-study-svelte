@@ -23,14 +23,14 @@
                     name={groupName}
                     value={option}
                     bind:group={selected}
-                    class="peer appearance-none w-5 h-5 border-2 border-blue-500 rounded-full cursor-pointer checked:bg-blue-500 transition-all"
+                    class="peer appearance-none w-5 h-5 border-2 border-[oklch(0.36_0.11_265.06)] rounded-full cursor-pointer checked:bg-[oklch(0.36_0.11_265.06)] transition-all"
                 />
                 <div
                     class="absolute w-2 h-2 bg-white rounded-full opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity"
                 ></div>
             </div>
             <span
-                class="text-blue-600 font-medium text-base group-hover:text-blue-800 transition-colors"
+                class="text-[oklch(0.36_0.11_265.06)] font-medium text-base group-hover:text-[oklch(0.49_0.23_262.62)] transition-colors"
                 >{option}</span
             >
         </label>
