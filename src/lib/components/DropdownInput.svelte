@@ -7,6 +7,7 @@
         options: string[];
         placeholder?: string;
         id?: string;
+        isError?: boolean;
     }
 
     let {
@@ -14,6 +15,7 @@
         options = [],
         placeholder = "",
         id = undefined,
+        isError = false,
     }: Props = $props();
 
     let isOpen = $state(false);
@@ -46,9 +48,11 @@
         <input
             type="text"
             {id}
+            autocomplete="off"
             bind:value
             {placeholder}
-            class="w-full border-2 border-[oklch(0.36_0.11_265.06)] rounded-md py-2 pl-3 pr-10 text-base text-[oklch(0.36_0.11_265.06)] font-medium placeholder-[oklch(0.75_0.04_262.99)] focus:outline-none focus:ring-2 focus:ring-[oklch(0.36_0.11_265.06)]/20 transition-all"
+            class={`w-full border-2 rounded-md py-2 pl-3 pr-10 text-base font-medium placeholder-[oklch(0.75_0.04_262.99)] focus:outline-none focus:ring-2 focus:ring-[oklch(0.36_0.11_265.06)]/20 transition-all ${isError ? "border-red-500" : "border-[oklch(0.36_0.11_265.06)]"}`}
+            style="color: oklch(0.36 0.11 265.06);"
             onclick={() => (isOpen = true)}
         />
         <button

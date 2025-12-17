@@ -12,10 +12,7 @@
         PROD_SERVER_DOMAINS,
         type ServerType,
         type ServiceType,
-        type SiteType,
-        type ChannelType,
     } from "$lib/constants/serverConfig";
-    import { getMemberToken } from "$lib/services/authService";
 
     // Options
     const serviceOptions = [...SERVICE_OPTIONS];
@@ -24,7 +21,8 @@
 
     // State
     let service = $state("");
-    let serverType = $state<ServerType>(SERVER_TYPES.DEV);
+    // @ts-ignore
+    let serverType = $state<ServerType>("");
     let prodServer = $state(PROD_SERVER_DOMAINS.GLB);
     let loginSite = $state("");
     let channel = $state("");
@@ -42,13 +40,14 @@
             [],
     );
 
-    let loginId = $state("wpayTestUser01");
+    let loginId = $state("");
     let loginIdPlaceholder = $state("wpayTestUser01");
 
     let phone = $state("");
     let rememberMe = $state(false);
 
     let showProdModal = $state(false);
+    let showMissingFields = $state(false);
 
     // Watch for Server Type change to PROD
     function handleServerChange() {
@@ -77,13 +76,14 @@
         const saved = localStorage.getItem("loginSettings");
         if (saved) {
             const data = JSON.parse(saved);
-            service = data.service ?? SERVICE_OPTIONS[1];
-            serverType = data.serverType ?? SERVER_TYPES.DEV;
+            service = data.service ?? "";
+            serverType = data.serverType ?? "";
             prodServer = data.prodServer ?? PROD_SERVER_DOMAINS.GLB;
-            loginSite = data.loginSite ?? "stdwpay";
-            channel = data.channel ?? "INIwpayT03";
-            loginId = data.loginId ?? "wpayTestUser01";
+            loginSite = data.loginSite ?? "";
+            channel = data.channel ?? "";
+            loginId = data.loginId ?? "";
             phone = data.phone ?? "";
+            // If we have saved data, it means rememberMe was true
             rememberMe = true;
         }
     });
@@ -100,10 +100,8 @@
     async function handleLogin() {
         if (!isValid) return;
 
-        // Default ID logic
-        if (!loginId.trim()) {
-            // This case should be handled by validation or default value logic,
-            // but keeping existing behavior
+        // Set default Member ID if empty
+        if (!loginId) {
             loginId = "wpayTestUser01";
         }
 
@@ -123,32 +121,8 @@
             localStorage.removeItem("loginSettings");
         }
 
-        try {
-            console.log("Requesting Member Token...");
-            const response = await getMemberToken({
-                loginId,
-                phone,
-                serverType,
-                service: service as ServiceType,
-                loginSite: loginSite as SiteType,
-                channel: channel as ChannelType,
-            });
-
-            console.log("Member Token received:", response.token);
-            // alert(`Member Token: ${response.token}`); // Temporary feedback removed
-
-            // Save Token
-            localStorage.setItem(
-                "member",
-                JSON.stringify({ token: response.token }),
-            );
-
-            // Navigate
-            goto("/");
-        } catch (error) {
-            console.error("Failed to get member token:", error);
-            alert("로그인 처리 중 오류가 발생했습니다.");
-        }
+        // Navigate
+        goto("/");
     }
 
     // Validation
@@ -173,23 +147,28 @@
                 <label
                     for="service-select"
                     class="block text-sm font-medium text-gray-700 mb-2"
-                    >서비스 선택</label
+                    >Service</label
                 >
                 <DropdownInput
                     id="service-select"
                     options={serviceOptions}
                     bind:value={service}
                     placeholder="선택해 주세요"
+                    isError={showMissingFields && !service}
                 />
             </div>
 
             <!-- Server Selection -->
             <div>
                 <span class="block text-sm font-medium text-gray-700 mb-2"
-                    >서버 선택</span
+                    >Server</span
                 >
                 <!-- Custom wrapper to detect change for Modal -->
-                <div onchange={handleServerChange} role="none">
+                <div
+                    onchange={handleServerChange}
+                    role="none"
+                    class={`border-2 rounded p-1 transition-colors ${showMissingFields && !serverType ? "border-red-500" : "border-transparent"}`}
+                >
                     <RadioGroup
                         options={serverOptions}
                         groupName="serverType"
@@ -216,13 +195,14 @@
                 <label
                     for="login-site"
                     class="block text-sm font-medium text-gray-700 mb-2"
-                    >로그인 사이트</label
+                    >Site</label
                 >
                 <DropdownInput
                     id="login-site"
                     options={siteOptions}
                     bind:value={loginSite}
                     placeholder="선택해 주세요"
+                    isError={showMissingFields && !loginSite}
                 />
             </div>
 
@@ -231,13 +211,14 @@
                 <label
                     for="channel-select"
                     class="block text-sm font-medium text-gray-700 mb-2"
-                    >채널 선택</label
+                    >Merchant ID</label
                 >
                 <DropdownInput
                     id="channel-select"
                     options={channelOptions}
                     bind:value={channel}
                     placeholder="선택해 주세요"
+                    isError={showMissingFields && !channel}
                 />
             </div>
 
@@ -246,7 +227,7 @@
                 <label
                     for="login-id"
                     class="block text-sm font-medium text-gray-700 mb-2"
-                    >로그인 ID</label
+                    >Member ID</label
                 >
                 <input
                     id="login-id"
@@ -256,7 +237,8 @@
                     onfocus={() => (loginIdPlaceholder = "")}
                     onblur={() =>
                         (loginIdPlaceholder = !loginId ? "wpayTestUser01" : "")}
-                    class="w-full border-2 border-[oklch(0.36_0.11_265.06)] rounded-md py-2 px-3 text-[oklch(0.36_0.11_265.06)] font-medium placeholder-[oklch(0.75_0.04_262.99)] focus:outline-none focus:ring-2 focus:ring-[oklch(0.36_0.11_265.06)]/20"
+                    class="w-full border-2 border-[oklch(0.36_0.11_265.06)] rounded-md py-2 px-3 font-medium placeholder-[oklch(0.75_0.04_262.99)] focus:outline-none focus:ring-2 focus:ring-[oklch(0.36_0.11_265.06)]/20"
+                    style="color: oklch(0.36 0.11 265.06);"
                 />
             </div>
 
@@ -265,14 +247,15 @@
                 <label
                     for="phone-number"
                     class="block text-sm font-medium text-gray-700 mb-2"
-                    >휴대폰 번호</label
+                    >Cell Phone Number</label
                 >
                 <input
                     id="phone-number"
                     type="text"
                     value={phone}
                     oninput={handlePhoneInput}
-                    class="w-full border-2 border-[oklch(0.36_0.11_265.06)] rounded-md py-2 px-3 text-[oklch(0.36_0.11_265.06)] font-medium placeholder-[oklch(0.75_0.04_262.99)] focus:outline-none focus:ring-2 focus:ring-[oklch(0.36_0.11_265.06)]/20"
+                    class="w-full border-2 border-[oklch(0.36_0.11_265.06)] rounded-md py-2 px-3 font-medium placeholder-[oklch(0.75_0.04_262.99)] focus:outline-none focus:ring-2 focus:ring-[oklch(0.36_0.11_265.06)]/20"
+                    style="color: oklch(0.36 0.11 265.06);"
                     placeholder="숫자만 입력해 주세요"
                 />
             </div>
@@ -290,12 +273,19 @@
                     for="remember-me"
                     class="ml-2 block text-sm text-gray-900 cursor-pointer"
                 >
-                    Remember me
+                    Remember Me
                 </label>
             </div>
 
             <!-- Login Button -->
-            <div>
+            <div
+                class="w-full"
+                role="none"
+                onmouseenter={() => (showMissingFields = true)}
+                onmouseleave={() => (showMissingFields = false)}
+                ontouchstart={() => (showMissingFields = true)}
+                ontouchend={() => (showMissingFields = false)}
+            >
                 <button
                     onclick={handleLogin}
                     disabled={!isValid}
