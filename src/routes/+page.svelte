@@ -1,5 +1,13 @@
 <script>
     import { onMount } from "svelte";
+    import { goto } from "$app/navigation";
+
+    onMount(() => {
+        const memberData = localStorage.getItem("member");
+        if (!memberData) {
+            goto("/login");
+        }
+    });
 </script>
 
 <div class="min-h-screen flex flex-col items-center justify-center bg-gray-50">

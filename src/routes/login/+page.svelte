@@ -133,7 +133,13 @@
             });
 
             console.log("Member Token received:", response.token);
-            alert(`Member Token: ${response.token}`); // Temporary feedback
+            // alert(`Member Token: ${response.token}`); // Temporary feedback removed
+
+            // Save Token
+            localStorage.setItem(
+                "member",
+                JSON.stringify({ token: response.token }),
+            );
 
             // Navigate
             goto("/");
@@ -191,12 +197,12 @@
 
                 {#if serverType === SERVER_TYPES.PROD}
                     <div
-                        class="mt-2 text-sm text-blue-600 bg-blue-50 p-2 rounded"
+                        class="mt-2 text-sm font-normal text-[oklch(0.71_0.07_268.76)] bg-[oklch(0.97_0.014_254.604)] p-2 rounded"
                     >
                         선택된 서버: <strong>{prodServer}</strong>
                         <button
                             type="button"
-                            class="ml-2 underline text-xs"
+                            class="ml-2 underline text-sm font-normal text-[oklch(0.71_0.07_268.76)] bg-transparent border-none cursor-pointer"
                             onclick={() => (showProdModal = true)}>변경</button
                         >
                     </div>
@@ -316,7 +322,7 @@
             <div class="mt-6 flex justify-end">
                 <button
                     onclick={() => (showProdModal = false)}
-                    class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                    class="px-4 py-2 rounded-md text-[oklch(1_0_0)] bg-[oklch(0.36_0.11_265.06)] hover:bg-[oklch(0.49_0.23_262.62)] transition-colors"
                 >
                     확인
                 </button>
