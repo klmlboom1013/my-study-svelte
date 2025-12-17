@@ -29,8 +29,9 @@
     <h1 class="text-2xl font-bold">SEED 암호화 테스트</h1>
 
     <div class="space-y-2">
-        <label class="block font-semibold">입력 텍스트:</label>
+        <label for="input-text" class="block font-semibold">입력 텍스트:</label>
         <input
+            id="input-text"
             type="text"
             bind:value={inputText}
             class="border p-2 w-full rounded"

@@ -6,12 +6,14 @@
         value: string;
         options: string[];
         placeholder?: string;
+        id?: string;
     }
 
     let {
         value = $bindable(),
         options = [],
         placeholder = "",
+        id = undefined,
     }: Props = $props();
 
     let isOpen = $state(false);
@@ -43,6 +45,7 @@
     <div class="relative">
         <input
             type="text"
+            {id}
             bind:value
             {placeholder}
             class="w-full border-2 border-[oklch(0.36_0.11_265.06)] rounded-md py-2 pl-3 pr-10 text-base text-[oklch(0.36_0.11_265.06)] font-medium placeholder-[oklch(0.75_0.04_262.99)] focus:outline-none focus:ring-2 focus:ring-[oklch(0.36_0.11_265.06)]/20 transition-all"
@@ -69,8 +72,15 @@
             {#if filteredOptions.length > 0}
                 {#each filteredOptions as option}
                     <li
-                        class="px-3 py-2 cursor-pointer hover:bg-[oklch(0.36_0.11_265.06)]/10 text-[oklch(0.36_0.11_265.06)] font-medium transition-colors"
-                        onmousedown={() => select(option)}
+                        role="option"
+                        aria-selected={value === option}
+                        tabindex="0"
+                        class="px-3 py-2 cursor-pointer hover:bg-[oklch(0.36_0.11_265.06)]/10 text-[oklch(0.36_0.11_265.06)] font-medium transition-colors outline-none focus:bg-[oklch(0.36_0.11_265.06)]/10"
+                        onclick={() => select(option)}
+                        onkeydown={(e) => {
+                            if (e.key === "Enter" || e.key === " ")
+                                select(option);
+                        }}
                     >
                         {option}
                     </li>

@@ -113,10 +113,13 @@
         <div class="space-y-6">
             <!-- Service Selection -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2"
+                <label
+                    for="service-select"
+                    class="block text-sm font-medium text-gray-700 mb-2"
                     >서비스 선택</label
                 >
                 <DropdownInput
+                    id="service-select"
                     options={serviceOptions}
                     bind:value={service}
                     placeholder="서비스를 선택하거나 입력하세요"
@@ -125,8 +128,8 @@
 
             <!-- Server Selection -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2"
-                    >서버 선택</label
+                <span class="block text-sm font-medium text-gray-700 mb-2"
+                    >서버 선택</span
                 >
                 <!-- Custom wrapper to detect change for Modal -->
                 <div onclick={handleServerChange} role="none">
@@ -153,10 +156,13 @@
 
             <!-- Login Site -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2"
+                <label
+                    for="login-site"
+                    class="block text-sm font-medium text-gray-700 mb-2"
                     >로그인 사이트</label
                 >
                 <DropdownInput
+                    id="login-site"
                     options={siteOptions}
                     bind:value={loginSite}
                     placeholder="선택해 주세요"
@@ -165,10 +171,13 @@
 
             <!-- Channel -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2"
+                <label
+                    for="channel-select"
+                    class="block text-sm font-medium text-gray-700 mb-2"
                     >채널 선택</label
                 >
                 <DropdownInput
+                    id="channel-select"
                     options={channelOptions}
                     bind:value={channel}
                     placeholder="선택해 주세요"
@@ -177,10 +186,13 @@
 
             <!-- Login ID -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2"
+                <label
+                    for="login-id"
+                    class="block text-sm font-medium text-gray-700 mb-2"
                     >로그인 ID</label
                 >
                 <input
+                    id="login-id"
                     type="text"
                     bind:value={loginId}
                     placeholder={loginIdPlaceholder}
@@ -193,10 +205,13 @@
 
             <!-- Phone -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2"
+                <label
+                    for="phone-number"
+                    class="block text-sm font-medium text-gray-700 mb-2"
                     >휴대폰 번호</label
                 >
                 <input
+                    id="phone-number"
                     type="text"
                     value={phone}
                     oninput={handlePhoneInput}

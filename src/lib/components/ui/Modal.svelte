@@ -23,14 +23,18 @@
 {#if isOpen}
     <!-- Backdrop -->
     <div
+        role="button"
+        tabindex="0"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
-        on:click={close}
+        on:click={(e) => {
+            if (e.target === e.currentTarget) close();
+        }}
+        on:keydown={(e) => {
+            if (e.key === "Enter" || e.key === " ") close();
+        }}
     >
         <!-- Content -->
-        <div
-            class="w-full max-w-md p-6 bg-white rounded-lg shadow-xl"
-            on:click|stopPropagation
-        >
+        <div class="w-full max-w-md p-6 bg-white rounded-lg shadow-xl">
             {#if title}
                 <h2 class="text-lg font-bold text-gray-900 mb-4">{title}</h2>
             {/if}
