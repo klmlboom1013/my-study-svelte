@@ -4,27 +4,41 @@
     import DropdownInput from "$lib/components/DropdownInput.svelte";
     import RadioGroup from "$lib/components/RadioGroup.svelte";
     import Modal from "$lib/components/Modal.svelte";
+    import {
+        SERVICE_OPTIONS,
+        SERVICE_SITE_MAPPING,
+        SITE_CHANNEL_MAPPING,
+        SERVER_TYPES,
+        PROD_SERVER_DOMAINS,
+        type ServerType,
+        type ServiceType,
+        type SiteType,
+        type ChannelType,
+    } from "$lib/constants/serverConfig";
+    import { getMemberToken } from "$lib/services/authService";
 
     // Options
-    const serviceOptions = [
-        "wpaystd-old",
-        "wpaystd2",
-        "wpaypro",
-        "wpayplus",
-        "wpaycst",
-    ];
-    const serverOptions = ["DEV", "STG", "PROD"];
-    const prodServerOptions = ["GLB Domain", "KS Domain", "FC Domain"];
-    // Placeholder options for others as they weren't specified
-    const siteOptions = ["stdwpay", "stdwpay-test"];
-    const channelOptions = ["INIwpayT03", "INIwpayT04"];
+    const serviceOptions = [...SERVICE_OPTIONS];
+    const serverOptions = Object.values(SERVER_TYPES);
+    const prodServerOptions = Object.values(PROD_SERVER_DOMAINS);
 
     // State
-    let service = $state("wpaystd2");
-    let serverType = $state("DEV");
-    let prodServer = $state("GLB Domain");
+    let service = $state(SERVICE_OPTIONS[1]); // wpaystd2
+    let serverType = $state<ServerType>(SERVER_TYPES.DEV);
+    let prodServer = $state(PROD_SERVER_DOMAINS.GLB);
     let loginSite = $state("");
     let channel = $state("");
+
+    // Reactive Options
+    let siteOptions = $derived(SERVICE_SITE_MAPPING[service] || []);
+
+    let channelOptions = $derived(
+        (loginSite &&
+            SITE_CHANNEL_MAPPING[
+                loginSite as keyof typeof SITE_CHANNEL_MAPPING
+            ]) ||
+            [],
+    );
 
     let loginId = $state("wpayTestUser01");
     let loginIdPlaceholder = $state("wpayTestUser01");
@@ -36,19 +50,34 @@
 
     // Watch for Server Type change to PROD
     function handleServerChange() {
-        if (serverType === "PROD") {
+        if (serverType === SERVER_TYPES.PROD) {
             showProdModal = true;
         }
     }
+
+    // Reset child selections when parent changes
+    $effect(() => {
+        // When service changes, if current site is not in new options, clear it
+        if (!siteOptions.includes(loginSite as any)) {
+            loginSite = "";
+        }
+    });
+
+    $effect(() => {
+        // When site changes, if current channel is not in new options, clear it
+        if (!channelOptions.includes(channel as any)) {
+            channel = "";
+        }
+    });
 
     // Load from LocalStorage
     onMount(() => {
         const saved = localStorage.getItem("loginSettings");
         if (saved) {
             const data = JSON.parse(saved);
-            service = data.service ?? "wpaystd2";
-            serverType = data.serverType ?? "DEV";
-            prodServer = data.prodServer ?? "GLB Domain";
+            service = data.service ?? SERVICE_OPTIONS[1];
+            serverType = data.serverType ?? SERVER_TYPES.DEV;
+            prodServer = data.prodServer ?? PROD_SERVER_DOMAINS.GLB;
             loginSite = data.loginSite ?? "stdwpay";
             channel = data.channel ?? "INIwpayT03";
             loginId = data.loginId ?? "wpayTestUser01";
@@ -66,11 +95,13 @@
     }
 
     // Login Handler
-    function handleLogin() {
+    async function handleLogin() {
         if (!isValid) return;
 
         // Default ID logic
         if (!loginId.trim()) {
+            // This case should be handled by validation or default value logic,
+            // but keeping existing behavior
             loginId = "wpayTestUser01";
         }
 
@@ -90,8 +121,26 @@
             localStorage.removeItem("loginSettings");
         }
 
-        // Navigate
-        goto("/");
+        try {
+            console.log("Requesting Member Token...");
+            const response = await getMemberToken({
+                loginId,
+                phone,
+                serverType,
+                service: service as ServiceType,
+                loginSite: loginSite as SiteType,
+                channel: channel as ChannelType,
+            });
+
+            console.log("Member Token received:", response.token);
+            alert(`Member Token: ${response.token}`); // Temporary feedback
+
+            // Navigate
+            goto("/");
+        } catch (error) {
+            console.error("Failed to get member token:", error);
+            alert("로그인 처리 중 오류가 발생했습니다.");
+        }
     }
 
     // Validation
@@ -132,7 +181,7 @@
                     >서버 선택</span
                 >
                 <!-- Custom wrapper to detect change for Modal -->
-                <div onclick={handleServerChange} role="none">
+                <div onchange={handleServerChange} role="none">
                     <RadioGroup
                         options={serverOptions}
                         groupName="serverType"
@@ -140,7 +189,7 @@
                     />
                 </div>
 
-                {#if serverType === "PROD"}
+                {#if serverType === SERVER_TYPES.PROD}
                     <div
                         class="mt-2 text-sm text-blue-600 bg-blue-50 p-2 rounded"
                     >
@@ -246,7 +295,7 @@
                 ${isValid ? "bg-[oklch(0.36_0.11_265.06)] hover:bg-[oklch(0.49_0.23_262.62)] focus:ring-2 focus:ring-offset-2 focus:ring-[oklch(0.36_0.11_265.06)]" : "bg-[oklch(0.83_0_0)] cursor-not-allowed"}
                 transition-colors`}
                 >
-                    {isValid ? "로그인" : "로그인 (disabled)"}
+                    {isValid ? "다음" : "다음"}
                 </button>
             </div>
         </div>
