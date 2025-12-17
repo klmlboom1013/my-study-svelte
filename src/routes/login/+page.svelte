@@ -23,14 +23,16 @@
     const prodServerOptions = Object.values(PROD_SERVER_DOMAINS);
 
     // State
-    let service = $state(SERVICE_OPTIONS[1]); // wpaystd2
+    let service = $state("");
     let serverType = $state<ServerType>(SERVER_TYPES.DEV);
     let prodServer = $state(PROD_SERVER_DOMAINS.GLB);
     let loginSite = $state("");
     let channel = $state("");
 
     // Reactive Options
-    let siteOptions = $derived(SERVICE_SITE_MAPPING[service] || []);
+    let siteOptions = $derived(
+        (service && SERVICE_SITE_MAPPING[service as ServiceType]) || [],
+    );
 
     let channelOptions = $derived(
         (loginSite &&
@@ -177,7 +179,7 @@
                     id="service-select"
                     options={serviceOptions}
                     bind:value={service}
-                    placeholder="서비스를 선택하거나 입력하세요"
+                    placeholder="선택해 주세요"
                 />
             </div>
 
