@@ -8,15 +8,14 @@
         SERVER_TYPES,
         PROD_SERVER_DOMAINS,
         SERVICE_OPTIONS,
-        SITE_OPTIONS,
-        CHANNEL_OPTIONS,
+        MERCHANT_ID_OPTIONS,
         SERVICE_SITE_MAPPING,
-        SITE_CHANNEL_MAPPING,
+        SITE_MERCHANT_ID_MAPPING,
         type ServerType,
         type ServiceType,
         type SiteType,
-        type ChannelType,
-    } from "./wpayServerSiteOptions";
+        type MerchantIdType,
+    } from "$lib/types/wpayServerType";
 
     // Options
     const serviceOptions = [...SERVICE_OPTIONS];
@@ -29,17 +28,17 @@
     let serverType = $state<ServerType>("");
     let prodServer = $state("");
     let loginSite = $state("");
-    let channel = $state("");
+    let merchantId = $state("");
 
     // Reactive Options
     let siteOptions = $derived(
         (service && SERVICE_SITE_MAPPING[service as ServiceType]) || [],
     );
 
-    let channelOptions = $derived(
+    let merchantIdOptions = $derived(
         (loginSite &&
-            SITE_CHANNEL_MAPPING[
-                loginSite as keyof typeof SITE_CHANNEL_MAPPING
+            SITE_MERCHANT_ID_MAPPING[
+                loginSite as keyof typeof SITE_MERCHANT_ID_MAPPING
             ]) ||
             [],
     );
@@ -52,6 +51,9 @@
 
     let showProdModal = $state(false);
     let showMissingFields = $state(false);
+    let transitionDuration = $state(200); // Default transition duration
+
+    let touchTimer: ReturnType<typeof setTimeout>;
 
     // Watch for Server Type click
     function handleServerClick(value: string) {
@@ -84,9 +86,9 @@
     });
 
     $effect(() => {
-        // When site changes, if current channel is not in new options, clear it
-        if (!channelOptions.includes(channel as any)) {
-            channel = "";
+        // When site changes, if current merchantId is not in new options, clear it
+        if (!merchantIdOptions.includes(merchantId as any)) {
+            merchantId = "";
         }
     });
 
@@ -99,7 +101,7 @@
             serverType = data.serverType ?? "";
             prodServer = data.prodServer ?? "";
             loginSite = data.loginSite ?? "";
-            channel = data.channel ?? "";
+            merchantId = data.merchantId ?? "";
             loginId = data.loginId ?? "";
             phone = data.phone ?? "";
             // If we have saved data, it means rememberMe was true
@@ -131,7 +133,7 @@
                 serverType,
                 prodServer,
                 loginSite,
-                channel,
+                merchantId,
                 loginId,
                 phone,
             };
@@ -144,13 +146,46 @@
         goto("/");
     }
 
+    // Touch Interaction Handler
+    function handleTouchStart() {
+        if (touchTimer) clearTimeout(touchTimer);
+        transitionDuration = 200; // Instant/Quick on start
+        showMissingFields = true;
+    }
+
+    function handleTouchEnd() {
+        if (touchTimer) clearTimeout(touchTimer);
+        // Wait 2s, then fade out over 2s
+        touchTimer = setTimeout(() => {
+            transitionDuration = 2000; // Slow fade
+            showMissingFields = false;
+
+            // Reset transition duration after fade completes
+            setTimeout(() => {
+                transitionDuration = 200;
+            }, 2000);
+        }, 2000);
+    }
+
+    function handleMouseEnter() {
+        if (touchTimer) clearTimeout(touchTimer);
+        transitionDuration = 200;
+        showMissingFields = true;
+    }
+
+    function handleMouseLeave() {
+        if (touchTimer) clearTimeout(touchTimer);
+        transitionDuration = 200;
+        showMissingFields = false;
+    }
+
     // Validation
     let isValid = $derived(
         !!service &&
             !!serverType &&
             (serverType !== SERVER_TYPES.PROD || !!prodServer) &&
             !!loginSite &&
-            !!channel,
+            !!merchantId,
     );
 </script>
 
@@ -173,17 +208,13 @@
     <!-- Server Selection -->
     <div>
         <span class="block text-sm font-medium text-gray-700 mb-2">Server</span>
-        <!-- Custom wrapper for validation styles -->
-        <div
-            class={`border-2 rounded-md py-2 px-3 transition-colors ${showMissingFields && !serverType ? "border-red-500" : "border-transparent"}`}
-        >
-            <RadioGroup
-                options={serverOptionsWithLabels}
-                groupName="serverType"
-                bind:selected={serverType}
-                onOptionClick={handleServerClick}
-            />
-        </div>
+        <RadioGroup
+            options={serverOptionsWithLabels}
+            groupName="serverType"
+            bind:selected={serverType}
+            onOptionClick={handleServerClick}
+            isError={showMissingFields && !serverType}
+        />
     </div>
 
     <!-- Login Site -->
@@ -201,19 +232,19 @@
         />
     </div>
 
-    <!-- Channel -->
+    <!-- Merchant ID -->
     <div>
         <label
-            for="channel-select"
+            for="merchant-id-select"
             class="block text-sm font-medium text-gray-700 mb-2"
             >Merchant ID</label
         >
         <DropdownInput
-            id="channel-select"
-            options={channelOptions}
-            bind:value={channel}
+            id="merchant-id-select"
+            options={merchantIdOptions}
+            bind:value={merchantId}
             placeholder="선택해 주세요"
-            isError={showMissingFields && !channel}
+            isError={showMissingFields && !merchantId}
         />
     </div>
 
@@ -276,10 +307,10 @@
     <div
         class="w-full"
         role="none"
-        onmouseenter={() => (showMissingFields = true)}
-        onmouseleave={() => (showMissingFields = false)}
-        ontouchstart={() => (showMissingFields = true)}
-        ontouchend={() => (showMissingFields = false)}
+        onmouseenter={handleMouseEnter}
+        onmouseleave={handleMouseLeave}
+        ontouchstart={handleTouchStart}
+        ontouchend={handleTouchEnd}
     >
         <button
             onclick={handleLogin}

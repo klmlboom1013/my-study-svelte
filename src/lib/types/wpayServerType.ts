@@ -1,3 +1,4 @@
+// Server Type
 export const SERVER_TYPES = {
     DEV: "DEV",
     STG: "STG",
@@ -6,6 +7,7 @@ export const SERVER_TYPES = {
 
 export type ServerType = typeof SERVER_TYPES[keyof typeof SERVER_TYPES];
 
+// Prod Server Domain
 export const PROD_SERVER_DOMAINS = {
     GLB: "GLB Domain",
     KS: "KS Domain",
@@ -14,8 +16,9 @@ export const PROD_SERVER_DOMAINS = {
 
 export type ProdServerDomain = typeof PROD_SERVER_DOMAINS[keyof typeof PROD_SERVER_DOMAINS];
 
+// Service
 export const SERVICE_OPTIONS = [
-    "wpaystd-old",
+    "wpaystd",
     "wpaystd2",
     "wpaypro",
     "wpayplus",
@@ -24,26 +27,41 @@ export const SERVICE_OPTIONS = [
 
 export type ServiceType = typeof SERVICE_OPTIONS[number];
 
+// Site
 export const SITE_OPTIONS = [
     "stdwpay",
+    "kbstar",
+    "gspay",
+    "ygypay"
 ] as const;
 
 export type SiteType = typeof SITE_OPTIONS[number];
 
-export const CHANNEL_OPTIONS = [
-    "INIwpayT03"
+// Merchant ID
+export const MERCHANT_ID_OPTIONS = [
+    "INIwpayT03",
+    "GSpayTS003",
+    "yogiyopay1"
 ] as const;
 
-export type ChannelType = typeof CHANNEL_OPTIONS[number];
+export type MerchantIdType = typeof MERCHANT_ID_OPTIONS[number];
 
+
+// Service Site Mapping
 export const SERVICE_SITE_MAPPING: Record<ServiceType, SiteType[]> = {
-    "wpaystd-old": ["stdwpay"],
+    "wpaystd": ["stdwpay"],
     "wpaystd2": ["stdwpay"],
-    "wpaypro": [],
-    "wpayplus": [],
-    "wpaycst": [],
+    "wpaypro": ["ygypay"],
+    "wpayplus": ["stdwpay", "kbstar", "gspay"],
+    "wpaycst": ["kbstar", "gspay"],
 };
 
-export const SITE_CHANNEL_MAPPING: Record<SiteType, ChannelType[]> = {
+// Site Merchant ID Mapping
+export const SITE_MERCHANT_ID_MAPPING: Record<SiteType, MerchantIdType[]> = {
     "stdwpay": ["INIwpayT03"],
+    "gspay": ["GSpayTS003"],
+    "ygypay": ["yogiyopay1"],
+    "kbstar": []
 };
+
+

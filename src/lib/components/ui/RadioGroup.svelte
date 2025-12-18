@@ -7,6 +7,7 @@
         selected: string;
         direction?: "row" | "column";
         onOptionClick?: (value: string) => void;
+        isError?: boolean;
     }
 
     let {
@@ -15,6 +16,7 @@
         selected = $bindable(),
         direction = "row",
         onOptionClick,
+        isError = false,
     }: Props = $props();
 
     function getOptionValue(option: Option): string {
@@ -38,14 +40,14 @@
                     {value}
                     bind:group={selected}
                     onclick={() => onOptionClick?.(value)}
-                    class="peer appearance-none w-5 h-5 border-2 border-[oklch(0.36_0.11_265.06)] rounded-full cursor-pointer checked:bg-[oklch(0.36_0.11_265.06)] transition-all"
+                    class={`peer appearance-none w-5 h-5 border-2 rounded-full cursor-pointer transition-all ${isError ? "border-red-500 checked:bg-red-500" : "border-[oklch(0.36_0.11_265.06)] checked:bg-[oklch(0.36_0.11_265.06)]"}`}
                 />
                 <div
                     class="absolute w-2 h-2 bg-white rounded-full opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity"
                 ></div>
             </div>
             <span
-                class="text-[oklch(0.36_0.11_265.06)] font-medium text-base group-hover:text-[oklch(0.49_0.23_262.62)] transition-colors"
+                class={`font-medium text-base transition-colors ${isError ? "text-red-500" : "text-[oklch(0.36_0.11_265.06)] group-hover:text-[oklch(0.49_0.23_262.62)]"}`}
                 >{label}</span
             >
         </label>

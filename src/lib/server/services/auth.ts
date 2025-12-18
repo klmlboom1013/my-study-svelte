@@ -1,6 +1,6 @@
-import type { ServerType, ServiceType, SiteType, ChannelType } from "$lib/features/auth/wpayServerSiteOptions";
+import type { ServerType, ServiceType, SiteType, MerchantIdType } from "$lib/types/wpayServerType";
 import { WPAY_USER_KEYS, SERVICE_URLS } from "$lib/server/secrets";
-import { CHANNEL_KEYS } from "$lib/utils/encryption/cryptoKeys";
+import { MERCHANT_KEYS } from "$lib/utils/encryption/cryptoKeys";
 
 interface GetMemberTokenParams {
     loginId: string;
@@ -8,7 +8,7 @@ interface GetMemberTokenParams {
     serverType: ServerType;
     service: ServiceType;
     loginSite: SiteType;
-    channel: ChannelType;
+    merchantId: MerchantIdType;
 }
 
 interface MemberTokenResponse {
@@ -16,7 +16,7 @@ interface MemberTokenResponse {
 }
 
 export async function getMemberToken(params: GetMemberTokenParams): Promise<MemberTokenResponse> {
-    const { loginId, phone, serverType, service, loginSite, channel } = params;
+    const { loginId, phone, serverType, service, loginSite, merchantId } = params;
 
     // TODO: Implement actual API call with SEED encryption and Hash Generation
     console.log("Requesting Member Token with params:", params);
@@ -25,9 +25,9 @@ export async function getMemberToken(params: GetMemberTokenParams): Promise<Memb
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Validating configuration availability (Mock)
-    const encryptionConfig = CHANNEL_KEYS[channel];
+    const encryptionConfig = MERCHANT_KEYS[merchantId];
     if (!encryptionConfig) {
-        throw new Error(`Encryption configuration not found for channel: ${channel}`);
+        throw new Error(`Encryption configuration not found for merchantId: ${merchantId}`);
     }
 
     const wpayUserKey = WPAY_USER_KEYS[serverType];

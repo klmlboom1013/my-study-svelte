@@ -1,4 +1,4 @@
-import { SERVER_TYPES, PROD_SERVER_DOMAINS, type ServiceType, type ProdServerDomain } from "$lib/features/auth/wpayServerSiteOptions";
+import { SERVER_TYPES, PROD_SERVER_DOMAINS, type ServiceType, type ProdServerDomain } from "$lib/types/wpayServerType";
 
 export const WPAY_USER_KEYS = {
     [SERVER_TYPES.DEV]: "ST201812270000000662",
@@ -21,7 +21,7 @@ export const SERVICE_URLS: Record<ServiceType, {
     STG: string;
     PROD: Record<ProdServerDomain, string>;
 }> = {
-    "wpaystd-old": COMMON_URLS_1,
+    "wpaystd": COMMON_URLS_1,
     "wpaypro": COMMON_URLS_1,
     "wpaystd2": {
         DEV: "https://devwpaystd.inicis.com",

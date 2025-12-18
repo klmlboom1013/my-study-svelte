@@ -4,7 +4,7 @@ export interface CryptoKeys {
     hashKey: string;
 }
 
-export const CHANNEL_KEYS: Record<string, CryptoKeys> = {
+export const MERCHANT_KEYS: Record<string, CryptoKeys> = {
     "INIwpayT03": {
         seedKey: "rClo7QA4gdgyITHAPWrfXw==",
         seedIV: "WPAYSTDWPAY00000",
