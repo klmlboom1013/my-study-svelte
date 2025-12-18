@@ -5,14 +5,18 @@
     import RadioGroup from "$lib/components/ui/RadioGroup.svelte";
     import Modal from "$lib/components/ui/Modal.svelte";
     import {
-        SERVICE_OPTIONS,
-        SERVICE_SITE_MAPPING,
-        SITE_CHANNEL_MAPPING,
         SERVER_TYPES,
         PROD_SERVER_DOMAINS,
+        SERVICE_OPTIONS,
+        SITE_OPTIONS,
+        CHANNEL_OPTIONS,
+        SERVICE_SITE_MAPPING,
+        SITE_CHANNEL_MAPPING,
         type ServerType,
         type ServiceType,
-    } from "$lib/utils/config/wpayServerConfig";
+        type SiteType,
+        type ChannelType,
+    } from "./wpayServerSiteOptions";
 
     // Options
     const serviceOptions = [...SERVICE_OPTIONS];

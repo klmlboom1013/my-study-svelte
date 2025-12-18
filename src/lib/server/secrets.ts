@@ -1,4 +1,4 @@
-import { SERVER_TYPES, PROD_SERVER_DOMAINS, type ServiceType, type ProdServerDomain } from "$lib/utils/config/wpayServerConfig";
+import { SERVER_TYPES, PROD_SERVER_DOMAINS, type ServiceType, type ProdServerDomain } from "$lib/features/auth/wpayServerSiteOptions";
 
 export const WPAY_USER_KEYS = {
     [SERVER_TYPES.DEV]: "ST201812270000000662",
