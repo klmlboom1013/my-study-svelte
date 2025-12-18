@@ -1,57 +1,66 @@
 <script lang="ts">
-    import { createEventDispatcher } from "svelte";
+    import { fade, scale } from "svelte/transition";
+    import { X } from "lucide-svelte";
 
-    export let isOpen: boolean = false;
-    export let title: string = "";
+    interface Props {
+        isOpen: boolean;
+        title: string;
+        children?: import("svelte").Snippet;
+    }
 
-    const dispatch = createEventDispatcher();
+    let { isOpen = $bindable(), title, children }: Props = $props();
 
     function close() {
         isOpen = false;
-        dispatch("close");
-    }
-
-    function handleKeydown(event: KeyboardEvent) {
-        if (event.key === "Escape" && isOpen) {
-            close();
-        }
     }
 </script>
-
-<svelte:window on:keydown={handleKeydown} />
 
 {#if isOpen}
     <!-- Backdrop -->
     <div
-        role="button"
-        tabindex="0"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
-        on:click={(e) => {
+        class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+        transition:fade={{ duration: 200 }}
+        onclick={(e) => {
             if (e.target === e.currentTarget) close();
         }}
-        on:keydown={(e) => {
-            if (e.key === "Enter" || e.key === " ") close();
+        onkeydown={(e) => {
+            if (
+                e.target === e.currentTarget &&
+                (e.key === "Enter" || e.key === " ")
+            ) {
+                e.preventDefault();
+                close();
+            }
         }}
+        role="button"
+        tabindex="0"
     >
-        <!-- Content -->
-        <div class="w-full max-w-md p-6 bg-white rounded-lg shadow-xl">
-            {#if title}
-                <h2 class="text-lg font-bold text-gray-900 mb-4">{title}</h2>
-            {/if}
-
-            <div class="mb-6">
-                <slot />
+        <!-- Modal Content -->
+        <div
+            class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden relative"
+            transition:scale={{ duration: 200, start: 0.95 }}
+            role="dialog"
+            aria-modal="true"
+            tabindex="-1"
+        >
+            <!-- Header -->
+            <div
+                class="bg-[oklch(0.36_0.11_265.06)] px-6 py-4 flex justify-between items-center text-[oklch(1_0_0)]"
+            >
+                <h2 class="text-xl font-bold">{title}</h2>
+                <button
+                    onclick={close}
+                    class="hover:bg-white/10 p-1 rounded-full transition-colors"
+                >
+                    <X size={24} />
+                </button>
             </div>
 
-            <div class="flex justify-end gap-2">
-                <slot name="footer">
-                    <button
-                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                        on:click={close}
-                    >
-                        Close
-                    </button>
-                </slot>
+            <!-- Body -->
+            <div
+                class="p-6 text-[oklch(44.6%_0.03_256.802)] text-base font-medium"
+            >
+                {@render children?.()}
             </div>
         </div>
     </div>

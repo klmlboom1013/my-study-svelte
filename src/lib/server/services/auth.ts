@@ -1,6 +1,6 @@
-import type { ServerType, ServiceType, SiteType, ChannelType } from "$lib/constants/serverConfig";
-import { WPAY_USER_KEYS, SERVICE_URLS } from "$lib/constants/serverConfig";
-import { CHANNEL_KEYS } from "$lib/constants/cryptoConfig";
+import type { ServerType, ServiceType, SiteType, ChannelType } from "$lib/utils/config/wpayServerConfig";
+import { WPAY_USER_KEYS, SERVICE_URLS } from "$lib/server/secrets";
+import { CHANNEL_KEYS } from "$lib/utils/encryption/cryptoConfig";
 
 interface GetMemberTokenParams {
     loginId: string;

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { encryptSeed, decryptSeed } from "$lib/utils/crypto";
+    import { encryptSeed, decryptSeed } from "$lib/utils/encryption/cryptoSeed";
 
     let inputText = "";
     let encryptedText = "";

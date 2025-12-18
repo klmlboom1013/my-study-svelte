@@ -1,39 +1,53 @@
 <script lang="ts">
-    import { createEventDispatcher } from "svelte";
+    type Option = string | { value: string; label: string };
 
-    export let options: { label: string; value: string }[] = [];
-    export let value: string = "";
-    export let name: string = "";
-    export let disabled: boolean = false;
+    interface Props {
+        options: Option[];
+        groupName: string;
+        selected: string;
+        direction?: "row" | "column";
+        onOptionClick?: (value: string) => void;
+    }
 
-    const dispatch = createEventDispatcher();
+    let {
+        options,
+        groupName,
+        selected = $bindable(),
+        direction = "row",
+        onOptionClick,
+    }: Props = $props();
 
-    function handleChange(newValue: string) {
-        if (!disabled) {
-            value = newValue;
-            dispatch("change", { value });
-        }
+    function getOptionValue(option: Option): string {
+        return typeof option === "string" ? option : option.value;
+    }
+
+    function getOptionLabel(option: Option): string {
+        return typeof option === "string" ? option : option.label;
     }
 </script>
 
-<div class="flex flex-row gap-4">
+<div class={`flex gap-4 ${direction === "column" ? "flex-col" : "flex-row"}`}>
     {#each options as option}
-        <label class="flex items-center gap-2 cursor-pointer">
-            <input
-                type="radio"
-                {name}
-                class="w-4 h-4 text-blue-600 bg-gray-100 border-2 border-blue-500 focus:ring-blue-500 disabled:text-gray-400"
-                checked={value === option.value}
-                {disabled}
-                on:change={() => handleChange(option.value)}
-            />
+        {@const value = getOptionValue(option)}
+        {@const label = getOptionLabel(option)}
+        <label class="flex items-center gap-2 cursor-pointer group">
+            <div class="relative flex items-center justify-center">
+                <input
+                    type="radio"
+                    name={groupName}
+                    {value}
+                    bind:group={selected}
+                    onclick={() => onOptionClick?.(value)}
+                    class="peer appearance-none w-5 h-5 border-2 border-[oklch(0.36_0.11_265.06)] rounded-full cursor-pointer checked:bg-[oklch(0.36_0.11_265.06)] transition-all"
+                />
+                <div
+                    class="absolute w-2 h-2 bg-white rounded-full opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity"
+                ></div>
+            </div>
             <span
-                class="text-black font-medium text-base {disabled
-                    ? 'text-gray-400'
-                    : ''}"
+                class="text-[oklch(0.36_0.11_265.06)] font-medium text-base group-hover:text-[oklch(0.49_0.23_262.62)] transition-colors"
+                >{label}</span
             >
-                {option.label}
-            </span>
         </label>
     {/each}
 </div>
