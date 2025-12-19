@@ -13,10 +13,10 @@
 
 <input
     {type}
-    class="px-3 py-2 border-2 rounded-md outline-none text-black placeholder:text-gray-400
-    focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-    disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-200
-    border-blue-500
+    class="px-3 py-2 border-2 rounded-md outline-none text-brand-primary placeholder:text-ui-hint
+    focus:ring-2 focus:ring-brand-primary focus:border-brand-primary
+    disabled:bg-ui-inactive disabled:text-text-white disabled:border-ui-inactive
+    border-brand-primary
     {className}"
     {placeholder}
     {disabled}

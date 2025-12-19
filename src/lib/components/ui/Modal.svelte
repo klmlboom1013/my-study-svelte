@@ -45,7 +45,7 @@
         >
             <!-- Header -->
             <div
-                class="bg-[oklch(0.36_0.11_265.06)] px-6 py-4 flex justify-between items-center text-[oklch(1_0_0)]"
+                class="bg-brand-primary px-6 py-4 flex justify-between items-center text-text-white"
             >
                 <h2 class="text-xl font-bold">{title}</h2>
                 <button
@@ -57,9 +57,7 @@
             </div>
 
             <!-- Body -->
-            <div
-                class="p-6 text-[oklch(44.6%_0.03_256.802)] text-base font-medium"
-            >
+            <div class="p-6 text-text-message text-base font-medium">
                 {@render children?.()}
             </div>
         </div>

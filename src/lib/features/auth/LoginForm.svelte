@@ -117,6 +117,25 @@
         target.value = clean;
     }
 
+    // Wpay Signup Logic
+    let isSignupOpen = $state(false);
+
+    function startWpaySignup() {
+        isSignupOpen = true;
+        // Listen for message
+        window.addEventListener("message", handleWpayMessage);
+    }
+
+    function handleWpayMessage(event: MessageEvent) {
+        // Validation of origin can be added here
+        if (event.data && event.data.wpayUserKey) {
+            localStorage.setItem("wpayUserKey", event.data.wpayUserKey);
+            isSignupOpen = false;
+            window.removeEventListener("message", handleWpayMessage);
+            goto("/");
+        }
+    }
+
     // Login Handler
     async function handleLogin() {
         if (!isValid) return;
@@ -140,6 +159,13 @@
             localStorage.setItem("loginSettings", JSON.stringify(settings));
         } else {
             localStorage.removeItem("loginSettings");
+        }
+
+        // Wpay Signup Check
+        const savedWpayKey = localStorage.getItem("wpayUserKey");
+        if (!phone || !savedWpayKey) {
+            startWpaySignup();
+            return;
         }
 
         // Navigate
@@ -263,8 +289,8 @@
             onfocus={() => (loginIdPlaceholder = "")}
             onblur={() =>
                 (loginIdPlaceholder = !loginId ? "wpayTestUser01" : "")}
-            class="w-full border-2 border-[oklch(0.36_0.11_265.06)] rounded-md py-2 px-3 font-medium placeholder-[oklch(0.75_0.04_262.99)] focus:outline-none focus:ring-2 focus:ring-[oklch(0.36_0.11_265.06)]/20"
-            style="color: oklch(0.36 0.11 265.06);"
+            class="w-full border-2 border-brand-primary rounded-md py-2 px-3 font-medium placeholder-ui-hint focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+            class:text-brand-primary={true}
         />
     </div>
 
@@ -280,8 +306,8 @@
             type="text"
             value={phone}
             oninput={handlePhoneInput}
-            class="w-full border-2 border-[oklch(0.36_0.11_265.06)] rounded-md py-2 px-3 font-medium placeholder-[oklch(0.75_0.04_262.99)] focus:outline-none focus:ring-2 focus:ring-[oklch(0.36_0.11_265.06)]/20"
-            style="color: oklch(0.36 0.11 265.06);"
+            class="w-full border-2 border-brand-primary rounded-md py-2 px-3 font-medium placeholder-ui-hint focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+            class:text-brand-primary={true}
             placeholder="숫자만 입력해 주세요"
         />
     </div>
@@ -293,7 +319,7 @@
             name="remember-me"
             type="checkbox"
             bind:checked={rememberMe}
-            class="h-4 w-4 text-[oklch(0.36_0.11_265.06)] focus:ring-[oklch(0.36_0.11_265.06)] border-gray-300 rounded cursor-pointer"
+            class="h-4 w-4 text-brand-primary focus:ring-brand-primary border-gray-300 rounded cursor-pointer"
         />
         <label
             for="remember-me"
@@ -316,7 +342,7 @@
             onclick={handleLogin}
             disabled={!isValid}
             class={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white 
-        ${isValid ? "bg-[oklch(0.36_0.11_265.06)] hover:bg-[oklch(0.49_0.23_262.62)] focus:ring-2 focus:ring-offset-2 focus:ring-[oklch(0.36_0.11_265.06)]" : "bg-[oklch(0.83_0_0)] cursor-not-allowed"}
+        ${isValid ? "bg-brand-primary hover:bg-brand-hover focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary" : "bg-ui-inactive cursor-not-allowed"}
         transition-colors`}
         >
             {isValid ? "다음" : "다음"}
@@ -327,7 +353,7 @@
 <!-- PROD Server Modal -->
 <Modal bind:isOpen={showProdModal} title="PROD 서버 선택">
     <div class="flex flex-col gap-4">
-        <p class="text-sm text-gray-600 mb-2">
+        <p class="text-sm text-text-message mb-2">
             접속할 PROD 서버를 선택해주세요.
         </p>
         <RadioGroup
@@ -339,10 +365,30 @@
         <div class="mt-6 flex justify-end">
             <button
                 onclick={() => (showProdModal = false)}
-                class="px-4 py-2 rounded-md text-[oklch(1_0_0)] bg-[oklch(0.36_0.11_265.06)] hover:bg-[oklch(0.49_0.23_262.62)] transition-colors"
+                class="px-4 py-2 rounded-md text-text-white bg-brand-primary hover:bg-brand-hover transition-colors"
             >
                 확인
             </button>
         </div>
     </div>
 </Modal>
+
+<!-- Wpay Signup Iframe Modal -->
+{#if isSignupOpen}
+    <div
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+    >
+        <div
+            class="bg-white w-full max-w-lg h-[600px] rounded-lg shadow-xl relative overflow-hidden"
+        >
+            <button
+                class="absolute top-2 right-2 p-2 hover:bg-gray-100 rounded-full"
+                onclick={() => (isSignupOpen = false)}
+            >
+                ✕
+            </button>
+            <iframe src="about:blank" title="Wpay Signup" class="w-full h-full"
+            ></iframe>
+        </div>
+    </div>
+{/if}

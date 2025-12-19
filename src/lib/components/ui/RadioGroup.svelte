@@ -40,14 +40,14 @@
                     {value}
                     bind:group={selected}
                     onclick={() => onOptionClick?.(value)}
-                    class={`peer appearance-none w-5 h-5 border-2 rounded-full cursor-pointer transition-all ${isError ? "border-red-500 checked:bg-red-500" : "border-[oklch(0.36_0.11_265.06)] checked:bg-[oklch(0.36_0.11_265.06)]"}`}
+                    class={`peer appearance-none w-5 h-5 border-2 rounded-full cursor-pointer transition-all ${isError ? "border-red-500 checked:bg-red-500" : "border-brand-primary checked:bg-brand-primary"}`}
                 />
                 <div
                     class="absolute w-2 h-2 bg-white rounded-full opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity"
                 ></div>
             </div>
             <span
-                class={`font-medium text-base transition-colors ${isError ? "text-red-500" : "text-[oklch(0.36_0.11_265.06)] group-hover:text-[oklch(0.49_0.23_262.62)]"}`}
+                class={`font-medium text-base transition-colors ${isError ? "text-red-500" : "text-brand-primary group-hover:text-brand-hover"}`}
                 >{label}</span
             >
         </label>
