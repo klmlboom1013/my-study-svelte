@@ -5,9 +5,27 @@
     let encryptedText = "";
     let decryptedText = "";
 
+    // Test Keys (from previous defaults)
+    const TEST_KEY = "rClo7QA4gdgyITHAPWrfXw==";
+    const TEST_IV_STRING = "WPAYSTDWPAY00000";
+    // Access Buffer from window in browser environment or global in node
+    const getBuffer = () =>
+        typeof window !== "undefined" ? (window as any).Buffer : Buffer;
+
+    let TEST_IV = "";
+    // Initialize IV on mount or lazily. Since this is Svelte 5, let's just do it inside the function or init
+
+    // Simple helper to get IV
+    function getTestIV() {
+        const buf = getBuffer();
+        if (buf) return buf.from(TEST_IV_STRING, "utf-8").toString("base64");
+        return "";
+    }
+
     function handleEncrypt() {
         try {
-            encryptedText = encryptSeed(inputText);
+            const iv = getTestIV();
+            encryptedText = encryptSeed(inputText, TEST_KEY, iv);
             decryptedText = ""; // Clear previous decryption
         } catch (e) {
             console.error(e);
@@ -17,7 +35,8 @@
 
     function handleDecrypt() {
         try {
-            decryptedText = decryptSeed(encryptedText);
+            const iv = getTestIV();
+            decryptedText = decryptSeed(encryptedText, TEST_KEY, iv);
         } catch (e) {
             console.error(e);
             alert("복호화 실패: " + e);

@@ -15,7 +15,12 @@
         type ServiceType,
         type SiteType,
         type MerchantIdType,
+        type ProdServerDomain,
     } from "$lib/types/wpayServerType";
+    import { MERCHANT_KEYS } from "$lib/utils/encryption/cryptoKeys";
+    import { generateSignature } from "$lib/utils/wpay/signature";
+    import { encryptSeed } from "$lib/utils/encryption/cryptoSeed";
+    import { SERVICE_URLS } from "$lib/constants/wpayUrls";
 
     // Options
     const serviceOptions = [...SERVICE_OPTIONS];
@@ -118,22 +123,145 @@
     }
 
     // Wpay Signup Logic
-    let isSignupOpen = $state(false);
+    let wpayPopup: Window | null = null;
 
     function startWpaySignup() {
-        isSignupOpen = true;
+        const width = 540;
+        const height = 650;
+        const left = window.screenX + (window.outerWidth - width) / 2;
+        const top = window.screenY + (window.outerHeight - height) / 2;
+
+        wpayPopup = window.open(
+            "",
+            "wpay-popup",
+            `width=${width},height=${height},left=${left},top=${top},status=no,menubar=no,toolbar=no`,
+        );
+
         // Listen for message
         window.addEventListener("message", handleWpayMessage);
     }
 
     function handleWpayMessage(event: MessageEvent) {
         // Validation of origin can be added here
-        if (event.data && event.data.wpayUserKey) {
-            localStorage.setItem("wpayUserKey", event.data.wpayUserKey);
-            isSignupOpen = false;
-            window.removeEventListener("message", handleWpayMessage);
-            goto("/");
+        if (event.data) {
+            console.log("WPAY Message Received:", event.data);
+            if (event.data.wpayUserKey) {
+                localStorage.setItem("wpayUserKey", event.data.wpayUserKey);
+                if (wpayPopup) wpayPopup.close();
+                window.removeEventListener("message", handleWpayMessage);
+                goto("/");
+            } else if (
+                event.data.resultCode &&
+                event.data.resultCode !== "0000"
+            ) {
+                alert(
+                    `WPAY Error: ${event.data.resultMsg} (${event.data.resultCode})`,
+                );
+                if (wpayPopup) wpayPopup.close();
+                window.removeEventListener("message", handleWpayMessage);
+            }
         }
+    }
+
+    // Wpay Form Data
+    let wpayFormData = $state<Record<string, string>>({});
+    let wpayFormAction = $state("");
+
+    async function openWpaySignup() {
+        if (!merchantId || !loginSite) {
+            alert("Merchant ID and Site must be selected.");
+            return;
+        }
+
+        const keys = MERCHANT_KEYS[merchantId];
+        if (!keys) {
+            alert("Configuration not found for Merchant ID.");
+            return;
+        }
+
+        // URL construction
+        let domain = "";
+        if (serverType === SERVER_TYPES.PROD) {
+            if (!prodServer) {
+                alert("PROD Server type must be selected.");
+                return;
+            }
+            domain =
+                SERVICE_URLS[service as ServiceType].PROD[
+                    prodServer as ProdServerDomain
+                ];
+        } else {
+            domain =
+                SERVICE_URLS[service as ServiceType][
+                    serverType as "DEV" | "STG"
+                ];
+        }
+
+        // Ensure domain doesn't end with slash, just in case (though usage shows no slash)
+        wpayFormAction = `${domain}/${loginSite}/std/u/v1/memreg`;
+
+        // Mock override for testing if needed, but since we are implementing real logic per prompt:
+        // If we want to test locally with the mock endpoint we created, we need to bypass this unless we are on localhost?
+        // The prompt asked to use the logic from secrets.ts.
+        // However, I created a Mock Endpoint at /[loginSite]/u/memreg which is relative.
+        // If I use the full external domain, my Mock Endpoint won't be hit unless I intercept it or if the domain is localhost.
+        // But the domain configs are "https://devwpay.inicis.com" etc.
+        // So in reality, this form will try to post to Inicis servers.
+        // If I want to keep the "Mock" verification working, I should probably use the relative path IF logic dictates,
+        // OR just assume "Implementation" means implementing the REAL logic.
+        // The user prompt "update service registration URL logic" implies REAL logic.
+        // So I will use the real domain.
+
+        const returnUrl =
+            window.location.origin + "/external/wpay/callback/memreg";
+
+        // Encrypt Fields
+        const encrypt = (value: string) => {
+            if (!value) return "";
+            return encryptSeed(value, keys.seedKey, keys.seedIV);
+        };
+
+        const encUserId = encrypt(loginId || "wpayTestUser01");
+        const encHNum = encrypt(phone || "");
+        const encReturnUrl = encodeURIComponent(returnUrl);
+
+        const reqData: Record<string, string> = {
+            mid: merchantId,
+            userId: encUserId,
+            // ci: "",
+            reqType: "N",
+            // userNm: "",
+            hNum: encHNum,
+            // hCorp: "",
+            // birthDay: "",
+            // socialNo2: "",
+            // frnrYn: "",
+            returnUrl: encReturnUrl,
+            // payUrl: ""
+        };
+
+        // Generate Signature
+        const signature = await generateSignature(reqData, keys.hashKey);
+        reqData.signature = signature;
+
+        wpayFormData = reqData;
+
+        startWpaySignup();
+
+        // Debug Logging
+        console.group("WPAY Request Debug");
+        console.log("URL:", wpayFormAction);
+        console.log("Method: POST");
+        console.log("Data:", reqData);
+        console.groupEnd();
+
+        // Submit form after iframe opens
+        setTimeout(() => {
+            const form = document.getElementById(
+                "wpay-signup-form",
+            ) as HTMLFormElement;
+            if (form) form.submit();
+        }, 100);
     }
 
     // Login Handler
@@ -164,7 +292,7 @@
         // Wpay Signup Check
         const savedWpayKey = localStorage.getItem("wpayUserKey");
         if (!phone || !savedWpayKey) {
-            startWpaySignup();
+            await openWpaySignup();
             return;
         }
 
@@ -373,22 +501,17 @@
     </div>
 </Modal>
 
-<!-- Wpay Signup Iframe Modal -->
-{#if isSignupOpen}
-    <div
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-    >
-        <div
-            class="bg-white w-full max-w-lg h-[600px] rounded-lg shadow-xl relative overflow-hidden"
-        >
-            <button
-                class="absolute top-2 right-2 p-2 hover:bg-gray-100 rounded-full"
-                onclick={() => (isSignupOpen = false)}
-            >
-                ✕
-            </button>
-            <iframe src="about:blank" title="Wpay Signup" class="w-full h-full"
-            ></iframe>
-        </div>
-    </div>
-{/if}
+<!-- Wpay Signup Iframe Modal Removed -->
+
+<!-- Hidden Form for WPAY Submission -->
+<form
+    id="wpay-signup-form"
+    method="POST"
+    action={wpayFormAction}
+    target="wpay-popup"
+    class="hidden"
+>
+    {#each Object.entries(wpayFormData) as [key, value]}
+        <input type="hidden" name={key} {value} />
+    {/each}
+</form>
