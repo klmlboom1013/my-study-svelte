@@ -19,7 +19,7 @@
     } from "$lib/types/wpayServerType";
     import { MERCHANT_KEYS } from "$lib/utils/encryption/cryptoKeys";
     import { generateSignature } from "$lib/utils/wpay/signature";
-    import { encryptSeed } from "$lib/utils/encryption/cryptoSeed";
+    import { encryptSeed, decryptSeed } from "$lib/utils/encryption/cryptoSeed";
     import { SERVICE_URLS } from "$lib/constants/wpayUrls";
 
     // Options
@@ -99,17 +99,17 @@
 
     // Load from LocalStorage
     onMount(() => {
-        const saved = localStorage.getItem("loginSettings");
-        if (saved) {
-            const data = JSON.parse(saved);
-            service = data.service ?? "";
-            serverType = data.serverType ?? "";
-            prodServer = data.prodServer ?? "";
-            loginSite = data.loginSite ?? "";
-            merchantId = data.merchantId ?? "";
-            loginId = data.loginId ?? "";
-            phone = data.phone ?? "";
-            // If we have saved data, it means rememberMe was true
+        service = localStorage.getItem("serviceOption") || "";
+        serverType = (localStorage.getItem("serverType") as ServerType) || "";
+        prodServer = localStorage.getItem("prodServerDomain") || "";
+        loginSite = localStorage.getItem("siteOption") || "";
+        merchantId = localStorage.getItem("mid") || "";
+        loginId = localStorage.getItem("userId") || "";
+        phone = localStorage.getItem("hNum") || "";
+
+        // Check if we have any saved data to determine "Remember Me" state
+        // If we have at least one of these critical fields, assume Remember Me was on.
+        if (service || serverType || loginSite || merchantId) {
             rememberMe = true;
         }
     });
@@ -141,25 +141,83 @@
         window.addEventListener("message", handleWpayMessage);
     }
 
-    function handleWpayMessage(event: MessageEvent) {
-        // Validation of origin can be added here
-        if (event.data) {
-            console.log("WPAY Message Received:", event.data);
-            if (event.data.wpayUserKey) {
-                localStorage.setItem("wpayUserKey", event.data.wpayUserKey);
+    async function handleWpayMessage(event: MessageEvent) {
+        if (!event.data || !event.data.resultCode) return;
+
+        console.group("WPAY Response Debug");
+        console.log("Raw Data:", event.data);
+
+        const resData = event.data;
+
+        const keys = MERCHANT_KEYS[merchantId];
+        if (!keys) {
+            console.error("Merchant Keys not found for:", merchantId);
+            console.groupEnd();
+            return;
+        }
+
+        // Response Signing Order (WPAYSTD2 1. 회원 가입 요청)
+        const responseSigningOrder = [
+            "resultCode",
+            "resultMsg",
+            "wtid",
+            "userId",
+            "wpayUserKey",
+            "ci",
+        ];
+
+        // 1. Signature Verification
+        if (resData.signature) {
+            const calculatedSignature = await generateSignature(
+                resData,
+                keys.hashKey,
+                responseSigningOrder,
+            );
+            console.log("Calculated Sig:", calculatedSignature);
+            console.log("Received Sig:", resData.signature);
+
+            if (calculatedSignature !== resData.signature) {
+                alert("WPAY Response Signature Verification Failed!");
+                console.groupEnd();
+                if (wpayPopup) wpayPopup.close();
+                window.removeEventListener("message", handleWpayMessage);
+                return;
+            }
+        }
+
+        // 2. Decrypt & Decode
+        const decrypt = (val: string) =>
+            val ? decryptSeed(val, keys.seedKey, keys.seedIV) : "";
+        const decode = (val: string) => (val ? decodeURIComponent(val) : "");
+
+        // resultMsg: Encrypt O
+        const resultMsg = resData.resultMsg ? decrypt(resData.resultMsg) : "";
+
+        // wpayUserKey: Encode O -> Decode
+        const wpayUserKey = resData.wpayUserKey
+            ? decode(resData.wpayUserKey)
+            : "";
+
+        // ci: Encrypt O
+        const ci = resData.ci ? decrypt(resData.ci) : "";
+
+        console.log("Decrypted resultMsg:", resultMsg);
+        console.log("Decoded wpayUserKey:", wpayUserKey);
+        console.groupEnd();
+
+        if (resData.resultCode === "0000") {
+            if (wpayUserKey) {
+                localStorage.setItem("wpayUserKey", wpayUserKey);
+                if (ci) localStorage.setItem("ci", ci);
+
                 if (wpayPopup) wpayPopup.close();
                 window.removeEventListener("message", handleWpayMessage);
                 goto("/");
-            } else if (
-                event.data.resultCode &&
-                event.data.resultCode !== "0000"
-            ) {
-                alert(
-                    `WPAY Error: ${event.data.resultMsg} (${event.data.resultCode})`,
-                );
-                if (wpayPopup) wpayPopup.close();
-                window.removeEventListener("message", handleWpayMessage);
             }
+        } else {
+            alert(`WPAY Error: ${resultMsg} (${resData.resultCode})`);
+            if (wpayPopup) wpayPopup.close();
+            window.removeEventListener("message", handleWpayMessage);
         }
     }
 
@@ -221,23 +279,43 @@
             return encryptSeed(value, keys.seedKey, keys.seedIV);
         };
 
-        const encUserId = encrypt(loginId || "wpayTestUser01");
-        const encHNum = encrypt(phone || "");
-        const encReturnUrl = encodeURIComponent(returnUrl);
+        const getStored = (key: string) => localStorage.getItem(key) || "";
 
+        // Source values from state or localStorage as per guide
+        const finalMid = merchantId || getStored("mid"); // Guide says selected OR stored
+        const finalUserId = loginId || getStored("userId") || "wpayTestUser01";
+        const finalHNum = getStored("hNum") || phone;
+
+        const rawCi = getStored("ci");
+        const rawUserNm = getStored("userNm");
+        const rawHCorp = getStored("hCorp");
+        const rawBirthDay = getStored("birthDay");
+        const rawSocialNo2 = getStored("socialNo2");
+        const rawFrnrYn = getStored("frnrYn");
+
+        const encUserId = encrypt(finalUserId);
+        const encHNum = encrypt(finalHNum);
+        const encCi = encrypt(rawCi);
+        const encBirthDay = encrypt(rawBirthDay);
+
+        const encReturnUrl = encodeURIComponent(returnUrl);
+        const encUserNm = encodeURIComponent(rawUserNm);
+
+        // WPAYSTD2 Request Data
         const reqData: Record<string, string> = {
-            mid: merchantId,
+            mid: finalMid,
             userId: encUserId,
-            // ci: "",
-            reqType: "N",
-            // userNm: "",
+            ci: encCi,
+            userNm: encUserNm,
             hNum: encHNum,
-            // hCorp: "",
-            // birthDay: "",
-            // socialNo2: "",
-            // frnrYn: "",
+            hCorp: rawHCorp,
+            birthDay: encBirthDay,
+            socialNo2: rawSocialNo2,
+            frnrYn: rawFrnrYn,
             returnUrl: encReturnUrl,
-            // payUrl: ""
+            agreePayNm: "", // Encoded empty string
+            agreeUrl: "", // Encoded empty string
+            optReadOnly: "",
         };
 
         // Generate Signature
@@ -252,7 +330,7 @@
         console.group("WPAY Request Debug");
         console.log("URL:", wpayFormAction);
         console.log("Method: POST");
-        console.log("Data:", reqData);
+        console.log("Request Data Setting Values:", reqData);
         console.groupEnd();
 
         // Submit form after iframe opens
@@ -275,18 +353,21 @@
 
         // Save if Remember Me
         if (rememberMe) {
-            const settings = {
-                service,
-                serverType,
-                prodServer,
-                loginSite,
-                merchantId,
-                loginId,
-                phone,
-            };
-            localStorage.setItem("loginSettings", JSON.stringify(settings));
+            localStorage.setItem("serviceOption", service);
+            localStorage.setItem("serverType", serverType);
+            localStorage.setItem("prodServerDomain", prodServer);
+            localStorage.setItem("siteOption", loginSite);
+            localStorage.setItem("mid", merchantId);
+            localStorage.setItem("userId", loginId);
+            localStorage.setItem("hNum", phone);
         } else {
-            localStorage.removeItem("loginSettings");
+            localStorage.removeItem("serviceOption");
+            localStorage.removeItem("serverType");
+            localStorage.removeItem("prodServerDomain");
+            localStorage.removeItem("siteOption");
+            localStorage.removeItem("mid");
+            localStorage.removeItem("userId");
+            localStorage.removeItem("hNum");
         }
 
         // Wpay Signup Check

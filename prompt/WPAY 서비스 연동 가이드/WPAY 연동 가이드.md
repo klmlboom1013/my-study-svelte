@@ -33,8 +33,8 @@
 - Request Data, Response Data의 row 중 Signing Order 컬럼에 값이 존재하는 필드만 signature를 생성하는데 사용 된다.
 - Signing Order 필드 순서대로 문자열 메시지 을 만든다.
   - 필드명=필드값
-  - 필드 간 연결은 “&” 로 한다.
-  - 문자열 메시지 가장 마지막에 hash={hashKey 값} 추가로 연결 한다.
+  - 필드정보 간 연결은 “&” 문자로 한다.
+  - 문자열 메시지 가장 마지막에 hash={hashKey 값} 문자열을 추가로 연결 한다.
     - hashKey는 cryptoKeys.ts의 MERCHANT_KEYS를 참고 한다.
   - 아래는 java로 된 예제 코드 이다.
 
@@ -44,11 +44,11 @@
     String wpayTokenValue = "gB09oEE4gECiuU3KImQbIW5EwxFZa9F+Odt0/keu5kY=";
     String email = "";
     
-    String message = "INIwpayT03" +
-    "&" + "SQvRwbGJb2rruRfMrUgHzVMSp7C8jyH59XwP7MVki0Q=" +
-    "&" + "gB09oEE4gECiuU3KImQbIW5EwxFZa9F+Odt0/keu5kY=" +
-    "&" + "" +
-    "&" + hashKey;
+    String message = "mid=INIwpayT03" +
+    "&" + "wpayUserKey=SQvRwbGJb2rruRfMrUgHzVMSp7C8jyH59XwP7MVki0Q=" +
+    "&" + "wpayTokenValue=gB09oEE4gECiuU3KImQbIW5EwxFZa9F+Odt0/keu5kY=" +
+    "&" + "email=" +
+    "&" + "hashKey=" + hashKey;
     ```
 
 - signture 생성 문자열이 완성되면 SHA256 으로 암호화 한다.
