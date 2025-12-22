@@ -56,6 +56,18 @@
     let rememberMe = $state(false);
 
     let showProdModal = $state(false);
+    let showResultModal = $state(false); // WPAY Result Modal
+    let isWpaySuccess = $state(false);
+    let validationError = $state(""); // To store specific validation error
+    let wpayResultData = $state<
+        {
+            key: string;
+            label: string;
+            encrypted: string;
+            decrypted: string;
+        }[]
+    >([]);
+
     let showMissingFields = $state(false);
     let transitionDuration = $state(200); // Default transition duration
 
@@ -237,35 +249,112 @@
         const resUserId = resData.userId ? decrypt(resData.userId) : "";
         const isUserIdMatch = resUserId === currentUserId;
 
+        // Prepare Data for Modal
+        wpayResultData = [
+            {
+                key: "resultCode",
+                label: "결과 코드",
+                encrypted: resData.resultCode || "",
+                decrypted: "-",
+            },
+            {
+                key: "resultMsg",
+                label: "결과 메시지",
+                encrypted: resData.resultMsg || "", // Encoded raw
+                decrypted: resultMsg,
+            },
+            {
+                key: "mid",
+                label: "가맹점 ID",
+                encrypted: resData.mid || "",
+                decrypted: "-",
+            },
+            {
+                key: "wtid",
+                label: "WPAY 트랜잭션 ID",
+                encrypted: wtid,
+                decrypted: "-",
+            },
+            {
+                key: "userId",
+                label: "사용자 ID",
+                encrypted: resData.userId || "",
+                decrypted: resUserId,
+            },
+            {
+                key: "wpayUserKey",
+                label: "WPAY 사용자 키",
+                encrypted: resData.wpayUserKey || "",
+                decrypted: wpayUserKey,
+            },
+            {
+                key: "ci",
+                label: "CI",
+                encrypted: resData.ci || "",
+                decrypted: ci,
+            },
+            {
+                key: "signature",
+                label: "서명",
+                encrypted: resData.signature || "",
+                decrypted: "-",
+            },
+        ];
+
+        isWpaySuccess = false; // Reset first
+        validationError = ""; // Reset error
+
         if (isSuccessCode) {
             if (!wtid || !wpayUserKey) {
-                alert(
-                    "WPAY Error: Missing required response fields (wtid or wpayUserKey).",
-                );
+                validationError = "필수 응답 필드 누락 (wtid 또는 wpayUserKey)";
             } else if (!isUserIdMatch) {
-                alert(
-                    `WPAY Error: UserId mismatch. Request: ${currentUserId}, Response: ${resData.userId}`,
-                );
+                validationError = `사용자 ID 불일치 (요청: ${currentUserId}, 응답: ${resUserId})`;
             } else {
-                localStorage.setItem("wpayUserKey", wpayUserKey);
-                if (ci) localStorage.setItem("ci", ci);
-                // Also save wtid? The prompt doesn't explicitly say to save it, but usually useful.
-                // For now, follow existing logic which saves key and ci.
-
-                if (wpayPopup) wpayPopup.close();
-                window.removeEventListener("message", handleWpayMessage);
-                goto("/");
-                return;
+                // Valid Success
+                isWpaySuccess = true;
+                // Defer storage logic to "Confirm" button
             }
+        } else {
+            // Failure code
+            validationError = `${resultMsg} (${resData.resultCode})`;
         }
 
-        // If we reached here without returning, it's an error or validation failure
+        // Show Modal
         if (wpayPopup) wpayPopup.close();
         window.removeEventListener("message", handleWpayMessage);
+        showResultModal = true;
+    }
 
-        if (!isSuccessCode) {
-            alert(`WPAY Error: ${resultMsg} (${resData.resultCode})`);
+    // Handle Modal Close (triggered by both X button and Confirm button)
+    $effect(() => {
+        if (!showResultModal && isWpaySuccess) {
+            // Modal closed AND success -> Navigate
+            const wpayUserKeyItem = wpayResultData.find(
+                (d) => d.key === "wpayUserKey",
+            );
+            const ciItem = wpayResultData.find((d) => d.key === "ci");
+            // Find wtid from result data (it's already decrypted/raw available there)
+            const wtidItem = wpayResultData.find((d) => d.key === "wtid");
+            const userIdItem = wpayResultData.find((d) => d.key === "userId");
+
+            const wpayUserKey = wpayUserKeyItem?.decrypted || "";
+            const ci = ciItem?.decrypted || "";
+            const wtid = wtidItem?.encrypted || ""; // wtid is in 'encrypted' field as raw text in our data structure
+            // Use decrypted userId or fallback to loginId state
+            const userId = userIdItem?.decrypted || loginId || "wpayTestUser01";
+
+            if (wpayUserKey) localStorage.setItem("wpayUserKey", wpayUserKey);
+            if (ci) localStorage.setItem("ci", ci);
+            if (wtid) localStorage.setItem("wtid", wtid);
+            if (userId) localStorage.setItem("loginUserId", userId);
+
+            goto("/");
         }
+    });
+
+    function handleResultConfirm() {
+        showResultModal = false;
+        // Logic handled by $effect
     }
 
     // Wpay Form Data
@@ -419,7 +508,10 @@
 
         // Wpay Signup Check
         const savedWpayKey = localStorage.getItem("wpayUserKey");
-        if (!phone || !savedWpayKey) {
+        const savedWtid = localStorage.getItem("wtid");
+        const savedLoginUserId = localStorage.getItem("loginUserId"); // Added check
+
+        if (!phone || !savedWpayKey || !savedWtid || !savedLoginUserId) {
             await openWpaySignup();
             return;
         }
@@ -621,6 +713,69 @@
         <div class="mt-6 flex justify-end">
             <button
                 onclick={() => (showProdModal = false)}
+                class="px-4 py-2 rounded-md text-text-white bg-brand-primary hover:bg-brand-hover transition-colors"
+            >
+                확인
+            </button>
+        </div>
+    </div>
+</Modal>
+
+<!-- WPAY Result Modal -->
+<Modal
+    bind:isOpen={showResultModal}
+    title="WPAY 회원 가입 결과"
+    width="max-w-4xl"
+>
+    <div class="flex flex-col gap-4">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-gray-500">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-2 py-2">Field</th>
+                        <th scope="col" class="px-2 py-2">Encrypted / Raw</th>
+                        <th scope="col" class="px-2 py-2">Decrypted</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {#each wpayResultData as item}
+                        <tr class="bg-white border-b">
+                            <td
+                                class="px-2 py-2 font-medium text-gray-900 whitespace-nowrap"
+                            >
+                                {item.label} <br />
+                                <span class="text-xs text-gray-400"
+                                    >({item.key})</span
+                                >
+                            </td>
+                            <td class="px-2 py-2 break-all max-w-[150px]"
+                                >{item.encrypted}</td
+                            >
+                            <td
+                                class="px-2 py-2 break-all max-w-[150px] font-bold text-brand-primary"
+                            >
+                                {item.decrypted}
+                            </td>
+                        </tr>
+                    {/each}
+                </tbody>
+            </table>
+        </div>
+
+        {#if !isWpaySuccess}
+            <div class="p-3 bg-red-50 text-red-700 text-sm rounded-md">
+                회원 가입 처리에 실패했습니다.<br />
+                {#if validationError}
+                    <span class="font-bold">사유: {validationError}</span>
+                {:else}
+                    재시도 해주세요.
+                {/if}
+            </div>
+        {/if}
+
+        <div class="mt-4 flex justify-end">
+            <button
+                onclick={handleResultConfirm}
                 class="px-4 py-2 rounded-md text-text-white bg-brand-primary hover:bg-brand-hover transition-colors"
             >
                 확인

@@ -3,8 +3,11 @@
     import { goto } from "$app/navigation";
 
     onMount(() => {
-        const memberData = localStorage.getItem("member");
-        if (!memberData) {
+        const wpayUserKey = localStorage.getItem("wpayUserKey");
+        const wtid = localStorage.getItem("wtid");
+        const loginUserId = localStorage.getItem("loginUserId");
+
+        if (!wpayUserKey || !wtid || !loginUserId) {
             goto("/login");
         }
     });

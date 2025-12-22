@@ -6,9 +6,15 @@
         isOpen: boolean;
         title: string;
         children?: import("svelte").Snippet;
+        width?: string;
     }
 
-    let { isOpen = $bindable(), title, children }: Props = $props();
+    let {
+        isOpen = $bindable(),
+        title,
+        children,
+        width = "max-w-md",
+    }: Props = $props();
 
     function close() {
         isOpen = false;
@@ -37,7 +43,7 @@
     >
         <!-- Modal Content -->
         <div
-            class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden relative"
+            class={`bg-white rounded-xl shadow-2xl w-full ${width} overflow-hidden relative`}
             transition:scale={{ duration: 200, start: 0.95 }}
             role="dialog"
             aria-modal="true"
