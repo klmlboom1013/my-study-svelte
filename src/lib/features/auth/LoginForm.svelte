@@ -1,8 +1,13 @@
 <script lang="ts">
     import { onMount, onDestroy } from "svelte";
     import { goto } from "$app/navigation";
+    import {
+        createAuthToken,
+        validateAuthToken,
+    } from "$lib/utils/auth/authToken";
 
     import DropdownInput from "$lib/components/ui/DropdownInput.svelte";
+
     import RadioGroup from "$lib/components/ui/RadioGroup.svelte";
     import Modal from "$lib/components/ui/Modal.svelte";
     import {
@@ -22,6 +27,7 @@
     import { generateSignature } from "$lib/utils/wpay/signature";
     import { encryptSeed, decryptSeed } from "$lib/utils/encryption/cryptoSeed";
     import { SERVICE_URLS } from "$lib/constants/wpayUrls";
+    import { WPAY_POPUP_CONFIG } from "$lib/constants/wpayConfig";
 
     // Options
     const serviceOptions = [...SERVICE_OPTIONS];
@@ -118,7 +124,7 @@
     });
 
     // Load from LocalStorage
-    onMount(() => {
+    onMount(async () => {
         service = localStorage.getItem("serviceOption") || "";
         serverType = (localStorage.getItem("serverType") as ServerType) || "";
         prodServer = localStorage.getItem("prodServerDomain") || "";
@@ -131,6 +137,20 @@
         // If we have at least one of these critical fields, assume Remember Me was on.
         if (service || serverType || loginSite || merchantId) {
             rememberMe = true;
+        }
+
+        // Check AuthToken for Auto Login
+        const storedTokenStr = localStorage.getItem("authToken");
+        if (storedTokenStr && merchantId) {
+            try {
+                const token = JSON.parse(storedTokenStr);
+                const isValid = await validateAuthToken(token, merchantId);
+                if (isValid) {
+                    goto("/");
+                }
+            } catch (e) {
+                console.error("Token parse error", e);
+            }
         }
     });
 
@@ -146,16 +166,28 @@
     let wpayPopup: Window | null = null;
 
     function startWpaySignup() {
-        const width = 400;
-        const height = 750;
-        const left = window.screenX + (window.outerWidth - width) / 2;
-        const top = window.screenY + (window.outerHeight - height) / 2;
+        const userAgent = navigator.userAgent;
+        const isMobile =
+            /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+                userAgent,
+            );
 
-        wpayPopup = window.open(
-            "",
-            "wpay-popup",
-            `width=${width},height=${height},left=${left},top=${top},status=no,menubar=no,toolbar=no`,
-        );
+        if (isMobile) {
+            // Mobile/Tablet: Open in new tab/window without specific dimensions
+            wpayPopup = window.open("", "wpay-popup");
+        } else {
+            // PC: Open as popup with specific dimensions
+            const width = WPAY_POPUP_CONFIG.WIDTH;
+            const height = WPAY_POPUP_CONFIG.HEIGHT;
+            const left = window.screenX + (window.outerWidth - width) / 2;
+            const top = window.screenY + (window.outerHeight - height) / 2;
+
+            wpayPopup = window.open(
+                "",
+                "wpay-popup",
+                `width=${width},height=${height},left=${left},top=${top},status=no,menubar=no,toolbar=no`,
+            );
+        }
 
         // Remove existing listener if any to prevent duplicates
         window.removeEventListener("message", handleWpayMessage);
@@ -191,7 +223,7 @@
 
         // 1. Signature Verification
         if (resData.signature) {
-            const calculatedSignature = await generateSignature(
+            const { signature: calculatedSignature } = await generateSignature(
                 resData,
                 keys.hashKey,
                 responseSigningOrder,
@@ -214,7 +246,9 @@
         const decode = (val: string) => (val ? decodeURIComponent(val) : "");
 
         // resultMsg: Encoded O (Modified)
-        const resultMsg = resData.resultMsg ? decode(resData.resultMsg) : "";
+        const resultMsg = resData.resultMsg
+            ? decode(resData.resultMsg).replace(/\+/g, " ")
+            : "";
 
         // wpayUserKey: Encrypt O (Modified)
         const wpayUserKey = resData.wpayUserKey
@@ -328,29 +362,44 @@
     // Handle Modal Close (triggered by both X button and Confirm button)
     $effect(() => {
         if (!showResultModal && isWpaySuccess) {
-            // Modal closed AND success -> Navigate
-            const wpayUserKeyItem = wpayResultData.find(
-                (d) => d.key === "wpayUserKey",
-            );
-            const ciItem = wpayResultData.find((d) => d.key === "ci");
-            // Find wtid from result data (it's already decrypted/raw available there)
-            const wtidItem = wpayResultData.find((d) => d.key === "wtid");
-            const userIdItem = wpayResultData.find((d) => d.key === "userId");
-
-            const wpayUserKey = wpayUserKeyItem?.decrypted || "";
-            const ci = ciItem?.decrypted || "";
-            const wtid = wtidItem?.encrypted || ""; // wtid is in 'encrypted' field as raw text in our data structure
-            // Use decrypted userId or fallback to loginId state
-            const userId = userIdItem?.decrypted || loginId || "wpayTestUser01";
-
-            if (wpayUserKey) localStorage.setItem("wpayUserKey", wpayUserKey);
-            if (ci) localStorage.setItem("ci", ci);
-            if (wtid) localStorage.setItem("wtid", wtid);
-            if (userId) localStorage.setItem("loginUserId", userId);
-
-            goto("/");
+            handleAuthTokenCreation();
         }
     });
+
+    async function handleAuthTokenCreation() {
+        const wpayUserKeyItem = wpayResultData.find(
+            (d) => d.key === "wpayUserKey",
+        );
+        const wtidItem = wpayResultData.find((d) => d.key === "wtid");
+        const userIdItem = wpayResultData.find((d) => d.key === "userId");
+
+        const wpayUserKey = wpayUserKeyItem?.decrypted || "";
+        const wtid = wtidItem?.encrypted || "";
+        const userId = userIdItem?.decrypted || loginId || "wpayTestUser01";
+
+        // Save Remember Me Data if needed (Already handled in handleLogin for Remember Me check)
+        // But here we need to save token regardless of Remember Me?
+        // "서비스 가입이 완료되면 authToken을 생성하여 localStorage에 저장한다."
+
+        // Create Token
+        try {
+            const token = await createAuthToken({
+                server: serverType,
+                site: loginSite,
+                service: service,
+                wpayUserKey,
+                wtid,
+                userId,
+                mid: merchantId,
+            });
+
+            localStorage.setItem("authToken", JSON.stringify(token));
+            goto("/");
+        } catch (e) {
+            console.error("Token creation failed", e);
+            alert("로그인 토큰 생성 실패");
+        }
+    }
 
     function handleResultConfirm() {
         showResultModal = false;
@@ -455,7 +504,7 @@
         };
 
         // Generate Signature
-        const signature = await generateSignature(reqData, keys.hashKey);
+        const { signature } = await generateSignature(reqData, keys.hashKey);
         reqData.signature = signature;
 
         wpayFormData = reqData;
@@ -506,18 +555,29 @@
             localStorage.removeItem("hNum");
         }
 
-        // Wpay Signup Check
-        const savedWpayKey = localStorage.getItem("wpayUserKey");
-        const savedWtid = localStorage.getItem("wtid");
-        const savedLoginUserId = localStorage.getItem("loginUserId"); // Added check
+        // Check AuthToken Validity
+        const storedTokenStr = localStorage.getItem("authToken");
+        let isTokenValid = false;
 
-        if (!phone || !savedWpayKey || !savedWtid || !savedLoginUserId) {
-            await openWpaySignup();
+        if (storedTokenStr) {
+            try {
+                const token = JSON.parse(storedTokenStr);
+                // Validate with current selected merchantId
+                isTokenValid = await validateAuthToken(token, merchantId);
+            } catch (e) {
+                console.error("Token validation error", e);
+            }
+        }
+
+        // If Valid -> Go Main
+        if (isTokenValid) {
+            goto("/");
             return;
         }
 
-        // Navigate
-        goto("/");
+        // If Invalid -> Start WPAY Signup
+        // If phone is empty or token invalid, we enter signup flow
+        await openWpaySignup();
     }
 
     // Touch Interaction Handler

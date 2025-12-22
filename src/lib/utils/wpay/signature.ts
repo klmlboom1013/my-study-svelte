@@ -13,7 +13,7 @@ export async function generateSignature(
         "frnrYn",
         "returnUrl"
     ]
-): Promise<string> {
+): Promise<{ signature: string; source: string }> {
     const parts: string[] = [];
     for (const key of signingOrder) {
         const value = data[key] || "";
@@ -38,5 +38,5 @@ export async function generateSignature(
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("");
 
-    return hashHex;
+    return { signature: hashHex, source };
 }

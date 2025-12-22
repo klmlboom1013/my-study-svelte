@@ -63,7 +63,9 @@
             </div>
 
             <!-- Body -->
-            <div class="p-6 text-text-message text-base font-medium">
+            <div
+                class="p-6 text-text-message text-base font-medium max-h-[80vh] overflow-y-auto"
+            >
                 {@render children?.()}
             </div>
         </div>
