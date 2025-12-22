@@ -40,6 +40,8 @@ export const GET: RequestHandler = async ({ url }) => {
         wpayUserKey: url.searchParams.get('wpayUserKey') || '',
         mid: url.searchParams.get('mid') || '',
         userId: url.searchParams.get('userId') || '',
+        wtid: url.searchParams.get('wtid') || '',
+        ci: url.searchParams.get('ci') || '',
         signature: url.searchParams.get('signature') || ''
     };
 
@@ -54,6 +56,8 @@ export const POST: RequestHandler = async ({ request }) => {
         wpayUserKey: formData.get('wpayUserKey')?.toString() || '',
         mid: formData.get('mid')?.toString() || '',
         userId: formData.get('userId')?.toString() || '',
+        wtid: formData.get('wtid')?.toString() || '',
+        ci: formData.get('ci')?.toString() || '',
         signature: formData.get('signature')?.toString() || ''
     };
 

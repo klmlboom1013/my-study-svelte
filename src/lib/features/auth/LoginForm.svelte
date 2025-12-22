@@ -1,6 +1,7 @@
 <script lang="ts">
-    import { onMount } from "svelte";
+    import { onMount, onDestroy } from "svelte";
     import { goto } from "$app/navigation";
+
     import DropdownInput from "$lib/components/ui/DropdownInput.svelte";
     import RadioGroup from "$lib/components/ui/RadioGroup.svelte";
     import Modal from "$lib/components/ui/Modal.svelte";
@@ -97,6 +98,13 @@
         }
     });
 
+    // Cleanup on destroy
+    onDestroy(() => {
+        if (typeof window !== "undefined") {
+            window.removeEventListener("message", handleWpayMessage);
+        }
+    });
+
     // Load from LocalStorage
     onMount(() => {
         service = localStorage.getItem("serviceOption") || "";
@@ -126,8 +134,8 @@
     let wpayPopup: Window | null = null;
 
     function startWpaySignup() {
-        const width = 540;
-        const height = 650;
+        const width = 400;
+        const height = 750;
         const left = window.screenX + (window.outerWidth - width) / 2;
         const top = window.screenY + (window.outerHeight - height) / 2;
 
@@ -137,6 +145,8 @@
             `width=${width},height=${height},left=${left},top=${top},status=no,menubar=no,toolbar=no`,
         );
 
+        // Remove existing listener if any to prevent duplicates
+        window.removeEventListener("message", handleWpayMessage);
         // Listen for message
         window.addEventListener("message", handleWpayMessage);
     }
@@ -160,6 +170,7 @@
         const responseSigningOrder = [
             "resultCode",
             "resultMsg",
+            "mid",
             "wtid",
             "userId",
             "wpayUserKey",
@@ -190,34 +201,70 @@
             val ? decryptSeed(val, keys.seedKey, keys.seedIV) : "";
         const decode = (val: string) => (val ? decodeURIComponent(val) : "");
 
-        // resultMsg: Encrypt O
-        const resultMsg = resData.resultMsg ? decrypt(resData.resultMsg) : "";
+        // resultMsg: Encoded O (Modified)
+        const resultMsg = resData.resultMsg ? decode(resData.resultMsg) : "";
 
-        // wpayUserKey: Encode O -> Decode
+        // wpayUserKey: Encrypt O (Modified)
         const wpayUserKey = resData.wpayUserKey
-            ? decode(resData.wpayUserKey)
+            ? decrypt(resData.wpayUserKey)
             : "";
 
         // ci: Encrypt O
         const ci = resData.ci ? decrypt(resData.ci) : "";
 
+        // mid: Plain Text
+        const resMid = resData.mid || "";
+
+        // wtid: Plain Text (Modified)
+
+        const wtid = resData.wtid || "";
+
         console.log("Decrypted resultMsg:", resultMsg);
         console.log("Decoded wpayUserKey:", wpayUserKey);
         console.groupEnd();
 
-        if (resData.resultCode === "0000") {
-            if (wpayUserKey) {
+        // Success Conditions
+        // - resultCode "0000" or "2006"
+        // - wtid exists
+        // - wpayUserKey exists
+        // - signature exists (checked above)
+        // - userId matches request (loginId)
+
+        const isSuccessCode =
+            resData.resultCode === "0000" || resData.resultCode === "2006";
+        const currentUserId = loginId || "wpayTestUser01";
+        // userId: Encrypt O (Modified)
+        const resUserId = resData.userId ? decrypt(resData.userId) : "";
+        const isUserIdMatch = resUserId === currentUserId;
+
+        if (isSuccessCode) {
+            if (!wtid || !wpayUserKey) {
+                alert(
+                    "WPAY Error: Missing required response fields (wtid or wpayUserKey).",
+                );
+            } else if (!isUserIdMatch) {
+                alert(
+                    `WPAY Error: UserId mismatch. Request: ${currentUserId}, Response: ${resData.userId}`,
+                );
+            } else {
                 localStorage.setItem("wpayUserKey", wpayUserKey);
                 if (ci) localStorage.setItem("ci", ci);
+                // Also save wtid? The prompt doesn't explicitly say to save it, but usually useful.
+                // For now, follow existing logic which saves key and ci.
 
                 if (wpayPopup) wpayPopup.close();
                 window.removeEventListener("message", handleWpayMessage);
                 goto("/");
+                return;
             }
-        } else {
+        }
+
+        // If we reached here without returning, it's an error or validation failure
+        if (wpayPopup) wpayPopup.close();
+        window.removeEventListener("message", handleWpayMessage);
+
+        if (!isSuccessCode) {
             alert(`WPAY Error: ${resultMsg} (${resData.resultCode})`);
-            if (wpayPopup) wpayPopup.close();
-            window.removeEventListener("message", handleWpayMessage);
         }
     }
 
