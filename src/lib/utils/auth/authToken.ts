@@ -33,7 +33,7 @@ export const createAuthToken = async (
         service,
         wpayUserKey,
         wtid,
-        userId, // sub
+        // userId maps to sub claim
         uu,
         mid
     };

@@ -7,6 +7,7 @@
         title: string;
         children?: import("svelte").Snippet;
         width?: string;
+        onClose?: () => void;
     }
 
     let {
@@ -14,10 +15,12 @@
         title,
         children,
         width = "max-w-md",
+        onClose,
     }: Props = $props();
 
     function close() {
         isOpen = false;
+        if (onClose) onClose();
     }
 </script>
 

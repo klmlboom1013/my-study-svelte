@@ -29,6 +29,11 @@
     import { SERVICE_URLS } from "$lib/constants/wpayUrls";
     import { WPAY_POPUP_CONFIG } from "$lib/constants/wpayConfig";
     import { decodeJwt } from "jose";
+    import {
+        searchWpayMember,
+        type MembershipSearchParams,
+    } from "$lib/utils/wpay/membershipService";
+    import WpayResultModal from "$lib/components/wpay/WpayResultModal.svelte";
 
     // Options
     const serviceOptions = [...SERVICE_OPTIONS];
@@ -404,7 +409,176 @@
         showResultModal = false;
 
         if (isWpaySuccess) {
+            handleAuthTokenCreation(); // If it was signup success
+            // If it was membership check success?
+            // Prompt 3.2: "WPAY 회원 가입 정보 조회 성공 -> 로그인 STEP02를 진행하기 위해 response data의 wpayUserKey를 로그인 STEP02로 보낸다."
+            // "확인 버튼을 클릭하면 메인화면으로 이동 한다." (Current goal is Main Page, STEP02 comes later?)
+            // Prompt 3.2: "- 로그인 STEP02를 수행 한다." (When check is successful)
+            // But STEP02 is not implemented yet?
+            // Prompt 3.2 Goal: "WPAY 회원 가입 정보 조회가 성공하면 로그인 STEP02를 수행 한다."
+            // And Result Modal Confirm -> Main Page.
+            // STEP02 probably means "Main Page logic" or "Token Creation"?
+            // "response data의 wpayUserKey를 로그인 STEP02로 보낸다."
+            // Wait, does STEP02 imply a new page?
+            // If I look at file list: `3.3. 로그인 STEP02.md`.
+            // But currently I am implementing `3.2. 로그인 STEP01`.
+            // For now, if success, I'll direct to Main, effectively assuming that's the next step or I should create token?
+            // Prompt 3.2: "response data의 wpayUserKey를 로그인 STEP02로 보낸다."
+            // "확인 버튼을 클릭하면 메인화면으로 이동 한다." implies we are done with STEP01.
+            // Also need to handle "Member Check Success" vs "Signup Success".
+            // If Member Check Success -> We have wpayUserKey -> Maybe create token?
+            // Prompt 3.1 (Signup): "authToken을 생성한다."
+            // Prompt 3.2 (Check): "로그인 STEP02를 진행하기 위해... wpayUserKey를... 보낸다."
+            // Usually this means setting state/localStorage and going to next step context.
+            // Since we are going to Main Page, let's assume creating Token and going Main is correct for now (or at least saving to localStorage).
+
+            // Let's reuse handleAuthTokenCreation for now if applicable, or just generic "Success Action".
+
+            // If it was Signup Success (isWpaySuccess=true from handleWpayMessage), we call handleAuthTokenCreation.
+            // If it was Check Success (isWpaySuccess=true from check logic), we might want to do same?
+            // Check logic also returns wpayUserKey.
+
             handleAuthTokenCreation();
+        }
+    }
+
+    function handleResultSignUp() {
+        showResultModal = false;
+        phone = "";
+        openWpaySignup();
+    }
+
+    function handleResultClose() {
+        // "상단의 X 버튼 클릭하면 모달을 닫는다" (Failure)
+        // "상단의 X 버튼 클릭도 동일하게 동작 한다" (Success -> Confirm)
+        if (isWpaySuccess) {
+            handleResultConfirm();
+        } else {
+            showResultModal = false;
+        }
+    }
+
+    async function handleMembershipCheck() {
+        if (!merchantId || !loginSite) {
+            alert("Merchant ID and Site must be selected.");
+            return;
+        }
+
+        const keys = MERCHANT_KEYS[merchantId];
+        if (!keys) {
+            alert("Configuration not found for Merchant ID.");
+            return;
+        }
+
+        // Domain: Always use 'wpaystd' as per prompt 3.2
+        let domain = "";
+        if (serverType === SERVER_TYPES.PROD) {
+            if (!prodServer) {
+                alert("PROD Server type must be selected.");
+                return;
+            }
+            // Use "wpaystd" explicitly for membership check
+            domain =
+                SERVICE_URLS["wpaystd"].PROD[prodServer as ProdServerDomain];
+        } else {
+            // Use "wpaystd" explicitly for membership check
+            domain = SERVICE_URLS["wpaystd"][serverType as "DEV" | "STG"];
+        }
+
+        const params: MembershipSearchParams = {
+            domain,
+            siteName: loginSite,
+            merchantId,
+            userId: loginId || "wpayTestUser01",
+            hNum: phone,
+        };
+
+        try {
+            const resData = await searchWpayMember(params);
+
+            // Decrypt
+            const decrypt = (val: string) =>
+                val ? decryptSeed(val, keys.seedKey, keys.seedIV) : "";
+            const decode = (val: string) =>
+                val ? decodeURIComponent(val).replace(/\+/g, " ") : "";
+
+            const resultMsg = decode(resData.resultMsg || "");
+            const wpayUserKey = resData.wpayUserKey
+                ? decrypt(resData.wpayUserKey)
+                : "";
+            const ci = resData.ci ? decrypt(resData.ci) : "";
+            const resUserId = resData.userId ? decrypt(resData.userId) : "";
+            const status = resData.status || "";
+
+            // User ID Logic for Success Check
+            const currentUserId = loginId || "wpayTestUser01";
+
+            // Response Codes
+            // "WPAY 회원 가입 정보 조회 성공." conditions:
+            // "resultCode "0000"
+            // "wpayUserKey exists"
+            // "userId exists" and matches request userId
+            // "status '00'"
+            // "ci exists"
+
+            const isSuccess =
+                resData.resultCode === "0000" &&
+                !!resData.wpayUserKey &&
+                !!resData.userId &&
+                resUserId === currentUserId &&
+                resData.status === "00" &&
+                !!resData.ci;
+
+            isWpaySuccess = isSuccess;
+
+            // Populate wpayResultData
+
+            wpayResultData = [
+                {
+                    key: "resultCode",
+                    label: "결과 코드",
+                    encrypted: resData.resultCode || "",
+                    decrypted: "-",
+                },
+                {
+                    key: "resultMsg",
+                    label: "결과 메시지",
+                    encrypted: resData.resultMsg || "",
+                    decrypted: resultMsg,
+                },
+                {
+                    key: "wpayUserKey",
+                    label: "WPAY 사용자 키",
+                    encrypted: resData.wpayUserKey || "",
+                    decrypted: wpayUserKey,
+                },
+                {
+                    key: "userId",
+                    label: "사용자 ID",
+                    encrypted: resData.userId || "",
+                    decrypted: resUserId,
+                },
+                {
+                    key: "status",
+                    label: "상태",
+                    encrypted: status,
+                    decrypted: "-",
+                },
+                {
+                    key: "ci",
+                    label: "CI",
+                    encrypted: resData.ci || "",
+                    decrypted: ci,
+                },
+            ];
+
+            showResultModal = true;
+        } catch (e) {
+            console.error("Membership Check Failed", e);
+            alert(
+                "회원 조회 중 오류가 발생했습니다: " +
+                    (e instanceof Error ? e.message : String(e)),
+            );
         }
     }
 
@@ -623,8 +797,14 @@
             return;
         }
 
-        // If Invalid -> Start WPAY Signup
-        // If phone is empty or token invalid, we enter signup flow
+        // New Logic Step 01:
+        // "Cell Phone Number값이 존재하면 WPAY 회원 가입 정보 조회를 수행한다."
+        if (phone) {
+            await handleMembershipCheck();
+            return;
+        }
+
+        // If Invalid Token & No Phone -> Start WPAY Signup (Service Join)
         await openWpaySignup();
     }
 
@@ -831,67 +1011,14 @@
 </Modal>
 
 <!-- WPAY Result Modal -->
-<Modal
-    bind:isOpen={showResultModal}
-    title="WPAY 회원 가입 결과"
-    width="max-w-4xl"
->
-    <div class="flex flex-col gap-4">
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left text-gray-500">
-                <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                    <tr>
-                        <th scope="col" class="px-2 py-2">Field</th>
-                        <th scope="col" class="px-2 py-2">Encrypted / Raw</th>
-                        <th scope="col" class="px-2 py-2">Decrypted</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {#each wpayResultData as item}
-                        <tr class="bg-white border-b">
-                            <td
-                                class="px-2 py-2 font-medium text-gray-900 whitespace-nowrap"
-                            >
-                                {item.label} <br />
-                                <span class="text-xs text-gray-400"
-                                    >({item.key})</span
-                                >
-                            </td>
-                            <td class="px-2 py-2 break-all max-w-[150px]"
-                                >{item.encrypted}</td
-                            >
-                            <td
-                                class="px-2 py-2 break-all max-w-[150px] font-bold text-brand-primary"
-                            >
-                                {item.decrypted}
-                            </td>
-                        </tr>
-                    {/each}
-                </tbody>
-            </table>
-        </div>
-
-        {#if !isWpaySuccess}
-            <div class="p-3 bg-red-50 text-red-700 text-sm rounded-md">
-                회원 가입 처리에 실패했습니다.<br />
-                {#if validationError}
-                    <span class="font-bold">사유: {validationError}</span>
-                {:else}
-                    재시도 해주세요.
-                {/if}
-            </div>
-        {/if}
-
-        <div class="mt-4 flex justify-end">
-            <button
-                onclick={handleResultConfirm}
-                class="px-4 py-2 rounded-md text-text-white bg-brand-primary hover:bg-brand-hover transition-colors"
-            >
-                확인
-            </button>
-        </div>
-    </div>
-</Modal>
+<WpayResultModal
+    isOpen={showResultModal}
+    title={isWpaySuccess ? "WPAY 요청 결과" : "WPAY 요청 결과 (실패)"}
+    resultData={wpayResultData}
+    onConfirm={handleResultConfirm}
+    onSignUp={!isWpaySuccess ? handleResultSignUp : undefined}
+    onClose={handleResultClose}
+/>
 
 <!-- Wpay Signup Iframe Modal Removed -->
 
