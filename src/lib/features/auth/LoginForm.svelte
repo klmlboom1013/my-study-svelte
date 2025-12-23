@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { onMount, onDestroy } from "svelte";
+    import { onMount, onDestroy, tick } from "svelte";
     import { goto } from "$app/navigation";
     import {
         createAuthToken,
@@ -28,6 +28,7 @@
     import { encryptSeed, decryptSeed } from "$lib/utils/encryption/cryptoSeed";
     import { SERVICE_URLS } from "$lib/constants/wpayUrls";
     import { WPAY_POPUP_CONFIG } from "$lib/constants/wpayConfig";
+    import { decodeJwt } from "jose";
 
     // Options
     const serviceOptions = [...SERVICE_OPTIONS];
@@ -143,13 +144,15 @@
         const storedTokenStr = localStorage.getItem("authToken");
         if (storedTokenStr && merchantId) {
             try {
-                const token = JSON.parse(storedTokenStr);
-                const isValid = await validateAuthToken(token, merchantId);
+                const isValid = await validateAuthToken(
+                    storedTokenStr,
+                    merchantId,
+                );
                 if (isValid) {
                     goto("/");
                 }
             } catch (e) {
-                console.error("Token parse error", e);
+                console.error("Token validation error", e);
             }
         }
     });
@@ -359,12 +362,8 @@
         showResultModal = true;
     }
 
-    // Handle Modal Close (triggered by both X button and Confirm button)
-    $effect(() => {
-        if (!showResultModal && isWpaySuccess) {
-            handleAuthTokenCreation();
-        }
-    });
+    // $effect logic removed to prevent race conditions or missed updates.
+    // Logic moved to handleResultConfirm
 
     async function handleAuthTokenCreation() {
         const wpayUserKeyItem = wpayResultData.find(
@@ -393,7 +392,7 @@
                 mid: merchantId,
             });
 
-            localStorage.setItem("authToken", JSON.stringify(token));
+            localStorage.setItem("authToken", token);
             goto("/");
         } catch (e) {
             console.error("Token creation failed", e);
@@ -403,7 +402,10 @@
 
     function handleResultConfirm() {
         showResultModal = false;
-        // Logic handled by $effect
+
+        if (isWpaySuccess) {
+            handleAuthTokenCreation();
+        }
     }
 
     // Wpay Form Data
@@ -509,6 +511,9 @@
 
         wpayFormData = reqData;
 
+        // Wait for DOM update to ensure action and inputs are set
+        await tick();
+
         startWpaySignup();
 
         // Debug Logging
@@ -523,12 +528,28 @@
             const form = document.getElementById(
                 "wpay-signup-form",
             ) as HTMLFormElement;
-            if (form) form.submit();
+            if (form) {
+                if (!form.action || form.action === window.location.href) {
+                    console.error(
+                        "Form action is invalid (empty or self), aborting submit to prevent reload.",
+                    );
+                    alert("Form action error. Please try again.");
+                    return;
+                }
+                console.log(
+                    "Submitting form to:",
+                    form.action,
+                    "Target:",
+                    form.target,
+                );
+                form.submit();
+            }
         }, 100);
     }
 
     // Login Handler
-    async function handleLogin() {
+    async function handleLogin(e: Event) {
+        e.preventDefault(); // Prevent any form submission or default behavior
         if (!isValid) return;
 
         // Set default Member ID if empty
@@ -561,9 +582,36 @@
 
         if (storedTokenStr) {
             try {
-                const token = JSON.parse(storedTokenStr);
                 // Validate with current selected merchantId
-                isTokenValid = await validateAuthToken(token, merchantId);
+                isTokenValid = await validateAuthToken(
+                    storedTokenStr,
+                    merchantId,
+                );
+
+                // Additional Check: Does the token belong to the current user?
+                if (isTokenValid) {
+                    try {
+                        const tokenPayload = decodeJwt(storedTokenStr);
+                        // If loginId is provided (and not default placeholder that user ignored), we should check it.
+                        // However, loginId is auto-set to "wpayTestUser01" if empty on blur.
+                        // If user actually typed something else, we rely on that.
+                        // If user left it empty, it is default. Does token match default?
+
+                        // We strictly compare loginId with token's sub.
+                        if (tokenPayload.sub !== loginId) {
+                            console.log(
+                                `Token User (${tokenPayload.sub}) mismatch with Input User (${loginId}). Invalidating.`,
+                            );
+                            isTokenValid = false;
+                        }
+                    } catch (decodeErr) {
+                        console.error(
+                            "Token decode error for user check",
+                            decodeErr,
+                        );
+                        isTokenValid = false;
+                    }
+                }
             } catch (e) {
                 console.error("Token validation error", e);
             }
@@ -747,6 +795,7 @@
         ontouchend={handleTouchEnd}
     >
         <button
+            type="button"
             onclick={handleLogin}
             disabled={!isValid}
             class={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white 

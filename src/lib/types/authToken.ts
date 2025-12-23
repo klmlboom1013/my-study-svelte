@@ -1,15 +1,17 @@
-import type { ServerType, ServiceType } from "./wpayServerType";
+import type { ServerType } from "./wpayServerType";
+import type { JWTPayload } from "jose";
 
-export interface AuthToken {
+export interface AuthToken extends JWTPayload {
     server: ServerType;
     site: string;
     service: string;
     wpayUserKey: string;
     wtid: string;
-    userId: string;
-    createdAt: string; // yyyy-mm-dd hh24:mi:ss
-    updatedAt: string; // yyyy-mm-dd hh24:mi:ss
-    expiresAt: string; // yyyy-mm-dd hh24:mi:ss
-    uu: string; // 6자리 10진수 랜덤
-    sgn: string; // 서명
+    // Standard JWT claims (optional in JwtPayload but we want to be explicit)
+    iss?: string;
+    sub?: string; // userId
+    iat?: number;
+    exp?: number;
+    uu: string; // 6-digit random
+    mid: string; // Added mid for independent validation
 }
