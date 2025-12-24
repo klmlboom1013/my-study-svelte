@@ -97,13 +97,7 @@
     // Reactive Server Options with Labels
     let serverOptionsWithLabels = $derived(
         serverOptions.map((type) => {
-            if (type === SERVER_TYPES.PROD) {
-                const label = prodDomain
-                    ? `${type} (${prodDomain})`
-                    : `${type}`;
-                return { value: type, label };
-            }
-            return type;
+            return { value: type, label: type };
         }),
     );
 
@@ -856,14 +850,20 @@
     <!-- Server Selection -->
     <div>
         <span class="block text-sm font-medium text-gray-700 mb-2"
-            >Server <span class="text-red-500">*</span></span
-        >
+            >Server <span class="text-red-500">*</span>
+            {#if server === SERVER_TYPES.PROD && prodDomain}
+                <span class="ml-2 text-brand-primary font-normal"
+                    >({prodDomain})</span
+                >
+            {/if}
+        </span>
         <RadioGroup
             options={serverOptionsWithLabels}
             groupName="server"
             bind:selected={server}
             onOptionClick={handleServerClick}
             isError={showMissingFields && !server}
+            variant="box"
         />
     </div>
 
@@ -984,6 +984,7 @@
             groupName="prodDomain"
             bind:selected={prodDomain}
             direction="column"
+            variant="box"
         />
         <div class="mt-6 flex justify-end">
             <button

@@ -8,6 +8,7 @@
         direction?: "row" | "column";
         onOptionClick?: (value: string) => void;
         isError?: boolean;
+        variant?: "default" | "box";
     }
 
     let {
@@ -17,6 +18,7 @@
         direction = "row",
         onOptionClick,
         isError = false,
+        variant = "default",
     }: Props = $props();
 
     function getOptionValue(option: Option): string {
@@ -28,28 +30,58 @@
     }
 </script>
 
-<div class={`flex gap-4 ${direction === "column" ? "flex-col" : "flex-row"}`}>
+<div
+    class={`flex gap-4 ${direction === "column" ? "flex-col" : "flex-row w-full"}`}
+>
     {#each options as option}
         {@const value = getOptionValue(option)}
         {@const label = getOptionLabel(option)}
-        <label class="flex items-center gap-2 cursor-pointer group">
-            <div class="relative flex items-center justify-center">
+
+        {#if variant === "box"}
+            <label class="cursor-pointer group relative flex-1 text-center">
                 <input
                     type="radio"
                     name={groupName}
                     {value}
                     bind:group={selected}
                     onclick={() => onOptionClick?.(value)}
-                    class={`peer appearance-none w-5 h-5 border-2 rounded-full cursor-pointer transition-all ${isError ? "border-red-500 checked:bg-red-500" : "border-brand-primary checked:bg-brand-primary"}`}
+                    class="peer sr-only"
                 />
                 <div
-                    class="absolute w-2 h-2 bg-white rounded-full opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity"
-                ></div>
-            </div>
-            <span
-                class={`font-medium text-base transition-colors ${isError ? "text-red-500" : "text-brand-primary group-hover:text-brand-hover"}`}
-                >{label}</span
-            >
-        </label>
+                    class={`
+                        flex items-center justify-center px-4 py-2 
+                        border-[3px] rounded-lg transition-all
+                        text-sm font-medium w-full
+                        ${
+                            isError
+                                ? "border-red-500 text-red-500"
+                                : "border-[oklch(0.36_0.11_265.06)] text-gray-700 peer-checked:bg-[oklch(0.36_0.11_265.06)] peer-checked:text-white hover:bg-gray-50 peer-checked:hover:bg-[oklch(0.36_0.11_265.06)]"
+                        }
+                    `}
+                >
+                    {label}
+                </div>
+            </label>
+        {:else}
+            <label class="flex items-center gap-2 cursor-pointer group">
+                <div class="relative flex items-center justify-center">
+                    <input
+                        type="radio"
+                        name={groupName}
+                        {value}
+                        bind:group={selected}
+                        onclick={() => onOptionClick?.(value)}
+                        class={`peer appearance-none w-5 h-5 border-2 rounded-full cursor-pointer transition-all ${isError ? "border-red-500 checked:bg-red-500" : "border-brand-primary checked:bg-brand-primary"}`}
+                    />
+                    <div
+                        class="absolute w-2 h-2 bg-white rounded-full opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity"
+                    ></div>
+                </div>
+                <span
+                    class={`font-medium text-base transition-colors ${isError ? "text-red-500" : "text-brand-primary group-hover:text-brand-hover"}`}
+                    >{label}</span
+                >
+            </label>
+        {/if}
     {/each}
 </div>
