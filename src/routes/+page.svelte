@@ -7,18 +7,18 @@
     let isValid = $state(false);
 
     onMount(async () => {
-        // Cleanup Input Info if isSave is not true (Prompt 3.0 Requirement)
-        const isSave = localStorage.getItem("isSave");
-        if (isSave !== "true") {
+        // Cleanup Input Info if isSaveCache is not true (Prompt 3.1 Requirement)
+        const isSaveCache = localStorage.getItem("isSaveCache");
+        if (isSaveCache !== "true") {
             const keysToRemove = [
                 "service",
                 "server",
-                "prodServerDomain",
+                "prodDomain",
                 "site",
                 "mid",
                 "userId",
                 "hNum",
-                "isSave",
+                "isSaveCache",
             ];
             keysToRemove.forEach((key) => localStorage.removeItem(key));
         }

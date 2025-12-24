@@ -44,7 +44,7 @@
     let service = $state("");
     // @ts-ignore
     let server = $state<ServerType>("");
-    let prodServerDomain = $state("");
+    let prodDomain = $state("");
     let site = $state("");
     let mid = $state("");
 
@@ -65,7 +65,7 @@
     // placeholder is now static string "wpayTestUser01" as per prompt
     // removed dynamic placeholder logic related to hint
     let hNum = $state("");
-    let isSave = $state(false);
+    let isSaveCache = $state(false);
 
     let showProdModal = $state(false);
     let showResultModal = $state(false); // WPAY Result Modal
@@ -90,7 +90,7 @@
         if (value === SERVER_TYPES.PROD) {
             showProdModal = true;
         } else {
-            prodServerDomain = "";
+            prodDomain = "";
         }
     }
 
@@ -98,8 +98,8 @@
     let serverOptionsWithLabels = $derived(
         serverOptions.map((type) => {
             if (type === SERVER_TYPES.PROD) {
-                const label = prodServerDomain
-                    ? `${type} (${prodServerDomain})`
+                const label = prodDomain
+                    ? `${type} (${prodDomain})`
                     : `${type}`;
                 return { value: type, label };
             }
@@ -133,18 +133,18 @@
     onMount(async () => {
         service = localStorage.getItem("service") || "";
         server = (localStorage.getItem("server") as ServerType) || "";
-        prodServerDomain = localStorage.getItem("prodServerDomain") || "";
+        prodDomain = localStorage.getItem("prodDomain") || "";
         site = localStorage.getItem("site") || "";
         mid = localStorage.getItem("mid") || "";
         userId = localStorage.getItem("userId") || "";
         hNum = localStorage.getItem("hNum") || "";
 
         // isSave Default Value Logic
-        const storedIsSave = localStorage.getItem("isSave");
+        const storedIsSave = localStorage.getItem("isSaveCache");
         if (storedIsSave !== null) {
-            isSave = storedIsSave === "true";
+            isSaveCache = storedIsSave === "true";
         } else {
-            isSave = false;
+            isSaveCache = false;
         }
 
         // Check AuthToken for Auto Login
@@ -472,15 +472,13 @@
         // Domain: Always use 'wpaystd' as per prompt 3.2
         let domain = "";
         if (server === SERVER_TYPES.PROD) {
-            if (!prodServerDomain) {
+            if (!prodDomain) {
                 alert("PROD Server type must be selected.");
                 return;
             }
             // Use "wpaystd" explicitly for membership check
             domain =
-                SERVICE_URLS["wpaystd"].PROD[
-                    prodServerDomain as ProdServerDomain
-                ];
+                SERVICE_URLS["wpaystd"].PROD[prodDomain as ProdServerDomain];
         } else {
             // Use "wpaystd" explicitly for membership check
             domain = SERVICE_URLS["wpaystd"][server as "DEV" | "STG"];
@@ -602,13 +600,13 @@
         // URL construction
         let domain = "";
         if (server === SERVER_TYPES.PROD) {
-            if (!prodServerDomain) {
+            if (!prodDomain) {
                 alert("PROD Server type must be selected.");
                 return;
             }
             domain =
                 SERVICE_URLS[service as ServiceType].PROD[
-                    prodServerDomain as ProdServerDomain
+                    prodDomain as ProdServerDomain
                 ];
         } else {
             domain =
@@ -733,12 +731,12 @@
         // Save ALL inputs to LocalStorage (as per prompt)
         localStorage.setItem("service", service);
         localStorage.setItem("server", server);
-        localStorage.setItem("prodServerDomain", prodServerDomain);
+        localStorage.setItem("prodDomain", prodDomain);
         localStorage.setItem("site", site);
         localStorage.setItem("mid", mid);
         localStorage.setItem("userId", userId);
         localStorage.setItem("hNum", hNum);
-        localStorage.setItem("isSave", String(isSave));
+        localStorage.setItem("isSaveCache", String(isSaveCache));
 
         // Check AuthToken Validity
         const storedTokenStr = localStorage.getItem("authToken");
@@ -832,7 +830,7 @@
     let isValid = $derived(
         !!service &&
             !!server &&
-            (server !== SERVER_TYPES.PROD || !!prodServerDomain) &&
+            (server !== SERVER_TYPES.PROD || !!prodDomain) &&
             !!site &&
             !!mid,
     );
@@ -843,7 +841,8 @@
     <div>
         <label
             for="service-select"
-            class="block text-sm font-medium text-gray-700 mb-2">Service</label
+            class="block text-sm font-medium text-gray-700 mb-2"
+            >Service <span class="text-red-500">*</span></label
         >
         <DropdownInput
             id="service-select"
@@ -856,7 +855,9 @@
 
     <!-- Server Selection -->
     <div>
-        <span class="block text-sm font-medium text-gray-700 mb-2">Server</span>
+        <span class="block text-sm font-medium text-gray-700 mb-2"
+            >Server <span class="text-red-500">*</span></span
+        >
         <RadioGroup
             options={serverOptionsWithLabels}
             groupName="server"
@@ -870,7 +871,8 @@
     <div>
         <label
             for="login-site"
-            class="block text-sm font-medium text-gray-700 mb-2">Site</label
+            class="block text-sm font-medium text-gray-700 mb-2"
+            >Site <span class="text-red-500">*</span></label
         >
         <DropdownInput
             id="login-site"
@@ -886,7 +888,7 @@
         <label
             for="merchant-id-select"
             class="block text-sm font-medium text-gray-700 mb-2"
-            >Merchant ID</label
+            >Merchant ID <span class="text-red-500">*</span></label
         >
         <DropdownInput
             id="merchant-id-select"
@@ -938,14 +940,14 @@
             id="remember-me"
             name="remember-me"
             type="checkbox"
-            bind:checked={isSave}
+            bind:checked={isSaveCache}
             class="h-4 w-4 text-brand-primary focus:ring-brand-primary border-gray-300 rounded cursor-pointer"
         />
         <label
             for="remember-me"
             class="ml-2 block text-sm text-gray-900 cursor-pointer"
         >
-            Save Input Info
+            Should I save to cache?
         </label>
     </div>
 
@@ -972,15 +974,15 @@
 </div>
 
 <!-- PROD Server Modal -->
-<Modal bind:isOpen={showProdModal} title="PROD 서버 선택">
+<Modal bind:isOpen={showProdModal} title="PROD domain 선택">
     <div class="flex flex-col gap-4">
         <p class="text-sm text-text-message mb-2">
-            접속할 PROD 서버를 선택해주세요.
+            접속할 PROD 서버를 선택해주세요. <span class="text-red-500">*</span>
         </p>
         <RadioGroup
             options={prodServerOptions}
-            groupName="prodServerDomain"
-            bind:selected={prodServerDomain}
+            groupName="prodDomain"
+            bind:selected={prodDomain}
             direction="column"
         />
         <div class="mt-6 flex justify-end">
