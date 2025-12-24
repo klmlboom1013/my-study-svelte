@@ -7,6 +7,22 @@
     let isValid = $state(false);
 
     onMount(async () => {
+        // Cleanup Input Info if isSave is not true (Prompt 3.0 Requirement)
+        const isSave = localStorage.getItem("isSave");
+        if (isSave !== "true") {
+            const keysToRemove = [
+                "service",
+                "server",
+                "prodServerDomain",
+                "site",
+                "mid",
+                "userId",
+                "hNum",
+                "isSave",
+            ];
+            keysToRemove.forEach((key) => localStorage.removeItem(key));
+        }
+
         const authToken = localStorage.getItem("authToken");
 
         if (!authToken) {
@@ -44,9 +60,9 @@
 
     function handleLogout() {
         localStorage.removeItem("authToken");
-        localStorage.removeItem("mid");
-        // Clear other keys if necessary or keep them for 'remember me' logic?
-        // For logout usually we clear auth state.
+        // mid Removal Logic Removed:
+        // isSave=true: mid should persist.
+        // isSave=false: mid is already cleared onMount.
         goto("/login");
     }
 </script>

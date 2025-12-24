@@ -43,10 +43,10 @@
     // State
     let service = $state("");
     // @ts-ignore
-    let serverType = $state<ServerType>("");
-    let prodServer = $state("");
-    let loginSite = $state("");
-    let merchantId = $state("");
+    let server = $state<ServerType>("");
+    let prodServerDomain = $state("");
+    let site = $state("");
+    let mid = $state("");
 
     // Reactive Options
     let siteOptions = $derived(
@@ -54,18 +54,18 @@
     );
 
     let merchantIdOptions = $derived(
-        (loginSite &&
+        (site &&
             SITE_MERCHANT_ID_MAPPING[
-                loginSite as keyof typeof SITE_MERCHANT_ID_MAPPING
+                site as keyof typeof SITE_MERCHANT_ID_MAPPING
             ]) ||
             [],
     );
 
-    let loginId = $state("");
-    let loginIdPlaceholder = $state("wpayTestUser01");
-
-    let phone = $state("");
-    let rememberMe = $state(false);
+    let userId = $state("");
+    // placeholder is now static string "wpayTestUser01" as per prompt
+    // removed dynamic placeholder logic related to hint
+    let hNum = $state("");
+    let isSave = $state(false);
 
     let showProdModal = $state(false);
     let showResultModal = $state(false); // WPAY Result Modal
@@ -90,7 +90,7 @@
         if (value === SERVER_TYPES.PROD) {
             showProdModal = true;
         } else {
-            prodServer = "";
+            prodServerDomain = "";
         }
     }
 
@@ -98,8 +98,8 @@
     let serverOptionsWithLabels = $derived(
         serverOptions.map((type) => {
             if (type === SERVER_TYPES.PROD) {
-                const label = prodServer
-                    ? `${type} (${prodServer})`
+                const label = prodServerDomain
+                    ? `${type} (${prodServerDomain})`
                     : `${type}`;
                 return { value: type, label };
             }
@@ -110,15 +110,15 @@
     // Reset child selections when parent changes
     $effect(() => {
         // When service changes, if current site is not in new options, clear it
-        if (!siteOptions.includes(loginSite as any)) {
-            loginSite = "";
+        if (!siteOptions.includes(site as any)) {
+            site = "";
         }
     });
 
     $effect(() => {
         // When site changes, if current merchantId is not in new options, clear it
-        if (!merchantIdOptions.includes(merchantId as any)) {
-            merchantId = "";
+        if (!merchantIdOptions.includes(mid as any)) {
+            mid = "";
         }
     });
 
@@ -131,28 +131,27 @@
 
     // Load from LocalStorage
     onMount(async () => {
-        service = localStorage.getItem("serviceOption") || "";
-        serverType = (localStorage.getItem("serverType") as ServerType) || "";
-        prodServer = localStorage.getItem("prodServerDomain") || "";
-        loginSite = localStorage.getItem("siteOption") || "";
-        merchantId = localStorage.getItem("mid") || "";
-        loginId = localStorage.getItem("userId") || "";
-        phone = localStorage.getItem("hNum") || "";
+        service = localStorage.getItem("service") || "";
+        server = (localStorage.getItem("server") as ServerType) || "";
+        prodServerDomain = localStorage.getItem("prodServerDomain") || "";
+        site = localStorage.getItem("site") || "";
+        mid = localStorage.getItem("mid") || "";
+        userId = localStorage.getItem("userId") || "";
+        hNum = localStorage.getItem("hNum") || "";
 
-        // Check if we have any saved data to determine "Remember Me" state
-        // If we have at least one of these critical fields, assume Remember Me was on.
-        if (service || serverType || loginSite || merchantId) {
-            rememberMe = true;
+        // isSave Default Value Logic
+        const storedIsSave = localStorage.getItem("isSave");
+        if (storedIsSave !== null) {
+            isSave = storedIsSave === "true";
+        } else {
+            isSave = false;
         }
 
         // Check AuthToken for Auto Login
         const storedTokenStr = localStorage.getItem("authToken");
-        if (storedTokenStr && merchantId) {
+        if (storedTokenStr && mid) {
             try {
-                const isValid = await validateAuthToken(
-                    storedTokenStr,
-                    merchantId,
-                );
+                const isValid = await validateAuthToken(storedTokenStr, mid);
                 if (isValid) {
                     goto("/");
                 }
@@ -166,7 +165,7 @@
     function handlePhoneInput(e: Event) {
         const target = e.target as HTMLInputElement;
         const clean = target.value.replace(/[^0-9]/g, "");
-        phone = clean;
+        hNum = clean;
         target.value = clean;
     }
 
@@ -211,9 +210,9 @@
 
         const resData = event.data;
 
-        const keys = MERCHANT_KEYS[merchantId];
+        const keys = MERCHANT_KEYS[mid];
         if (!keys) {
-            console.error("Merchant Keys not found for:", merchantId);
+            console.error("Merchant Keys not found for:", mid);
             console.groupEnd();
             return;
         }
@@ -286,7 +285,7 @@
 
         const isSuccessCode =
             resData.resultCode === "0000" || resData.resultCode === "2006";
-        const currentUserId = loginId || "wpayTestUser01";
+        const currentUserId = userId || "wpayTestUser01";
         // userId: Encrypt O (Modified)
         const resUserId = resData.userId ? decrypt(resData.userId) : "";
         const isUserIdMatch = resUserId === currentUserId;
@@ -379,7 +378,7 @@
 
         const wpayUserKey = wpayUserKeyItem?.decrypted || "";
         const wtid = wtidItem?.encrypted || "";
-        const userId = userIdItem?.decrypted || loginId || "wpayTestUser01";
+        const finalUserId = userIdItem?.decrypted || userId || "wpayTestUser01";
 
         // Save Remember Me Data if needed (Already handled in handleLogin for Remember Me check)
         // But here we need to save token regardless of Remember Me?
@@ -388,13 +387,13 @@
         // Create Token
         try {
             const token = await createAuthToken({
-                server: serverType,
-                site: loginSite,
+                server: server,
+                site: site,
                 service: service,
                 wpayUserKey,
                 wtid,
-                userId,
-                mid: merchantId,
+                userId: finalUserId,
+                mid: mid,
             });
 
             localStorage.setItem("authToken", token);
@@ -444,7 +443,7 @@
 
     function handleResultSignUp() {
         showResultModal = false;
-        phone = "";
+        hNum = "";
         openWpaySignup();
     }
 
@@ -459,12 +458,12 @@
     }
 
     async function handleMembershipCheck() {
-        if (!merchantId || !loginSite) {
+        if (!mid || !site) {
             alert("Merchant ID and Site must be selected.");
             return;
         }
 
-        const keys = MERCHANT_KEYS[merchantId];
+        const keys = MERCHANT_KEYS[mid];
         if (!keys) {
             alert("Configuration not found for Merchant ID.");
             return;
@@ -472,25 +471,27 @@
 
         // Domain: Always use 'wpaystd' as per prompt 3.2
         let domain = "";
-        if (serverType === SERVER_TYPES.PROD) {
-            if (!prodServer) {
+        if (server === SERVER_TYPES.PROD) {
+            if (!prodServerDomain) {
                 alert("PROD Server type must be selected.");
                 return;
             }
             // Use "wpaystd" explicitly for membership check
             domain =
-                SERVICE_URLS["wpaystd"].PROD[prodServer as ProdServerDomain];
+                SERVICE_URLS["wpaystd"].PROD[
+                    prodServerDomain as ProdServerDomain
+                ];
         } else {
             // Use "wpaystd" explicitly for membership check
-            domain = SERVICE_URLS["wpaystd"][serverType as "DEV" | "STG"];
+            domain = SERVICE_URLS["wpaystd"][server as "DEV" | "STG"];
         }
 
         const params: MembershipSearchParams = {
             domain,
-            siteName: loginSite,
-            merchantId,
-            userId: loginId || "wpayTestUser01",
-            hNum: phone,
+            siteName: site,
+            merchantId: mid,
+            userId: userId || "wpayTestUser01",
+            hNum: hNum,
         };
 
         try {
@@ -511,7 +512,7 @@
             const status = resData.status || "";
 
             // User ID Logic for Success Check
-            const currentUserId = loginId || "wpayTestUser01";
+            const currentUserId = userId || "wpayTestUser01";
 
             // Response Codes
             // "WPAY 회원 가입 정보 조회 성공." conditions:
@@ -587,12 +588,12 @@
     let wpayFormAction = $state("");
 
     async function openWpaySignup() {
-        if (!merchantId || !loginSite) {
+        if (!mid || !site) {
             alert("Merchant ID and Site must be selected.");
             return;
         }
 
-        const keys = MERCHANT_KEYS[merchantId];
+        const keys = MERCHANT_KEYS[mid];
         if (!keys) {
             alert("Configuration not found for Merchant ID.");
             return;
@@ -600,24 +601,22 @@
 
         // URL construction
         let domain = "";
-        if (serverType === SERVER_TYPES.PROD) {
-            if (!prodServer) {
+        if (server === SERVER_TYPES.PROD) {
+            if (!prodServerDomain) {
                 alert("PROD Server type must be selected.");
                 return;
             }
             domain =
                 SERVICE_URLS[service as ServiceType].PROD[
-                    prodServer as ProdServerDomain
+                    prodServerDomain as ProdServerDomain
                 ];
         } else {
             domain =
-                SERVICE_URLS[service as ServiceType][
-                    serverType as "DEV" | "STG"
-                ];
+                SERVICE_URLS[service as ServiceType][server as "DEV" | "STG"];
         }
 
         // Ensure domain doesn't end with slash, just in case (though usage shows no slash)
-        wpayFormAction = `${domain}/${loginSite}/std/u/v1/memreg`;
+        wpayFormAction = `${domain}/${site}/std/u/v1/memreg`;
 
         // Mock override for testing if needed, but since we are implementing real logic per prompt:
         // If we want to test locally with the mock endpoint we created, we need to bypass this unless we are on localhost?
@@ -643,9 +642,9 @@
         const getStored = (key: string) => localStorage.getItem(key) || "";
 
         // Source values from state or localStorage as per guide
-        const finalMid = merchantId || getStored("mid"); // Guide says selected OR stored
-        const finalUserId = loginId || getStored("userId") || "wpayTestUser01";
-        const finalHNum = getStored("hNum") || phone;
+        const finalMid = mid || getStored("mid"); // Guide says selected OR stored
+        const finalUserId = userId || getStored("userId") || "wpayTestUser01";
+        const finalHNum = getStored("hNum") || hNum;
 
         const rawCi = getStored("ci");
         const rawUserNm = getStored("userNm");
@@ -727,28 +726,19 @@
         if (!isValid) return;
 
         // Set default Member ID if empty
-        if (!loginId) {
-            loginId = "wpayTestUser01";
+        if (!userId) {
+            userId = "wpayTestUser01";
         }
 
-        // Save if Remember Me
-        if (rememberMe) {
-            localStorage.setItem("serviceOption", service);
-            localStorage.setItem("serverType", serverType);
-            localStorage.setItem("prodServerDomain", prodServer);
-            localStorage.setItem("siteOption", loginSite);
-            localStorage.setItem("mid", merchantId);
-            localStorage.setItem("userId", loginId);
-            localStorage.setItem("hNum", phone);
-        } else {
-            localStorage.removeItem("serviceOption");
-            localStorage.removeItem("serverType");
-            localStorage.removeItem("prodServerDomain");
-            localStorage.removeItem("siteOption");
-            localStorage.removeItem("mid");
-            localStorage.removeItem("userId");
-            localStorage.removeItem("hNum");
-        }
+        // Save ALL inputs to LocalStorage (as per prompt)
+        localStorage.setItem("service", service);
+        localStorage.setItem("server", server);
+        localStorage.setItem("prodServerDomain", prodServerDomain);
+        localStorage.setItem("site", site);
+        localStorage.setItem("mid", mid);
+        localStorage.setItem("userId", userId);
+        localStorage.setItem("hNum", hNum);
+        localStorage.setItem("isSave", String(isSave));
 
         // Check AuthToken Validity
         const storedTokenStr = localStorage.getItem("authToken");
@@ -757,10 +747,7 @@
         if (storedTokenStr) {
             try {
                 // Validate with current selected merchantId
-                isTokenValid = await validateAuthToken(
-                    storedTokenStr,
-                    merchantId,
-                );
+                isTokenValid = await validateAuthToken(storedTokenStr, mid);
 
                 // Additional Check: Does the token belong to the current user?
                 if (isTokenValid) {
@@ -772,9 +759,9 @@
                         // If user left it empty, it is default. Does token match default?
 
                         // We strictly compare loginId with token's sub.
-                        if (tokenPayload.sub !== loginId) {
+                        if (tokenPayload.sub !== userId) {
                             console.log(
-                                `Token User (${tokenPayload.sub}) mismatch with Input User (${loginId}). Invalidating.`,
+                                `Token User (${tokenPayload.sub}) mismatch with Input User (${userId}). Invalidating.`,
                             );
                             isTokenValid = false;
                         }
@@ -798,8 +785,8 @@
         }
 
         // New Logic Step 01:
-        // "Cell Phone Number값이 존재하면 WPAY 회원 가입 정보 조회를 수행한다."
-        if (phone) {
+        // "hNum 값이 존재하면 WPAY 회원 가입 정보 조회를 수행한다."
+        if (hNum) {
             await handleMembershipCheck();
             return;
         }
@@ -844,10 +831,10 @@
     // Validation
     let isValid = $derived(
         !!service &&
-            !!serverType &&
-            (serverType !== SERVER_TYPES.PROD || !!prodServer) &&
-            !!loginSite &&
-            !!merchantId,
+            !!server &&
+            (server !== SERVER_TYPES.PROD || !!prodServerDomain) &&
+            !!site &&
+            !!mid,
     );
 </script>
 
@@ -872,10 +859,10 @@
         <span class="block text-sm font-medium text-gray-700 mb-2">Server</span>
         <RadioGroup
             options={serverOptionsWithLabels}
-            groupName="serverType"
-            bind:selected={serverType}
+            groupName="server"
+            bind:selected={server}
             onOptionClick={handleServerClick}
-            isError={showMissingFields && !serverType}
+            isError={showMissingFields && !server}
         />
     </div>
 
@@ -888,9 +875,9 @@
         <DropdownInput
             id="login-site"
             options={siteOptions}
-            bind:value={loginSite}
+            bind:value={site}
             placeholder="선택해 주세요"
-            isError={showMissingFields && !loginSite}
+            isError={showMissingFields && !site}
         />
     </div>
 
@@ -904,9 +891,9 @@
         <DropdownInput
             id="merchant-id-select"
             options={merchantIdOptions}
-            bind:value={merchantId}
+            bind:value={mid}
             placeholder="선택해 주세요"
-            isError={showMissingFields && !merchantId}
+            isError={showMissingFields && !mid}
         />
     </div>
 
@@ -920,11 +907,8 @@
         <input
             id="login-id"
             type="text"
-            bind:value={loginId}
-            placeholder={loginIdPlaceholder}
-            onfocus={() => (loginIdPlaceholder = "")}
-            onblur={() =>
-                (loginIdPlaceholder = !loginId ? "wpayTestUser01" : "")}
+            bind:value={userId}
+            placeholder="wpayTestUser01"
             class="w-full border-2 border-brand-primary rounded-md py-2 px-3 font-medium placeholder-ui-hint focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
             class:text-brand-primary={true}
         />
@@ -940,11 +924,11 @@
         <input
             id="phone-number"
             type="text"
-            value={phone}
+            value={hNum}
             oninput={handlePhoneInput}
             class="w-full border-2 border-brand-primary rounded-md py-2 px-3 font-medium placeholder-ui-hint focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
             class:text-brand-primary={true}
-            placeholder="숫자만 입력해 주세요"
+            placeholder="입력해 주세요."
         />
     </div>
 
@@ -954,14 +938,14 @@
             id="remember-me"
             name="remember-me"
             type="checkbox"
-            bind:checked={rememberMe}
+            bind:checked={isSave}
             class="h-4 w-4 text-brand-primary focus:ring-brand-primary border-gray-300 rounded cursor-pointer"
         />
         <label
             for="remember-me"
             class="ml-2 block text-sm text-gray-900 cursor-pointer"
         >
-            Remember Me
+            Save Input Info
         </label>
     </div>
 
@@ -982,7 +966,7 @@
         ${isValid ? "bg-brand-primary hover:bg-brand-hover focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary" : "bg-ui-inactive cursor-not-allowed"}
         transition-colors`}
         >
-            {isValid ? "다음" : "다음"}
+            {isValid ? "Next" : "Next"}
         </button>
     </div>
 </div>
@@ -995,8 +979,8 @@
         </p>
         <RadioGroup
             options={prodServerOptions}
-            groupName="prodServer"
-            bind:selected={prodServer}
+            groupName="prodServerDomain"
+            bind:selected={prodServerDomain}
             direction="column"
         />
         <div class="mt-6 flex justify-end">
