@@ -203,7 +203,6 @@
         console.log("Raw Data:", event.data);
 
         const resData = event.data;
-
         const keys = MERCHANT_KEYS[mid];
         if (!keys) {
             console.error("Merchant Keys not found for:", mid);
@@ -211,16 +210,35 @@
             return;
         }
 
-        // Response Signing Order (WPAYSTD2 1. 회원 가입 요청)
-        const responseSigningOrder = [
-            "resultCode",
-            "resultMsg",
-            "mid",
-            "wtid",
-            "userId",
-            "wpayUserKey",
-            "ci",
-        ];
+        // Determine if this is PIN Auth or Signup/Check response?
+        // The structure is slightly different.
+        // PIN Auth Response fields: resultCode, resultMsg, mid, wtid, wpayUserKey, signature.
+        // Signup Response fields: resultCode, resultMsg, mid, wtid, userId, wpayUserKey, ci, signature.
+        // We can check for existence of 'userId' to distinguish.
+        // PIN Auth doesn't have 'userId' or 'ci' in response (per guide table).
+
+        let isPinAuthResponse = !resData.userId && !resData.ci;
+
+        let responseSigningOrder: string[] = [];
+        if (isPinAuthResponse) {
+            responseSigningOrder = [
+                "resultCode",
+                "resultMsg",
+                "mid",
+                "wtid",
+                "wpayUserKey",
+            ];
+        } else {
+            responseSigningOrder = [
+                "resultCode",
+                "resultMsg",
+                "mid",
+                "wtid",
+                "userId",
+                "wpayUserKey",
+                "ci",
+            ];
+        }
 
         // 1. Signature Verification
         if (resData.signature) {
@@ -229,8 +247,6 @@
                 keys.hashKey,
                 responseSigningOrder,
             );
-            console.log("Calculated Sig:", calculatedSignature);
-            console.log("Received Sig:", resData.signature);
 
             if (calculatedSignature !== resData.signature) {
                 alert("WPAY Response Signature Verification Failed!");
@@ -246,112 +262,152 @@
             val ? decryptSeed(val, keys.seedKey, keys.seedIV) : "";
         const decode = (val: string) => (val ? decodeURIComponent(val) : "");
 
-        // resultMsg: Encoded O (Modified)
         const resultMsg = resData.resultMsg
             ? decode(resData.resultMsg).replace(/\+/g, " ")
             : "";
-
-        // wpayUserKey: Encrypt O (Modified)
         const wpayUserKey = resData.wpayUserKey
             ? decrypt(resData.wpayUserKey)
             : "";
-
-        // ci: Encrypt O
-        const ci = resData.ci ? decrypt(resData.ci) : "";
-
-        // mid: Plain Text
+        const wtid = resData.wtid || "";
         const resMid = resData.mid || "";
 
-        // wtid: Plain Text (Modified)
-
-        const wtid = resData.wtid || "";
+        // Signup Specific
+        const ci = resData.ci ? decrypt(resData.ci) : "";
+        const resUserId = resData.userId ? decrypt(resData.userId) : "";
 
         console.log("Decrypted resultMsg:", resultMsg);
-        console.log("Decoded wpayUserKey:", wpayUserKey);
         console.groupEnd();
 
         // Success Conditions
-        // - resultCode "0000" or "2006"
-        // - wtid exists
-        // - wpayUserKey exists
-        // - signature exists (checked above)
-        // - userId matches request (loginId)
-
         const isSuccessCode =
             resData.resultCode === "0000" || resData.resultCode === "2006";
-        const currentUserId = userId || "wpayTestUser01";
-        // userId: Encrypt O (Modified)
-        const resUserId = resData.userId ? decrypt(resData.userId) : "";
-        const isUserIdMatch = resUserId === currentUserId;
 
-        // Prepare Data for Modal
-        wpayResultData = [
-            {
-                key: "resultCode",
-                label: "결과 코드",
-                encrypted: resData.resultCode || "",
-                decrypted: "-",
-            },
-            {
-                key: "resultMsg",
-                label: "결과 메시지",
-                encrypted: resData.resultMsg || "", // Encoded raw
-                decrypted: resultMsg,
-            },
-            {
-                key: "mid",
-                label: "가맹점 ID",
-                encrypted: resData.mid || "",
-                decrypted: "-",
-            },
-            {
-                key: "wtid",
-                label: "WPAY 트랜잭션 ID",
-                encrypted: wtid,
-                decrypted: "-",
-            },
-            {
-                key: "userId",
-                label: "사용자 ID",
-                encrypted: resData.userId || "",
-                decrypted: resUserId,
-            },
-            {
-                key: "wpayUserKey",
-                label: "WPAY 사용자 키",
-                encrypted: resData.wpayUserKey || "",
-                decrypted: wpayUserKey,
-            },
-            {
-                key: "ci",
-                label: "CI",
-                encrypted: resData.ci || "",
-                decrypted: ci,
-            },
-            {
-                key: "signature",
-                label: "서명",
-                encrypted: resData.signature || "",
-                decrypted: "-",
-            },
-        ];
+        // Logic split
+        if (isPinAuthResponse) {
+            // PIN Auth Success Conditions
+            // resultCode 0000/2006
+            // wtid, wpayUserKey exists
+            isWpaySuccess =
+                isSuccessCode && !!wtid && !!wpayUserKey && !!resData.signature;
 
-        isWpaySuccess = false; // Reset first
-        validationError = ""; // Reset error
-
-        if (isSuccessCode) {
-            if (!wtid || !wpayUserKey) {
-                validationError = "필수 응답 필드 누락 (wtid 또는 wpayUserKey)";
-            } else if (!isUserIdMatch) {
-                validationError = `사용자 ID 불일치 (요청: ${currentUserId}, 응답: ${resUserId})`;
+            if (isWpaySuccess) {
+                // For PIN Auth, we don't check userId match because it's not in response.
+                validationError = "";
             } else {
-                // Valid Success
-                isWpaySuccess = true;
-                // Defer storage logic to "Confirm" button
+                validationError = `${resultMsg} (${resData.resultCode})`;
             }
+
+            // Set Data for Modal
+            wpayResultData = [
+                {
+                    key: "resultCode",
+                    label: "결과 코드",
+                    encrypted: resData.resultCode || "",
+                    decrypted: "-",
+                },
+                {
+                    key: "resultMsg",
+                    label: "결과 메시지",
+                    encrypted: resData.resultMsg || "",
+                    decrypted: resultMsg,
+                },
+                {
+                    key: "mid",
+                    label: "가맹점 ID",
+                    encrypted: resMid,
+                    decrypted: "-",
+                },
+                {
+                    key: "wtid",
+                    label: "WPAY 트랜잭션 ID",
+                    encrypted: wtid,
+                    decrypted: "-",
+                },
+                {
+                    key: "wpayUserKey",
+                    label: "WPAY 사용자 키",
+                    encrypted: resData.wpayUserKey || "",
+                    decrypted: wpayUserKey,
+                },
+                {
+                    key: "signature",
+                    label: "서명",
+                    encrypted: resData.signature || "",
+                    decrypted: "-",
+                },
+            ];
         } else {
-            // Failure code
-            validationError = `${resultMsg} (${resData.resultCode})`;
+            // Signup Success Conditions
+            const currentUserId = userId || "wpayTestUser01";
+            const isUserIdMatch = resUserId === currentUserId;
+
+            isWpaySuccess =
+                isSuccessCode &&
+                !!wtid &&
+                !!wpayUserKey &&
+                isUserIdMatch &&
+                !!resData.signature;
+
+            if (isWpaySuccess) {
+                validationError = "";
+            } else {
+                if (!isUserIdMatch) {
+                    validationError = `사용자 ID 불일치 (요청: ${currentUserId}, 응답: ${resUserId})`;
+                } else {
+                    validationError = `${resultMsg} (${resData.resultCode})`;
+                }
+            }
+
+            wpayResultData = [
+                {
+                    key: "resultCode",
+                    label: "결과 코드",
+                    encrypted: resData.resultCode || "",
+                    decrypted: "-",
+                },
+                {
+                    key: "resultMsg",
+                    label: "결과 메시지",
+                    encrypted: resData.resultMsg || "",
+                    decrypted: resultMsg,
+                },
+                {
+                    key: "mid",
+                    label: "가맹점 ID",
+                    encrypted: resMid,
+                    decrypted: "-",
+                },
+                {
+                    key: "wtid",
+                    label: "WPAY 트랜잭션 ID",
+                    encrypted: wtid,
+                    decrypted: "-",
+                },
+                {
+                    key: "userId",
+                    label: "사용자 ID",
+                    encrypted: resData.userId || "",
+                    decrypted: resUserId,
+                },
+                {
+                    key: "wpayUserKey",
+                    label: "WPAY 사용자 키",
+                    encrypted: resData.wpayUserKey || "",
+                    decrypted: wpayUserKey,
+                },
+                {
+                    key: "ci",
+                    label: "CI",
+                    encrypted: resData.ci || "",
+                    decrypted: ci,
+                },
+                {
+                    key: "signature",
+                    label: "서명",
+                    encrypted: resData.signature || "",
+                    decrypted: "-",
+                },
+            ];
         }
 
         // Show Modal
@@ -360,25 +416,18 @@
         showResultModal = true;
     }
 
-    // $effect logic removed to prevent race conditions or missed updates.
-    // Logic moved to handleResultConfirm
-
     async function handleAuthTokenCreation() {
         const wpayUserKeyItem = wpayResultData.find(
             (d) => d.key === "wpayUserKey",
         );
         const wtidItem = wpayResultData.find((d) => d.key === "wtid");
+        // PIN Auth result doesn't have userId, so fallback to state
         const userIdItem = wpayResultData.find((d) => d.key === "userId");
 
         const wpayUserKey = wpayUserKeyItem?.decrypted || "";
-        const wtid = wtidItem?.encrypted || "";
+        const wtid = wtidItem?.decrypted || wtidItem?.encrypted || ""; // wtid has no decrypt logic in view
         const finalUserId = userIdItem?.decrypted || userId || "wpayTestUser01";
 
-        // Save Remember Me Data if needed (Already handled in handleLogin for Remember Me check)
-        // But here we need to save token regardless of Remember Me?
-        // "서비스 가입이 완료되면 authToken을 생성하여 localStorage에 저장한다."
-
-        // Create Token
         try {
             const token = await createAuthToken({
                 server: server,
@@ -402,36 +451,19 @@
         showResultModal = false;
 
         if (isWpaySuccess) {
-            handleAuthTokenCreation(); // If it was signup success
-            // If it was membership check success?
-            // Prompt 3.2: "WPAY 회원 가입 정보 조회 성공 -> 로그인 STEP02를 진행하기 위해 response data의 wpayUserKey를 로그인 STEP02로 보낸다."
-            // "확인 버튼을 클릭하면 메인화면으로 이동 한다." (Current goal is Main Page, STEP02 comes later?)
-            // Prompt 3.2: "- 로그인 STEP02를 수행 한다." (When check is successful)
-            // But STEP02 is not implemented yet?
-            // Prompt 3.2 Goal: "WPAY 회원 가입 정보 조회가 성공하면 로그인 STEP02를 수행 한다."
-            // And Result Modal Confirm -> Main Page.
-            // STEP02 probably means "Main Page logic" or "Token Creation"?
-            // "response data의 wpayUserKey를 로그인 STEP02로 보낸다."
-            // Wait, does STEP02 imply a new page?
-            // If I look at file list: `3.3. 로그인 STEP02.md`.
-            // But currently I am implementing `3.2. 로그인 STEP01`.
-            // For now, if success, I'll direct to Main, effectively assuming that's the next step or I should create token?
-            // Prompt 3.2: "response data의 wpayUserKey를 로그인 STEP02로 보낸다."
-            // "확인 버튼을 클릭하면 메인화면으로 이동 한다." implies we are done with STEP01.
-            // Also need to handle "Member Check Success" vs "Signup Success".
-            // If Member Check Success -> We have wpayUserKey -> Maybe create token?
-            // Prompt 3.1 (Signup): "authToken을 생성한다."
-            // Prompt 3.2 (Check): "로그인 STEP02를 진행하기 위해... wpayUserKey를... 보낸다."
-            // Usually this means setting state/localStorage and going to next step context.
-            // Since we are going to Main Page, let's assume creating Token and going Main is correct for now (or at least saving to localStorage).
+            // Check Context:
+            // 1. Was it Membership Check? (Detected by presence of 'status' in resultData, which only Check has)
+            const isMembershipCheck = wpayResultData.some(
+                (d) => d.key === "status",
+            );
 
-            // Let's reuse handleAuthTokenCreation for now if applicable, or just generic "Success Action".
-
-            // If it was Signup Success (isWpaySuccess=true from handleWpayMessage), we call handleAuthTokenCreation.
-            // If it was Check Success (isWpaySuccess=true from check logic), we might want to do same?
-            // Check logic also returns wpayUserKey.
-
-            handleAuthTokenCreation();
+            if (isMembershipCheck) {
+                // STEP 01 Success -> Proceed to STEP 02 (PIN Auth)
+                handlePinAuth();
+            } else {
+                // STEP 00 (Signup) OR STEP 02 (PIN Auth) Success -> Create Token
+                handleAuthTokenCreation();
+            }
         }
     }
 
@@ -442,8 +474,6 @@
     }
 
     function handleResultClose() {
-        // "상단의 X 버튼 클릭하면 모달을 닫는다" (Failure)
-        // "상단의 X 버튼 클릭도 동일하게 동작 한다" (Success -> Confirm)
         if (isWpaySuccess) {
             handleResultConfirm();
         } else {
@@ -623,7 +653,7 @@
         // So I will use the real domain.
 
         const returnUrl =
-            window.location.origin + "/external/wpay/callback/memreg";
+            window.location.origin + `/callback/wpaystd2/${site}/memreg`;
 
         // Encrypt Fields
         const encrypt = (value: string) => {
@@ -712,6 +742,117 @@
         }, 100);
     }
 
+    // Touch Interaction Handler
+    function handleTouchStart() {
+        if (touchTimer) clearTimeout(touchTimer);
+        transitionDuration = 200; // Instant/Quick on start
+        showMissingFields = true;
+    }
+
+    // PIN Auth Logic
+    async function handlePinAuth() {
+        if (!mid || !site) {
+            alert("Merchant ID and Site must be selected.");
+            return;
+        }
+
+        const keys = MERCHANT_KEYS[mid];
+        if (!keys) {
+            alert("Configuration not found for Merchant ID.");
+            return;
+        }
+
+        // URL construction for PIN Auth
+        let domain = "";
+        if (server === SERVER_TYPES.PROD) {
+            if (!prodDomain) {
+                alert("PROD Server type must be selected.");
+                return;
+            }
+            domain =
+                SERVICE_URLS[service as ServiceType].PROD[
+                    prodDomain as ProdServerDomain
+                ];
+        } else {
+            domain =
+                SERVICE_URLS[service as ServiceType][server as "DEV" | "STG"];
+        }
+
+        // URI: /{site name}/std/u/v1/pinno/auth (Ref: prompt/WPAYSTD2/2. WPAY PIN Auth.md)
+        wpayFormAction = `${domain}/${site}/std/u/v1/pinno/auth`;
+
+        const returnUrl =
+            window.location.origin + `/callback/wpaystd2/${site}/pinno/auth`;
+
+        // Encrypt Fields
+        const encrypt = (value: string) => {
+            if (!value) return "";
+            return encryptSeed(value, keys.seedKey, keys.seedIV);
+        };
+
+        const getStored = (key: string) => localStorage.getItem(key) || "";
+
+        // Source values
+        const finalMid = mid;
+
+        // wpayUserKey from STEP01 result
+        const wpayUserKeyItem = wpayResultData.find(
+            (d) => d.key === "wpayUserKey",
+        );
+        const rawWpayUserKey = wpayUserKeyItem?.decrypted || "";
+
+        if (!rawWpayUserKey) {
+            alert("Checking User Key failed. Please try again.");
+            return;
+        }
+
+        // ci from STEP01 result or localStorage
+        const ciItem = wpayResultData.find((d) => d.key === "ci");
+        const rawCi = ciItem?.decrypted || getStored("ci") || "";
+
+        const encWpayUserKey = encrypt(rawWpayUserKey);
+        const encReturnUrl = encodeURIComponent(returnUrl);
+
+        // Request Data
+        const reqData: Record<string, string> = {
+            mid: finalMid,
+            wpayUserKey: encWpayUserKey,
+            ci: rawCi,
+            returnUrl: encReturnUrl,
+        };
+
+        // Generate Signature
+        // Signing Order: mid, wpayUserKey, ci, returnUrl
+        const requestSigningOrder = ["mid", "wpayUserKey", "ci", "returnUrl"];
+        const { signature } = await generateSignature(
+            reqData,
+            keys.hashKey,
+            requestSigningOrder,
+        );
+        reqData.signature = signature;
+
+        wpayFormData = reqData;
+
+        // Wait for DOM
+        await tick();
+
+        startWpaySignup(); // Reuse popup logic
+
+        // Debug
+        console.group("WPAY PIN Auth Request Debug");
+        console.log("URL:", wpayFormAction);
+        console.log("Data:", reqData);
+        console.groupEnd();
+
+        // Submit
+        setTimeout(() => {
+            const form = document.getElementById(
+                "wpay-signup-form",
+            ) as HTMLFormElement;
+            if (form) form.submit();
+        }, 100);
+    }
+
     // Login Handler
     async function handleLogin(e: Event) {
         e.preventDefault(); // Prevent any form submission or default behavior
@@ -745,12 +886,6 @@
                 if (isTokenValid) {
                     try {
                         const tokenPayload = decodeJwt(storedTokenStr);
-                        // If loginId is provided (and not default placeholder that user ignored), we should check it.
-                        // However, loginId is auto-set to "wpayTestUser01" if empty on blur.
-                        // If user actually typed something else, we rely on that.
-                        // If user left it empty, it is default. Does token match default?
-
-                        // We strictly compare loginId with token's sub.
                         if (tokenPayload.sub !== userId) {
                             console.log(
                                 `Token User (${tokenPayload.sub}) mismatch with Input User (${userId}). Invalidating.`,
@@ -776,22 +911,14 @@
             return;
         }
 
-        // New Logic Step 01:
-        // "hNum 값이 존재하면 WPAY 회원 가입 정보 조회를 수행한다."
+        // STEP 01: Membership Check
         if (hNum) {
             await handleMembershipCheck();
             return;
         }
 
-        // If Invalid Token & No Phone -> Start WPAY Signup (Service Join)
+        // STEP 00: Signup
         await openWpaySignup();
-    }
-
-    // Touch Interaction Handler
-    function handleTouchStart() {
-        if (touchTimer) clearTimeout(touchTimer);
-        transitionDuration = 200; // Instant/Quick on start
-        showMissingFields = true;
     }
 
     function handleTouchEnd() {
@@ -1002,6 +1129,9 @@
     isOpen={showResultModal}
     title={isWpaySuccess ? "WPAY 요청 결과" : "WPAY 요청 결과 (실패)"}
     resultData={wpayResultData}
+    confirmText={isWpaySuccess && wpayResultData.some((d) => d.key === "status")
+        ? "핀인증"
+        : "확인"}
     onConfirm={handleResultConfirm}
     onSignUp={!isWpaySuccess ? handleResultSignUp : undefined}
     onClose={handleResultClose}

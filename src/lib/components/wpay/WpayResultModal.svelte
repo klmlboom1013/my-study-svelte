@@ -13,6 +13,7 @@
         isOpen: boolean;
         title: string;
         resultData: ResultItem[];
+        confirmText?: string;
         onConfirm: () => void;
         onSignUp?: () => void;
         onClose: () => void;
@@ -22,6 +23,7 @@
         isOpen = $bindable(),
         title,
         resultData,
+        confirmText = "확인",
         onConfirm,
         onSignUp,
         onClose,
@@ -94,7 +96,7 @@
                     회원가입
                 </Button>
             {/if}
-            <Button onClick={onConfirm}>확인</Button>
+            <Button onClick={onConfirm}>{confirmText}</Button>
         </div>
     </div>
 </Modal>

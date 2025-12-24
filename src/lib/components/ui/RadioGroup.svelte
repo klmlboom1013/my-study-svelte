@@ -50,12 +50,12 @@
                 <div
                     class={`
                         flex items-center justify-center px-4 py-2 
-                        border-[3px] rounded-lg transition-all
+                        border-2 rounded-lg transition-all
                         text-sm font-medium w-full
                         ${
                             isError
                                 ? "border-red-500 text-red-500"
-                                : "border-[oklch(0.36_0.11_265.06)] text-gray-700 peer-checked:bg-[oklch(0.36_0.11_265.06)] peer-checked:text-white hover:bg-gray-50 peer-checked:hover:bg-[oklch(0.36_0.11_265.06)]"
+                                : "border-brand-primary text-gray-700 peer-checked:bg-brand-primary peer-checked:text-white hover:bg-gray-50 peer-checked:hover:bg-brand-hover"
                         }
                     `}
                 >
