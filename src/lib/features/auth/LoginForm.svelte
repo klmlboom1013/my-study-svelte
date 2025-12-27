@@ -2,9 +2,10 @@
     import { onMount, onDestroy, tick } from "svelte";
     import { goto } from "$app/navigation";
     import {
-        createAuthToken,
-        validateAuthToken,
-    } from "$lib/utils/auth/authToken";
+        createAccessToken,
+        validateAccessToken,
+    } from "$lib/utils/auth/accessToken";
+    import { setCookie, getCookie } from "$lib/utils/cookie";
 
     import DropdownInput from "$lib/components/ui/DropdownInput.svelte";
 
@@ -22,7 +23,7 @@
         type SiteType,
         type MerchantIdType,
         type ProdServerDomain,
-    } from "$lib/types/wpayServerType";
+    } from "$lib/constants/wpayServerType";
     import { MERCHANT_KEYS } from "$lib/utils/encryption/cryptoKeys";
     import { generateSignature } from "$lib/utils/wpay/signature";
     import { encryptSeed, decryptSeed } from "$lib/utils/encryption/cryptoSeed";
@@ -125,27 +126,28 @@
 
     // Load from LocalStorage
     onMount(async () => {
-        service = localStorage.getItem("service") || "";
-        server = (localStorage.getItem("server") as ServerType) || "";
-        prodDomain = localStorage.getItem("prodDomain") || "";
-        site = localStorage.getItem("site") || "";
-        mid = localStorage.getItem("mid") || "";
-        userId = localStorage.getItem("userId") || "";
-        hNum = localStorage.getItem("hNum") || "";
-
-        // isSave Default Value Logic
-        const storedIsSave = localStorage.getItem("isSaveCache");
-        if (storedIsSave !== null) {
-            isSaveCache = storedIsSave === "true";
-        } else {
-            isSaveCache = false;
+        const storedData = localStorage.getItem("sign-in-page");
+        if (storedData) {
+            try {
+                const parsedData = JSON.parse(storedData);
+                service = parsedData.service || "";
+                server = (parsedData.server as ServerType) || "";
+                prodDomain = parsedData.prodDomain || "";
+                site = parsedData.site || "";
+                mid = parsedData.mid || "";
+                userId = parsedData.userId || "";
+                hNum = parsedData.hNum || "";
+                isSaveCache = parsedData.isSaveCache || false;
+            } catch (e) {
+                console.error("Failed to parse sign-in-page data", e);
+            }
         }
 
-        // Check AuthToken for Auto Login
-        const storedTokenStr = localStorage.getItem("authToken");
+        // Check AccessToken for Auto Login
+        const storedTokenStr = getCookie("accessToken");
         if (storedTokenStr && mid) {
             try {
-                const isValid = await validateAuthToken(storedTokenStr, mid);
+                const isValid = await validateAccessToken(storedTokenStr, mid);
                 if (isValid) {
                     goto("/");
                 }
@@ -295,6 +297,18 @@
                 validationError = "";
             } else {
                 validationError = `${resultMsg} (${resData.resultCode})`;
+                // Remove wpayUserKey from localStorage on PIN Auth failure
+                try {
+                    const stored = localStorage.getItem("sign-in-page");
+                    if (stored) {
+                        const parsed = JSON.parse(stored);
+                        delete parsed.wpayUserKey;
+                        localStorage.setItem(
+                            "sign-in-page",
+                            JSON.stringify(parsed),
+                        );
+                    }
+                } catch (e) {}
             }
 
             // Set Data for Modal
@@ -350,6 +364,18 @@
 
             if (isWpaySuccess) {
                 validationError = "";
+                // Save wpayUserKey to localStorage on Signup success
+                try {
+                    const stored = localStorage.getItem("sign-in-page");
+                    if (stored) {
+                        const parsed = JSON.parse(stored);
+                        parsed.wpayUserKey = wpayUserKey;
+                        localStorage.setItem(
+                            "sign-in-page",
+                            JSON.stringify(parsed),
+                        );
+                    }
+                } catch (e) {}
             } else {
                 if (!isUserIdMatch) {
                     validationError = `사용자 ID 불일치 (요청: ${currentUserId}, 응답: ${resUserId})`;
@@ -416,7 +442,7 @@
         showResultModal = true;
     }
 
-    async function handleAuthTokenCreation() {
+    async function handleAccessTokenCreation() {
         const wpayUserKeyItem = wpayResultData.find(
             (d) => d.key === "wpayUserKey",
         );
@@ -429,7 +455,7 @@
         const finalUserId = userIdItem?.decrypted || userId || "wpayTestUser01";
 
         try {
-            const token = await createAuthToken({
+            const token = await createAccessToken({
                 server: server,
                 site: site,
                 service: service,
@@ -439,7 +465,7 @@
                 mid: mid,
             });
 
-            localStorage.setItem("authToken", token);
+            setCookie("accessToken", token, 1); // Save for 1 day
             goto("/");
         } catch (e) {
             console.error("Token creation failed", e);
@@ -462,7 +488,7 @@
                 handlePinAuth();
             } else {
                 // STEP 00 (Signup) OR STEP 02 (PIN Auth) Success -> Create Token
-                handleAuthTokenCreation();
+                handleAccessTokenCreation();
             }
         }
     }
@@ -553,6 +579,23 @@
                 !!resData.ci;
 
             isWpaySuccess = isSuccess;
+
+            // Save wpayUserKey to localStorage on success
+            if (isSuccess && wpayUserKey) {
+                try {
+                    const stored = localStorage.getItem("sign-in-page");
+                    if (stored) {
+                        const parsed = JSON.parse(stored);
+                        parsed.wpayUserKey = wpayUserKey;
+                        localStorage.setItem(
+                            "sign-in-page",
+                            JSON.stringify(parsed),
+                        );
+                    }
+                } catch (e) {
+                    console.error("Failed to save wpayUserKey", e);
+                }
+            }
 
             // Populate wpayResultData
 
@@ -799,7 +842,14 @@
         const wpayUserKeyItem = wpayResultData.find(
             (d) => d.key === "wpayUserKey",
         );
-        const rawWpayUserKey = wpayUserKeyItem?.decrypted || "";
+        let storedWpayUserKey = "";
+        try {
+            const s = localStorage.getItem("sign-in-page");
+            if (s) storedWpayUserKey = JSON.parse(s).wpayUserKey || "";
+        } catch (e) {}
+
+        const rawWpayUserKey =
+            wpayUserKeyItem?.decrypted || storedWpayUserKey || "";
 
         if (!rawWpayUserKey) {
             alert("Checking User Key failed. Please try again.");
@@ -873,14 +923,14 @@
         localStorage.setItem("hNum", hNum);
         localStorage.setItem("isSaveCache", String(isSaveCache));
 
-        // Check AuthToken Validity
-        const storedTokenStr = localStorage.getItem("authToken");
+        // Check AccessToken Validity
+        const storedTokenStr = getCookie("accessToken");
         let isTokenValid = false;
 
         if (storedTokenStr) {
             try {
                 // Validate with current selected merchantId
-                isTokenValid = await validateAuthToken(storedTokenStr, mid);
+                isTokenValid = await validateAccessToken(storedTokenStr, mid);
 
                 // Additional Check: Does the token belong to the current user?
                 if (isTokenValid) {
@@ -955,172 +1005,232 @@
             !!site &&
             !!mid,
     );
+
+    async function handleNextClick() {
+        // Set default userId if empty
+        if (!userId) {
+            userId = "wpayTestUser01";
+        }
+
+        // Save to LocalStorage if isSaveCache is true
+        if (isSaveCache) {
+            const dataToSave = {
+                service,
+                server,
+                prodDomain,
+                site,
+                mid,
+                userId,
+                hNum,
+                isSaveCache,
+            };
+            localStorage.setItem("sign-in-page", JSON.stringify(dataToSave));
+        } else {
+            // If not saving, should we clear? Prompt says:
+            // "메인페이지에서 localStorage key "isSaveCache" 값이 true가 아니면 위 정보들을 localStorage에서 모두 삭제 한다."
+            // This logic seems to belong to Main Page initialization or cleanup, but for now we won't strictly delete here to avoid data loss during session.
+            // However, if the user explicitly unchecks, maybe we should remove the key?
+            // Let's remove the key for now to be clean.
+            localStorage.removeItem("sign-in-page");
+        }
+
+        // Branching Logic
+        if (!hNum) {
+            // Sign-up Flow
+            await openWpaySignup();
+        } else {
+            // Sign-in Authorization Flow
+            await handleMembershipCheck();
+        }
+    }
 </script>
 
-<div class="space-y-6">
-    <!-- Service Selection -->
-    <div>
-        <label
-            for="service-select"
-            class="block text-sm font-medium text-gray-700 mb-2"
-            >Service <span class="text-red-500">*</span></label
-        >
-        <DropdownInput
-            id="service-select"
-            options={serviceOptions}
-            bind:value={service}
-            placeholder="선택해 주세요"
-            isError={showMissingFields && !service}
-        />
-    </div>
+<div class="w-full max-w-md bg-white rounded-xl shadow-lg p-8 space-y-6">
+    <h1 class="text-2xl font-bold text-center text-brand-primary">
+        WPAY 연동 테스트
+    </h1>
 
-    <!-- Server Selection -->
-    <div>
-        <span class="block text-sm font-medium text-gray-700 mb-2"
-            >Server <span class="text-red-500">*</span>
-            {#if server === SERVER_TYPES.PROD && prodDomain}
-                <span class="ml-2 text-brand-primary font-normal"
-                    >({prodDomain})</span
-                >
-            {/if}
-        </span>
-        <RadioGroup
-            options={serverOptionsWithLabels}
-            groupName="server"
-            bind:selected={server}
-            onOptionClick={handleServerClick}
-            isError={showMissingFields && !server}
-            variant="box"
-        />
-    </div>
+    <div class="space-y-6">
+        <!-- Service Selection -->
+        <div class="space-y-2">
+            <label
+                for="service"
+                class="block text-sm font-medium text-gray-700"
+            >
+                Service <span class="text-red-500">*</span>
+            </label>
+            <DropdownInput
+                id="service"
+                bind:value={service}
+                options={serviceOptions}
+                placeholder="선택해 주세요"
+                isError={showMissingFields && !service}
+            />
+        </div>
 
-    <!-- Login Site -->
-    <div>
-        <label
-            for="login-site"
-            class="block text-sm font-medium text-gray-700 mb-2"
-            >Site <span class="text-red-500">*</span></label
-        >
-        <DropdownInput
-            id="login-site"
-            options={siteOptions}
-            bind:value={site}
-            placeholder="선택해 주세요"
-            isError={showMissingFields && !site}
-        />
-    </div>
+        <!-- Server Selection -->
+        <div class="space-y-2">
+            <div class="flex items-center gap-1">
+                <span class="block text-sm font-medium text-gray-700">
+                    Server <span class="text-red-500">*</span>
+                </span>
+                {#if prodDomain && server === SERVER_TYPES.PROD}
+                    <span class="text-sm text-brand-primary font-medium"
+                        >({prodDomain})</span
+                    >
+                {/if}
+            </div>
+            <!-- Variant: Box as per prompt -->
+            <RadioGroup
+                groupName="server"
+                options={serverOptionsWithLabels}
+                bind:selected={server as string}
+                onOptionClick={handleServerClick}
+                isError={showMissingFields && !server}
+                variant="box"
+            />
+        </div>
 
-    <!-- Merchant ID -->
-    <div>
-        <label
-            for="merchant-id-select"
-            class="block text-sm font-medium text-gray-700 mb-2"
-            >Merchant ID <span class="text-red-500">*</span></label
-        >
-        <DropdownInput
-            id="merchant-id-select"
-            options={merchantIdOptions}
-            bind:value={mid}
-            placeholder="선택해 주세요"
-            isError={showMissingFields && !mid}
-        />
-    </div>
+        <!-- Site Selection -->
+        <div class="space-y-2">
+            <label for="site" class="block text-sm font-medium text-gray-700">
+                Site <span class="text-red-500">*</span>
+            </label>
+            <DropdownInput
+                id="site"
+                bind:value={site}
+                options={siteOptions as string[]}
+                placeholder="선택해 주세요"
+                isError={showMissingFields && !site}
+            />
+        </div>
 
-    <!-- Login ID -->
-    <div>
-        <label
-            for="login-id"
-            class="block text-sm font-medium text-gray-700 mb-2"
-            >Member ID</label
-        >
-        <input
-            id="login-id"
-            type="text"
-            bind:value={userId}
-            placeholder="wpayTestUser01"
-            class="w-full border-2 border-brand-primary rounded-md py-2 px-3 font-medium placeholder-ui-hint focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
-            class:text-brand-primary={true}
-        />
-    </div>
+        <!-- Merchant ID Selection -->
+        <div class="space-y-2">
+            <label for="mid" class="block text-sm font-medium text-gray-700">
+                Merchant ID <span class="text-red-500">*</span>
+            </label>
+            <DropdownInput
+                id="mid"
+                bind:value={mid}
+                options={merchantIdOptions as string[]}
+                placeholder="선택해 주세요"
+                isError={showMissingFields && !mid}
+            />
+        </div>
 
-    <!-- Phone -->
-    <div>
-        <label
-            for="phone-number"
-            class="block text-sm font-medium text-gray-700 mb-2"
-            >Cell Phone Number</label
-        >
-        <input
-            id="phone-number"
-            type="text"
-            value={hNum}
-            oninput={handlePhoneInput}
-            class="w-full border-2 border-brand-primary rounded-md py-2 px-3 font-medium placeholder-ui-hint focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
-            class:text-brand-primary={true}
-            placeholder="입력해 주세요."
-        />
-    </div>
+        <!-- Member ID Input -->
+        <div class="space-y-2">
+            <label for="userId" class="block text-sm font-medium text-gray-700">
+                Member ID
+            </label>
+            <input
+                id="userId"
+                type="text"
+                bind:value={userId}
+                placeholder="wpayTestUser01"
+                class="w-full px-3 py-2 border-2 rounded-md outline-none text-brand-primary placeholder:text-ui-hint focus:ring-2 focus:ring-brand-primary focus:border-brand-primary border-brand-primary"
+            />
+        </div>
 
-    <!-- Remember Me -->
-    <div class="flex items-center">
-        <input
-            id="remember-me"
-            name="remember-me"
-            type="checkbox"
-            bind:checked={isSaveCache}
-            class="h-4 w-4 text-brand-primary focus:ring-brand-primary border-gray-300 rounded cursor-pointer"
-        />
-        <label
-            for="remember-me"
-            class="ml-2 block text-sm text-gray-900 cursor-pointer"
-        >
-            Should I save to cache?
-        </label>
-    </div>
+        <!-- Cell Phone Number Input -->
+        <div class="space-y-2">
+            <label for="hNum" class="block text-sm font-medium text-gray-700">
+                Cell Phone Number
+            </label>
+            <input
+                id="hNum"
+                type="text"
+                inputmode="numeric"
+                bind:value={hNum}
+                placeholder="입력해 주세요."
+                oninput={handlePhoneInput}
+                class="w-full px-3 py-2 border-2 rounded-md outline-none text-brand-primary placeholder:text-ui-hint focus:ring-2 focus:ring-brand-primary focus:border-brand-primary border-brand-primary"
+            />
+        </div>
 
-    <!-- Login Button -->
-    <div
-        class="w-full"
-        role="none"
-        onmouseenter={handleMouseEnter}
-        onmouseleave={handleMouseLeave}
-        ontouchstart={handleTouchStart}
-        ontouchend={handleTouchEnd}
-    >
-        <button
-            type="button"
-            onclick={handleLogin}
-            disabled={!isValid}
-            class={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white 
-        ${isValid ? "bg-brand-primary hover:bg-brand-hover focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary" : "bg-ui-inactive cursor-not-allowed"}
-        transition-colors`}
+        <!-- Save Cache Checkbox -->
+        <!-- Save Cache Checkbox -->
+        <div class="flex items-center gap-2">
+            <input
+                id="isSaveCache"
+                type="checkbox"
+                bind:checked={isSaveCache}
+                class="w-4 h-4 text-brand-primary border-gray-300 rounded focus:ring-brand-primary"
+            />
+            <label
+                for="isSaveCache"
+                class="text-sm text-gray-600 cursor-pointer select-none"
+            >
+                Should I save to cache?
+            </label>
+        </div>
+
+        <!-- Next Button -->
+        <!-- Enabled only when required fields (service, server, site, mid) are selected -->
+        <!-- As per prompt, visually indicate missing fields on hover if disabled -->
+        <div
+            class="pt-4"
+            role="button"
+            tabindex="0"
+            onmouseenter={() => {
+                // Check if disabled conditions met to show hints
+                if (!service || !server || !site || !mid) {
+                    showMissingFields = true;
+                }
+            }}
+            onmouseleave={() => {
+                showMissingFields = false;
+            }}
+            ontouchstart={handleTouchStart}
+            ontouchend={() => {
+                if (touchTimer) clearTimeout(touchTimer);
+                touchTimer = setTimeout(() => {
+                    showMissingFields = false;
+                }, 2000); // 2 seconds delay
+            }}
         >
-            {isValid ? "Next" : "Next"}
-        </button>
+            <button
+                onclick={handleNextClick}
+                disabled={!service || !server || !site || !mid}
+                class={`w-full py-3 px-4 rounded-lg font-bold text-white transition-all duration-200
+                        ${
+                            !service || !server || !site || !mid
+                                ? "bg-ui-inactive cursor-not-allowed opacity-70"
+                                : "bg-brand-primary hover:bg-brand-hover shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                        }`}
+            >
+                Next
+            </button>
+        </div>
     </div>
 </div>
 
-<!-- PROD Server Modal -->
-<Modal bind:isOpen={showProdModal} title="PROD domain 선택">
-    <div class="flex flex-col gap-4">
-        <p class="text-sm text-text-message mb-2">
-            접속할 PROD 서버를 선택해주세요. <span class="text-red-500">*</span>
-        </p>
+<!-- Prod Domain Modal -->
+<Modal bind:isOpen={showProdModal} title="PROD-Domain">
+    <div class="space-y-4">
         <RadioGroup
-            options={prodServerOptions}
             groupName="prodDomain"
+            options={prodServerOptions.map((opt) => ({
+                value: opt,
+                label: opt,
+            }))}
             bind:selected={prodDomain}
             direction="column"
             variant="box"
+            onOptionClick={() => {
+                showProdModal = false; // Close on selection ? Prompt says "Modal을 오픈한다" on PROD select, implies selection closes it or explicit close? Usually selection closes or there's a confirm.
+                // Prompt: "PROD_SERVER_DOMAINS 값을 선택 하면... 문구를 표시 한다."
+                // Does not strictly say close, but better UX to close or have OK button.
+                // Modal component has Close X button. Let's keep it open until user closes or maybe auto close?
+                // Let's auto close for better flow as it's a single selection.
+                // Re-reading prompt: "Server 선택 영역 Radio Button 값이 PROD로 선택 했을 때... Modal을 오픈한다."
+                // "PROD_SERVER_DOMAINS 값을 선택 하면... (선택한 PROD_SERVER_DOMAINS) 문구를 표시 한다."
+                // Let's keep it open or provide a button?
+                // Given typical mobile/web flows for single select modal, auto-close is good.
+                showProdModal = false;
+            }}
         />
-        <div class="mt-6 flex justify-end">
-            <button
-                onclick={() => (showProdModal = false)}
-                class="px-4 py-2 rounded-md text-text-white bg-brand-primary hover:bg-brand-hover transition-colors"
-            >
-                확인
-            </button>
-        </div>
     </div>
 </Modal>
 

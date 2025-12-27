@@ -1,4 +1,4 @@
-import { PROD_SERVER_DOMAINS, type ServiceType, type ProdServerDomain } from "$lib/types/wpayServerType";
+import { PROD_SERVER_DOMAINS, type ServiceType, type ProdServerDomain } from "$lib/constants/wpayServerType";
 
 const COMMON_URLS_1 = { // wpaystd-old & wpaypro
     DEV: "https://devwpay.inicis.com",
@@ -31,7 +31,7 @@ export const SERVICE_URLS: Record<ServiceType, {
         STG: "https://stgwpayplus.inicis.com",
         PROD: {
             [PROD_SERVER_DOMAINS.GLB]: "https://wpayplus.inicis.com",
-            [PROD_SERVER_DOMAINS.KS]: "https://kswpayplusplus.inicis.com",
+            [PROD_SERVER_DOMAINS.KS]: "https://kswpayplus.inicis.com",
             [PROD_SERVER_DOMAINS.FC]: "https://fcwpayplus.inicis.com",
         }
     },

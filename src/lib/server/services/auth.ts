@@ -1,5 +1,5 @@
-import type { ServerType, ServiceType, SiteType, MerchantIdType } from "$lib/types/wpayServerType";
-import { WPAY_USER_KEYS, SERVICE_URLS } from "$lib/server/secrets";
+import type { ServerType, ServiceType, SiteType, MerchantIdType } from "$lib/constants/wpayServerType";
+import { SERVICE_URLS } from "$lib/constants/wpayUrls";
 import { MERCHANT_KEYS } from "$lib/utils/encryption/cryptoKeys";
 
 interface GetMemberTokenParams {
@@ -30,8 +30,7 @@ export async function getMemberToken(params: GetMemberTokenParams): Promise<Memb
         throw new Error(`Encryption configuration not found for merchantId: ${merchantId}`);
     }
 
-    const wpayUserKey = WPAY_USER_KEYS[serverType];
-    // console.log(`Using wpayUserKey: ${wpayUserKey}`);
+
     // console.log(`Using Encryption Keys:`, encryptionConfig);
 
     // Determining Target URL (Mock)

@@ -1,7 +1,7 @@
-import type { ServerType } from "./wpayServerType";
+import type { ServerType } from "$lib/constants/wpayServerType";
 import type { JWTPayload } from "jose";
 
-export interface AuthToken extends JWTPayload {
+export interface AccessToken extends JWTPayload {
     server: ServerType;
     site: string;
     service: string;

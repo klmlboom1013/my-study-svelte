@@ -1,4 +1,4 @@
-import type { AuthToken } from "$lib/types/authToken";
+import type { AccessToken } from "$lib/types/accessToken";
 import { MERCHANT_KEYS } from "$lib/utils/encryption/cryptoKeys";
 import { SignJWT, jwtVerify } from "jose";
 
@@ -7,7 +7,7 @@ const generateUU = (): string => {
     return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-export const createAuthToken = async (
+export const createAccessToken = async (
     params: {
         server: any,
         site: string,
@@ -27,7 +27,7 @@ export const createAuthToken = async (
 
     const uu = generateUU();
 
-    const payload: AuthToken = {
+    const payload: AccessToken = {
         server,
         site,
         service,
@@ -49,7 +49,7 @@ export const createAuthToken = async (
     return token;
 };
 
-export const validateAuthToken = async (token: string | null, mid: string): Promise<boolean> => {
+export const validateAccessToken = async (token: string | null, mid: string): Promise<boolean> => {
     if (!token) return false;
 
     // Get Hash Key

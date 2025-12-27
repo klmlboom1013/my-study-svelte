@@ -46,7 +46,6 @@ export const MERCHANT_ID_OPTIONS = [
 
 export type MerchantIdType = typeof MERCHANT_ID_OPTIONS[number];
 
-
 // Service Site Mapping
 export const SERVICE_SITE_MAPPING: Record<ServiceType, SiteType[]> = {
     "wpaystd": ["stdwpay"],
@@ -63,5 +62,3 @@ export const SITE_MERCHANT_ID_MAPPING: Record<SiteType, MerchantIdType[]> = {
     "ygypay": ["yogiyopay1"],
     "kbstar": []
 };
-
-

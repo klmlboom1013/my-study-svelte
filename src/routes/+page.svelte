@@ -1,7 +1,8 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
-    import { validateAuthToken } from "$lib/utils/auth/authToken";
+    import { validateAccessToken } from "$lib/utils/auth/accessToken";
+    import { deleteCookie, getCookie } from "$lib/utils/cookie";
     import { decodeJwt } from "jose";
 
     let isValid = $state(false);
@@ -23,29 +24,29 @@
             keysToRemove.forEach((key) => localStorage.removeItem(key));
         }
 
-        const authToken = localStorage.getItem("authToken");
+        const accessToken = getCookie("accessToken");
 
-        if (!authToken) {
+        if (!accessToken) {
             goto("/login");
             return;
         }
 
         try {
             // Decode token to get mid (unverified first)
-            const payload = decodeJwt(authToken);
+            const payload = decodeJwt(accessToken);
             const mid = payload.mid as string;
 
             if (!mid) {
                 console.error("No mid in token");
-                localStorage.removeItem("authToken");
+                deleteCookie("accessToken");
                 goto("/login");
                 return;
             }
 
-            const valid = await validateAuthToken(authToken, mid);
+            const valid = await validateAccessToken(accessToken, mid);
             if (!valid) {
                 // Invalid token, clear and redirect
-                localStorage.removeItem("authToken");
+                deleteCookie("accessToken");
                 goto("/login");
                 return;
             }
@@ -53,13 +54,13 @@
             isValid = true;
         } catch (e) {
             console.error("Token decode/validation failed", e);
-            localStorage.removeItem("authToken");
+            deleteCookie("accessToken");
             goto("/login");
         }
     });
 
     function handleLogout() {
-        localStorage.removeItem("authToken");
+        deleteCookie("accessToken");
         // mid Removal Logic Removed:
         // isSave=true: mid should persist.
         // isSave=false: mid is already cleared onMount.
