@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>WPAY Request Result Modal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#1e3a8a", // Deep blue from header
+                        "primary-hover": "#172554",
+                        "background-light": "#f3f4f6", // Gray-100
+                        "background-dark": "#111827", // Gray-900
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1f2937", // Gray-800
+                        "border-light": "#e5e7eb", // Gray-200
+                        "border-dark": "#374151", // Gray-700
+                        "text-light": "#1f2937", // Gray-800
+                        "text-dark": "#f9fafb", // Gray-50
+                        "text-muted-light": "#6b7280", // Gray-500
+                        "text-muted-dark": "#9ca3af", // Gray-400
+                    },
+                    fontFamily: {
+                        display: ["'Noto Sans KR'", "sans-serif"],
+                        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", "monospace"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.375rem",
+                    },
+                },
+            },
+        };
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display min-h-screen flex flex-col antialiased relative">
+<div aria-hidden="true" class="flex-1 flex flex-col items-center justify-center p-4 opacity-50 pointer-events-none select-none">
+<header class="w-full max-w-4xl mb-8 flex justify-between items-center">
+<h1 class="text-2xl font-bold text-text-light dark:text-text-dark">WPAY Service Test</h1>
+</header>
+<main class="w-full max-w-md bg-surface-light dark:bg-surface-dark p-8 rounded-lg shadow-lg border border-border-light dark:border-border-dark">
+<div class="space-y-4">
+<div>
+<label class="block text-sm font-medium text-text-light dark:text-text-dark mb-1">Service <span class="text-red-500">*</span></label>
+<select class="w-full rounded-DEFAULT border-border-light dark:border-border-dark bg-background-light dark:bg-surface-dark text-text-light dark:text-text-dark px-3 py-2">
+<option>Select Service</option>
+</select>
+</div>
+<div class="h-32 bg-gray-100 dark:bg-gray-800 rounded animate-pulse"></div>
+<div class="h-10 bg-primary rounded opacity-20"></div>
+</div>
+</main>
+<footer class="mt-8 text-center text-sm text-text-muted-light dark:text-text-muted-dark">
+            © 2024 klmlboom. All rights reserved.
+        </footer>
+</div>
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" id="e51d6a3f9f5c434fa527c3606bb92b71">
+<div class="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"></div>
+<div class="relative w-full max-w-5xl bg-surface-light dark:bg-surface-dark rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+<div class="bg-[rgb(23_103_207)] px-6 py-4 flex justify-between items-center shrink-0 border-b border-gray-200 dark:border-gray-700">
+<h2 class="text-xl font-bold text-[oklch(1_0_0)] tracking-tight">WPAY 요청 결과</h2>
+<button class="text-[oklch(1_0_0)] hover:text-white/80 hover:bg-white/10 rounded-full p-1 transition-colors focus:outline-none focus:ring-2 focus:ring-white/50">
+<span class="material-icons">close</span>
+</button>
+</div>
+<div class="p-6 overflow-y-auto custom-scrollbar">
+<div class="border border-border-light dark:border-border-dark rounded-lg overflow-hidden">
+<table class="w-full text-left text-sm border-collapse">
+<thead class="bg-[rgb(97_106_114)] border-b border-border-light dark:border-border-dark">
+<tr>
+<th class="px-4 py-3 font-bold text-[rgb(255_255_255)] w-1/4 border-r border-border-light dark:border-border-dark">항목 (Key)</th>
+<th class="px-4 py-3 font-bold text-[rgb(255_255_255)] w-1/3 border-r border-border-light dark:border-border-dark">값 (Encrypted/Raw)</th>
+<th class="px-4 py-3 font-bold text-[rgb(255_255_255)] w-1/3">해독 값 (Decrypted)</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-light dark:divide-border-dark">
+<tr class="bg-surface-light dark:bg-surface-dark hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+<td class="px-4 py-3 border-r border-border-light dark:border-border-dark align-top">
+<div class="font-bold text-text-light dark:text-text-dark">결과 코드</div>
+<div class="font-mono text-xs text-text-muted-light dark:text-text-muted-dark mt-0.5">resultCode</div>
+</td>
+<td class="px-4 py-3 border-r border-border-light dark:border-border-dark font-mono text-text-muted-light dark:text-text-muted-dark align-top break-all">
+                                    0000
+                                </td>
+<td class="px-4 py-3 text-text-light dark:text-text-dark font-medium align-top">
+                                    -
+                                </td>
+</tr>
+<tr class="bg-surface-light dark:bg-surface-dark hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+<td class="px-4 py-3 border-r border-border-light dark:border-border-dark align-top">
+<div class="font-bold text-text-light dark:text-text-dark">결과 메시지</div>
+<div class="font-mono text-xs text-text-muted-light dark:text-text-muted-dark mt-0.5">resultMsg</div>
+</td>
+<td class="px-4 py-3 border-r border-border-light dark:border-border-dark font-mono text-text-muted-light dark:text-text-muted-dark text-xs align-top break-all leading-relaxed">
+                                    WPAY+%ED%9A%8C%EC%9B%90%EA%B0%80%EC%9E%85%EC%A0%95%EB%B3%B4+%EC%A1%B0%ED%9A%8C+%EC%84%B1%EA%B3%B5.%0A0%95%EB%B3%B4%B4+%EC%A1%B0%ED%9A%8C+%EC%84%B1%EA%B3%B5%B1%EA%B3%B5.
+                                </td>
+<td class="px-4 py-3 text-text-light dark:text-text-dark font-medium align-top">
+                                    WPAY 회원가입정보 조회 성공.
+                                </td>
+</tr>
+<tr class="bg-surface-light dark:bg-surface-dark hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+<td class="px-4 py-3 border-r border-border-light dark:border-border-dark align-top">
+<div class="font-bold text-text-light dark:text-text-dark">WPAY 사용자 키</div>
+<div class="font-mono text-xs text-text-muted-light dark:text-text-muted-dark mt-0.5">wpayUserKey</div>
+</td>
+<td class="px-4 py-3 border-r border-border-light dark:border-border-dark font-mono text-text-muted-light dark:text-text-muted-dark text-xs align-top break-all">
+                                    SQVrwbGJb2rruRfMrUgWzVMSp7C8jyH59XwP7MVki0Q=
+                                </td>
+<td class="px-4 py-3 text-text-light dark:text-text-dark font-medium align-top font-mono text-sm">
+                                    ST201812270000000662
+                                </td>
+</tr>
+<tr class="bg-surface-light dark:bg-surface-dark hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+<td class="px-4 py-3 border-r border-border-light dark:border-border-dark align-top">
+<div class="font-bold text-text-light dark:text-text-dark">사용자 ID</div>
+<div class="font-mono text-xs text-text-muted-light dark:text-text-muted-dark mt-0.5">userId</div>
+</td>
+<td class="px-4 py-3 border-r border-border-light dark:border-border-dark font-mono text-text-muted-light dark:text-text-muted-dark text-xs align-top break-all">
+                                    iSUVQuvVmhyVkoza0EeH/w==
+                                </td>
+<td class="px-4 py-3 text-text-light dark:text-text-dark font-medium align-top">
+                                    wpayTestUser01
+                                </td>
+</tr>
+<tr class="bg-surface-light dark:bg-surface-dark hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+<td class="px-4 py-3 border-r border-border-light dark:border-border-dark align-top">
+<div class="font-bold text-text-light dark:text-text-dark">상태</div>
+<div class="font-mono text-xs text-text-muted-light dark:text-text-muted-dark mt-0.5">status</div>
+</td>
+<td class="px-4 py-3 border-r border-border-light dark:border-border-dark font-mono text-text-muted-light dark:text-text-muted-dark align-top">
+                                    00
+                                </td>
+<td class="px-4 py-3 text-text-light dark:text-text-dark font-medium align-top">
+                                    -
+                                </td>
+</tr>
+<tr class="bg-surface-light dark:bg-surface-dark hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b-0">
+<td class="px-4 py-3 border-r border-border-light dark:border-border-dark align-top">
+<div class="font-bold text-text-light dark:text-text-dark">CI</div>
+<div class="font-mono text-xs text-text-muted-light dark:text-text-muted-dark mt-0.5">ci</div>
+</td>
+<td class="px-4 py-3 border-r border-border-light dark:border-border-dark font-mono text-text-muted-light dark:text-text-muted-dark text-xs align-top break-all leading-relaxed">
+                                    XScMdvMjInllwBOCqChbM/jGOOF13abzxAnZw8wODYMZ4PwpkDIyQyZeyufJ8fPMJbB/XWrrnfU0DNPWxq1QsKV4BMBObAexlrg2KjQAXS+sRPqXhjnfzR06dbnzdDeo
+                                </td>
+<td class="px-4 py-3 text-text-light dark:text-text-dark font-medium align-top break-all text-sm leading-relaxed">
+                                    icqiWsBvWVsZ+hGz+GOwPyGsal4hrND894RqHmXYcWLxKnKvPEo5MGIPHyR943NnXC0mYf4XAPh7Y4nrK23xdg==
+                                </td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="bg-gray-50 dark:bg-gray-800/50 px-6 py-4 flex justify-end items-center shrink-0 border-t border-border-light dark:border-border-dark">
+<button class="bg-[rgb(23_103_207)] hover:bg-blue-600 text-white font-medium py-2 px-6 rounded-md shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[rgb(23_103_207)] dark:focus:ring-offset-gray-900">
+                    확인
+                </button>
+</div>
+</div>
+</div>
+</body></html>

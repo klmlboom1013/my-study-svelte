@@ -54,7 +54,7 @@
             class={`w-full h-11 pl-4 pr-10 rounded-lg border bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm outline-none transition-shadow ${
                 isError
                     ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                    : "border-slate-300 dark:border-slate-600 focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-slate-400"
+                    : "border-slate-300 dark:border-slate-600 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 placeholder:text-slate-400"
             }`}
             onclick={() => (isOpen = true)}
         />

@@ -5,7 +5,6 @@
 
 - markup 파일 참고
  - prompt/markup/signin.html (기본 signin 페이지)
- - prompt/markup/signin-modal.html (WPAY Production Domain Modal 추가된 signin 페이지)
 
 </aside>
 
@@ -32,12 +31,17 @@
   - PROD가 아니면:
     - "Server Environment" 문구 오른쪽 추가된 문구를 제거 한다.
     - input name "prodDomain" value를 빈값으로 설정 한다.
+- click event: 
+  - server value가 이미 PROD로 설정된 상태에서 PROD 버튼을 클릭하면 "WPAY Production Domain" Modal Open 한다.
 
 ### "WPAY Production Domain" Modal.
 - name: prodDomain
 - required: false (` "server" value가 PROD 이면 true 이다.`)
 - radio button value set: prompt/constants/wpayServerType.md 의 PROD_SERVER_DOMAINS 참고. (`중복 선택 불가`)
-- change event: Server 선택 영역 "Server Environment" 문구 오른쪽에 (inpput name "prodDomain" value)를 표시 한다.
+- change event: 
+  - Server 선택 영역 "Server Environment" 문구 오른쪽에 (inpput name "prodDomain" value)를 표시 한다.
+  - prodDomain이 선택 되면 모달을 닫는다.
+  
 
 ### Service 선택
 - name: service

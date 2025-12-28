@@ -3,6 +3,8 @@
 
 - WPAY 서비스 API Request Data, Response Data 설정 정보를 제공 한다.
 - WPAY 서비스는 Web Page를 호출하는 방식과 서버 간 API 통신하는 방식을 제공 한다.
+- WPAY 서비스 연동 결과 Response Data를 보여주는 View Modal UI Style.
+  - Markup File: prompt/markup/wpay_response_view_modal.html 을 참고 한다.
 
 </aside>
 

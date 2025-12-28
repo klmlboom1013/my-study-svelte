@@ -12,9 +12,17 @@
         data: ResultItem[];
         onConfirm: () => void;
         onClose: () => void;
+        title?: string;
+        buttonText?: string;
     }
 
-    let { data, onConfirm, onClose }: Props = $props();
+    let {
+        data,
+        onConfirm,
+        onClose,
+        title = "WPAY 요청 결과",
+        buttonText = "확인",
+    }: Props = $props();
 </script>
 
 <div
@@ -31,13 +39,15 @@
         transition:scale={{ duration: 200, start: 0.95 }}
     >
         <div
-            class="bg-primary dark:bg-slate-800 px-6 py-4 flex justify-between items-center shrink-0 border-b border-gray-200 dark:border-gray-700"
+            class="bg-white dark:bg-slate-800 px-6 py-4 flex justify-between items-center shrink-0 border-b border-gray-200 dark:border-gray-700"
         >
-            <h2 class="text-xl font-bold text-white tracking-tight">
-                WPAY 요청 결과
+            <h2
+                class="text-xl font-bold text-slate-900 dark:text-white tracking-tight"
+            >
+                {title}
             </h2>
             <button
-                class="text-white hover:text-white/80 hover:bg-white/10 rounded-full p-1 transition-colors focus:outline-none focus:ring-2 focus:ring-white/50 cursor-pointer"
+                class="text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-700/50 rounded-full p-1 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-500/50 cursor-pointer"
                 onclick={onClose}
             >
                 <span class="material-symbols-outlined">close</span>
@@ -116,10 +126,10 @@
             class="bg-slate-50 dark:bg-slate-800/50 px-6 py-4 flex justify-end items-center shrink-0 border-t border-slate-200 dark:border-slate-700"
         >
             <button
-                class="bg-primary hover:bg-blue-600 text-white font-medium py-2 px-6 rounded-md shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary dark:focus:ring-offset-gray-900 cursor-pointer"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-md shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 dark:focus:ring-offset-gray-900 cursor-pointer"
                 onclick={onConfirm}
             >
-                확인
+                {buttonText}
             </button>
         </div>
     </div>

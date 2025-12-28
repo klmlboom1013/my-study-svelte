@@ -67,7 +67,7 @@
                         ${
                             isError
                                 ? "border-red-500 text-red-500"
-                                : "border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 peer-checked:border-primary peer-checked:ring-1 peer-checked:ring-primary peer-checked:bg-primary/5 peer-checked:text-primary"
+                                : "border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 peer-checked:border-blue-600 peer-checked:ring-1 peer-checked:ring-blue-600 peer-checked:bg-blue-600/5 peer-checked:text-blue-600"
                         }
                     `}
                 >
@@ -84,7 +84,7 @@
                         {value}
                         bind:group={selected}
                         onclick={() => onOptionClick?.(value)}
-                        class={`peer appearance-none w-5 h-5 border-2 rounded-full cursor-pointer transition-all ${isError ? "border-red-500 checked:bg-red-500" : "border-slate-300 dark:border-slate-600 checked:bg-primary checked:border-primary"}`}
+                        class={`peer appearance-none w-5 h-5 border-2 rounded-full cursor-pointer transition-all ${isError ? "border-red-500 checked:bg-red-500" : "border-slate-300 dark:border-slate-600 checked:bg-blue-600 checked:border-blue-600"}`}
                     />
                     <div
                         class="absolute w-2 h-2 bg-white rounded-full opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity"

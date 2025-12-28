@@ -1,14 +1,22 @@
+<!--
+signin 페이지 PROD Domain 선택 모달이 추가된 버전
+-->
 <!DOCTYPE html>
-<html class="light" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Sign In - WPAY Service Test</title>
-<link href="https://fonts.googleapis.com" rel="preconnect"/>
-<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<script id="tailwind-config">
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Sign In - WPAY Service Test</title>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
             theme: {
@@ -31,10 +39,11 @@
             },
         }
     </script>
-<style>
+    <style>
         body {
             font-family: "Inter", sans-serif
         }
+
         .custom-select {
             -webkit-appearance: none;
             -moz-appearance: none;
@@ -42,167 +51,215 @@
         }
     </style>
 </head>
-<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen flex flex-col font-display">
-<header class="w-full bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4 sticky top-0 z-20">
-<div class="max-w-7xl mx-auto flex items-center justify-between">
-<div class="flex items-center gap-3">
-<div class="size-8 text-primary flex items-center justify-center bg-primary/10 rounded-lg">
-<span class="material-symbols-outlined text-2xl">school</span>
-</div>
-<h2 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">WPAY Service Test</h2>
-</div>
-<div class="relative group">
-<a class="text-sm font-medium text-slate-500 hover:text-primary transition-colors flex items-center gap-1 cursor-help py-1" href="#">
-<span class="material-symbols-outlined text-lg">help</span>
-<span>Help</span>
-</a>
-<div class="absolute right-0 top-full mt-2 w-max max-w-sm px-3 py-2 bg-slate-800 dark:bg-white text-white dark:text-slate-900 text-xs rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-1 group-hover:translate-y-0 z-50">
-                문의사항은 klmlboom@kggroup.co.kr 로 보내주세요
+
+<body
+    class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen flex flex-col font-display">
+    <header
+        class="w-full bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4 sticky top-0 z-20">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="size-8 text-blue-600 flex items-center justify-center bg-blue-600/10 rounded-lg">
+                    <span class="material-symbols-outlined text-2xl">school</span>
+                </div>
+                <h2 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">WPAY Service Test</h2>
             </div>
-</div>
-</div>
-</header>
-<main class="flex-1 flex flex-col items-center justify-center p-4 sm:p-8">
-<div class="w-full max-w-[520px] bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden">
-<div class="px-8 pt-8 pb-4">
-<h1 class="text-2xl font-bold text-slate-900 dark:text-white">Sign In</h1>
-<p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Configure your environment to proceed.</p>
-</div>
-<form class="px-8 pb-8 space-y-6">
-<div class="space-y-3">
-<label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Server Environment</label>
-<div class="grid grid-cols-3 gap-3">
-<label class="cursor-pointer relative">
-<input checked="" class="peer sr-only" name="server" type="radio" value="DEV"/>
-<div class="flex items-center justify-center h-10 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-medium text-sm transition-all hover:bg-slate-100 peer-checked:border-primary peer-checked:ring-1 peer-checked:ring-primary peer-checked:bg-primary/5 peer-checked:text-primary">
-                            DEV
+            <div class="relative group">
+                <button
+                    class="text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors flex items-center gap-1 cursor-help py-1 bg-transparent border-none p-0"
+                    type="button">
+                    <span class="material-symbols-outlined text-lg">help</span>
+                    <span>Help</span>
+                </button>
+                <div
+                    class="absolute right-0 top-full mt-2 w-max max-w-sm px-3 py-2 bg-slate-800 dark:bg-white text-white dark:text-slate-900 text-xs rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-1 group-hover:translate-y-0 z-50">
+                    문의사항은 klmlboom@kggroup.co.kr 로 보내주세요
+                </div>
+            </div>
+        </div>
+    </header>
+    <main class="flex-1 flex flex-col items-center justify-center p-4 sm:p-8">
+        <div
+            class="w-full max-w-[520px] bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden">
+            <div class="px-8 pt-8 pb-4">
+                <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Sign In</h1>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Configure your environment to proceed.</p>
+            </div>
+            <form class="px-8 pb-8 space-y-6">
+                <div class="space-y-3">
+                    <span class="block text-sm font-semibold text-slate-700 dark:text-slate-300">Server
+                        Environment</span>
+                    <div class="grid grid-cols-3 gap-3">
+                        <label class="cursor-pointer relative">
+                            <input class="peer sr-only" name="server" type="radio" value="DEV" />
+                            <div
+                                class="flex items-center justify-center h-10 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-medium text-sm transition-all hover:bg-slate-100 peer-checked:border-blue-600 peer-checked:ring-1 peer-checked:ring-blue-600 peer-checked:bg-blue-600/5 peer-checked:text-blue-600">
+                                DEV
+                            </div>
+                        </label>
+                        <label class="cursor-pointer relative">
+                            <input class="peer sr-only" name="server" type="radio" value="STG" />
+                            <div
+                                class="flex items-center justify-center h-10 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-medium text-sm transition-all hover:bg-slate-100 peer-checked:border-blue-600 peer-checked:ring-1 peer-checked:ring-blue-600 peer-checked:bg-blue-600/5 peer-checked:text-blue-600">
+                                STG
+                            </div>
+                        </label>
+                        <label class="cursor-pointer relative group">
+                            <input checked="" class="peer sr-only" name="server" type="radio" value="PROD" />
+                            <div
+                                class="flex items-center justify-center h-10 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-medium text-sm transition-all hover:bg-slate-100 peer-checked:border-blue-600 peer-checked:ring-1 peer-checked:ring-blue-600 peer-checked:bg-blue-600/5 peer-checked:text-blue-600">
+                                PROD
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="space-y-1.5 col-span-1 sm:col-span-2">
+                        <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Service</label>
+                        <div class="relative w-full">
+                            <div class="relative">
+                                <input type="text" placeholder="Select a Service" readonly
+                                    class="w-full h-11 pl-4 pr-10 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm outline-none transition-shadow focus:border-blue-600 focus:ring-1 focus:ring-blue-600 placeholder:text-slate-400 cursor-pointer"
+                                    value="" />
+                                <button
+                                    class="absolute right-0 top-0 bottom-0 px-2 flex items-center justify-center text-slate-300 dark:text-slate-600 pointer-events-none"
+                                    type="button" tabindex="-1">
+                                    <span class="material-symbols-outlined text-2xl">keyboard_arrow_down</span>
+                                </button>
+                            </div>
                         </div>
-</label>
-<label class="cursor-pointer relative">
-<input class="peer sr-only" name="server" type="radio" value="STG"/>
-<div class="flex items-center justify-center h-10 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-medium text-sm transition-all hover:bg-slate-100 peer-checked:border-primary peer-checked:ring-1 peer-checked:ring-primary peer-checked:bg-primary/5 peer-checked:text-primary">
-                            STG
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Site</label>
+                        <div class="relative w-full">
+                            <div class="relative">
+                                <input type="text" placeholder="Select Site" readonly
+                                    class="w-full h-11 pl-4 pr-10 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm outline-none transition-shadow focus:border-blue-600 focus:ring-1 focus:ring-blue-600 placeholder:text-slate-400 cursor-pointer"
+                                    value="" />
+                                <button
+                                    class="absolute right-0 top-0 bottom-0 px-2 flex items-center justify-center text-slate-300 dark:text-slate-600 pointer-events-none"
+                                    type="button" tabindex="-1">
+                                    <span class="material-symbols-outlined text-2xl">keyboard_arrow_down</span>
+                                </button>
+                            </div>
                         </div>
-</label>
-<label class="cursor-pointer relative group">
-<input class="peer sr-only" name="server" type="radio" value="PROD"/>
-<div class="flex items-center justify-center h-10 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-medium text-sm transition-all hover:bg-slate-100 peer-checked:border-primary peer-checked:ring-1 peer-checked:ring-primary peer-checked:bg-primary/5 peer-checked:text-primary">
-                            PROD
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Merchant ID</label>
+                        <div class="relative w-full">
+                            <div class="relative">
+                                <input type="text" placeholder="Select MID" readonly
+                                    class="w-full h-11 pl-4 pr-10 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm outline-none transition-shadow focus:border-blue-600 focus:ring-1 focus:ring-blue-600 placeholder:text-slate-400 cursor-pointer"
+                                    value="" />
+                                <button
+                                    class="absolute right-0 top-0 bottom-0 px-2 flex items-center justify-center text-slate-300 dark:text-slate-600 pointer-events-none"
+                                    type="button" tabindex="-1">
+                                    <span class="material-symbols-outlined text-2xl">keyboard_arrow_down</span>
+                                </button>
+                            </div>
                         </div>
-</label>
-</div>
-</div>
-<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-<div class="space-y-1.5 col-span-1 sm:col-span-2">
-<label class="text-sm font-medium text-slate-700 dark:text-slate-300">Service</label>
-<div class="relative">
-<select class="custom-select w-full h-11 pl-4 pr-10 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white invalid:text-slate-400 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow cursor-pointer" required="">
-<option disabled="" selected="" value="">Select a Service</option>
-<option value="analytics">Analytics Service</option>
-<option value="logistics">Logistics Core</option>
-<option value="payments">Payment Gateway</option>
-</select>
-<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-primary">
-<span class="material-symbols-outlined text-2xl">keyboard_arrow_down</span>
-</div>
-</div>
-</div>
-<div class="space-y-1.5">
-<label class="text-sm font-medium text-slate-700 dark:text-slate-300">Site</label>
-<div class="relative">
-<select class="custom-select w-full h-11 pl-4 pr-10 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white invalid:text-slate-400 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow cursor-pointer" required="">
-<option disabled="" selected="" value="">Select Site</option>
-<option value="ny">New York HQ</option>
-<option value="ldn">London Branch</option>
-<option value="tk">Tokyo Office</option>
-</select>
-<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-primary">
-<span class="material-symbols-outlined text-2xl">keyboard_arrow_down</span>
-</div>
-</div>
-</div>
-<div class="space-y-1.5">
-<label class="text-sm font-medium text-slate-700 dark:text-slate-300">Merchant ID</label>
-<div class="relative">
-<select class="custom-select w-full h-11 pl-4 pr-10 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white invalid:text-slate-400 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow cursor-pointer" required="">
-<option disabled="" selected="" value="">Select MID</option>
-<option value="m_001">MID-883920</option>
-<option value="m_002">MID-110293</option>
-<option value="m_003">MID-449201</option>
-</select>
-<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-primary">
-<span class="material-symbols-outlined text-2xl">keyboard_arrow_down</span>
-</div>
-</div>
-</div>
-</div>
-<hr class="border-slate-100 dark:border-slate-700"/>
-<div class="space-y-4">
-<div class="space-y-1.5">
-<label class="text-sm font-medium text-slate-700 dark:text-slate-300">Member ID</label>
-<div class="relative group">
-<span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">
-<span class="material-symbols-outlined text-[20px]">badge</span>
-</span>
-<input class="w-full h-11 pl-10 pr-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm placeholder:text-slate-400 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="wpayTestUser01" type="text"/>
-</div>
-</div>
-<div class="space-y-1.5">
-<label class="text-sm font-medium text-slate-700 dark:text-slate-300">Cell Phone Number</label>
-<div class="relative group">
-<span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">
-<span class="material-symbols-outlined text-[20px]">smartphone</span>
-</span>
-<input class="w-full h-11 pl-10 pr-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm placeholder:text-slate-400 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="Please enter numbers only" type="tel"/>
-</div>
-</div>
-</div>
-<div class="pt-2">
-<label class="flex items-center gap-2.5 cursor-pointer mb-6 group">
-<div class="relative flex items-center">
-<input checked="" class="peer size-5 appearance-none rounded border border-slate-300 dark:border-slate-600 bg-white checked:bg-primary checked:border-primary focus:ring-2 focus:ring-primary/20 transition-all" type="checkbox"/>
-<span class="material-symbols-outlined absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none text-sm left-0.5">check</span>
-</div>
-<span class="text-sm text-slate-600 dark:text-slate-400 select-none group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">Should I save to cache?</span>
-</label>
-<button class="w-full h-12 bg-primary hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm hover:shadow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all disabled:opacity-50 disabled:cursor-not-allowed group relative" type="button">
-                    Next
-                    <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-2 py-1 text-xs text-white bg-slate-800 rounded opacity-0 transition-opacity pointer-events-none">
+                    </div>
+                </div>
+                <hr class="border-slate-100 dark:border-slate-700" />
+                <div class="space-y-4">
+                    <div class="space-y-1.5">
+                        <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Member ID</label>
+                        <div class="relative group">
+                            <span
+                                class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors">
+                                <span class="material-symbols-outlined text-[20px]">badge</span>
+                            </span>
+                            <input
+                                class="w-full h-11 pl-10 pr-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm placeholder:text-slate-400 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none transition-shadow"
+                                placeholder="wpayTestUser01" type="text" />
+                        </div>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Cell Phone Number</label>
+                        <div class="relative group">
+                            <span
+                                class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors">
+                                <span class="material-symbols-outlined text-[20px]">smartphone</span>
+                            </span>
+                            <input
+                                class="w-full h-11 pl-10 pr-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm placeholder:text-slate-400 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none transition-shadow"
+                                placeholder="Please enter numbers only" type="tel" />
+                        </div>
+                    </div>
+                </div>
+                <div class="pt-2">
+                    <label class="flex items-center gap-2.5 cursor-pointer mb-6 group">
+                        <div class="relative flex items-center">
+                            <input
+                                class="peer size-5 appearance-none rounded border border-slate-300 dark:border-slate-600 bg-white checked:bg-blue-600 checked:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all"
+                                type="checkbox" />
+                            <span
+                                class="material-symbols-outlined absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none text-sm left-0.5">check</span>
+                        </div>
+                        <span
+                            class="text-sm text-slate-600 dark:text-slate-400 select-none group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">Should
+                            I save to cache?</span>
+                    </label>
+                    <button
+                        class="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm hover:shadow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed group relative"
+                        type="button">
+                        Next
+                        <span
+                            class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-2 py-1 text-xs text-white bg-slate-800 rounded opacity-0 transition-opacity pointer-events-none">
                             Please fill all required fields
                         </span>
-</button>
-</div>
-</form>
-</div>
-<p class="mt-8 text-xs text-slate-400 text-center">
-        © 2024 klmlboom. All rights reserved.<br/>
-        Secure connection encrypted.
-    </p>
-</main>
-<div class="hidden pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity opacity-0" id="prod-modal">
-<div class="w-full max-w-md bg-white dark:bg-slate-800 rounded-xl shadow-2xl overflow-hidden transform transition-all scale-95">
-<div class="p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center">
-<h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-<span class="material-symbols-outlined text-amber-500">warning</span>
-                Production Access
-            </h3>
-<button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-<span class="material-symbols-outlined">close</span>
-</button>
-</div>
-<div class="p-6 space-y-4">
-<p class="text-sm text-slate-600 dark:text-slate-300">
-                You have selected the <strong>PROD</strong> environment. Please enter the authorized Production Domain to continue.
-            </p>
-<div class="space-y-1.5">
-<label class="text-sm font-medium text-slate-700 dark:text-slate-300">PROD Domain</label>
-<input class="w-full h-11 px-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="https://api.production.com" type="text"/>
-</div>
-</div>
-<div class="p-4 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3 border-t border-slate-100 dark:border-slate-700">
-<button class="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white">Cancel</button>
-<button class="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-blue-700 shadow-sm">Confirm Domain</button>
-</div>
-</div>
-</div>
-</body></html>
+                    </button>
+                </div>
+            </form>
+        </div>
+        <p class="mt-8 text-xs text-slate-400 text-center">
+            © 2025 klmlboom. All rights reserved.<br />
+            Secure connection encrypted.
+        </p>
+    </main>
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity opacity-100"
+        id="prod-modal">
+        <div
+            class="w-full max-w-md bg-white dark:bg-slate-800 rounded-xl shadow-2xl overflow-hidden transform transition-all scale-100">
+            <div
+                class="p-6 bg-white dark:bg-slate-800 flex justify-between items-center border-b border-slate-100 dark:border-slate-700">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    WPAY Production Domain
+                </h3>
+                <button
+                    class="text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-300 transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="space-y-3">
+
+                    <div class="grid grid-cols-1 gap-3">
+                        <label class="cursor-pointer relative">
+                            <input checked="" class="peer sr-only" name="prod_domain" type="radio" value="GLB" />
+                            <div
+                                class="flex items-center justify-center h-12 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-medium text-sm transition-all hover:bg-slate-100 peer-checked:border-blue-600 peer-checked:ring-1 peer-checked:ring-blue-600 peer-checked:bg-blue-600/5 peer-checked:text-blue-600">
+                                GLB Domain
+                            </div>
+                        </label>
+                        <label class="cursor-pointer relative">
+                            <input class="peer sr-only" name="prod_domain" type="radio" value="KS" />
+                            <div
+                                class="flex items-center justify-center h-12 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-medium text-sm transition-all hover:bg-slate-100 peer-checked:border-blue-600 peer-checked:ring-1 peer-checked:ring-blue-600 peer-checked:bg-blue-600/5 peer-checked:text-blue-600">
+                                KS Domain
+                            </div>
+                        </label>
+                        <label class="cursor-pointer relative">
+                            <input class="peer sr-only" name="prod_domain" type="radio" value="FC" />
+                            <div
+                                class="flex items-center justify-center h-12 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-medium text-sm transition-all hover:bg-slate-100 peer-checked:border-blue-600 peer-checked:ring-1 peer-checked:ring-blue-600 peer-checked:bg-blue-600/5 peer-checked:text-blue-600">
+                                FC Domain
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

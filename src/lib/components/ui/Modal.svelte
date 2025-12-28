@@ -54,12 +54,12 @@
         >
             <!-- Header -->
             <div
-                class="bg-brand-primary px-6 py-4 flex justify-between items-center text-text-white"
+                class="bg-white px-6 py-4 flex justify-between items-center text-slate-900 border-b border-slate-100"
             >
                 <h2 class="text-xl font-bold">{title}</h2>
                 <button
                     onclick={close}
-                    class="hover:bg-white/10 p-1 rounded-full transition-colors"
+                    class="hover:bg-slate-100 text-slate-500 hover:text-slate-700 p-1 rounded-full transition-colors"
                 >
                     <X size={24} />
                 </button>

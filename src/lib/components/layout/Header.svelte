@@ -9,7 +9,7 @@
     <div class="max-w-7xl mx-auto flex items-center justify-between">
         <div class="flex items-center gap-3">
             <div
-                class="size-8 text-primary flex items-center justify-center bg-primary/10 rounded-lg"
+                class="size-8 text-blue-600 flex items-center justify-center bg-blue-600/10 rounded-lg"
             >
                 <span class="material-symbols-outlined text-2xl">school</span>
             </div>
@@ -21,7 +21,7 @@
         </div>
         <div class="relative group">
             <button
-                class="text-sm font-medium text-slate-500 hover:text-primary transition-colors flex items-center gap-1 cursor-help py-1 bg-transparent border-none p-0"
+                class="text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors flex items-center gap-1 cursor-help py-1 bg-transparent border-none p-0"
                 type="button"
             >
                 <span class="material-symbols-outlined text-lg">help</span>

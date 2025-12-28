@@ -76,6 +76,11 @@
             decrypted: string;
         }[]
     >([]);
+    let wpayResultTitle = $state("WPAY 요청 결과");
+    let wpayResultButtonText = $state("확인");
+    let modalNextAction = $state<"STEP2" | "SIGNUP" | "ACCESSTOKEN" | "CLOSE">(
+        "CLOSE",
+    );
 
     let wpayPopup: Window | null = null;
     let wpayFormData = $state<Record<string, string>>({});
@@ -195,8 +200,18 @@
             );
         }
 
-        window.removeEventListener("message", handleWpayMessage);
         window.addEventListener("message", handleWpayMessage);
+    }
+
+    function handleServerClick(value: string) {
+        if (value === SERVER_TYPES.PROD) {
+            showProdModal = true;
+        }
+    }
+
+    function handleProdDomainClick(value: string) {
+        prodDomain = value;
+        showProdModal = false;
     }
 
     async function handleWpayMessage(event: MessageEvent) {
@@ -345,6 +360,15 @@
                 }
             }
 
+            // Signup Result Props
+            wpayResultTitle = "WPAY Member Sign-up Result";
+            wpayResultButtonText = "Confirm";
+            if (isWpaySuccess) {
+                modalNextAction = "ACCESSTOKEN"; // Success -> Create Token
+            } else {
+                modalNextAction = "CLOSE"; // Failure -> Close
+            }
+
             wpayResultData = [
                 {
                     key: "resultCode",
@@ -399,6 +423,18 @@
 
         if (wpayPopup) wpayPopup.close();
         window.removeEventListener("message", handleWpayMessage);
+
+        // Ensure modal state is set for PIN Auth if it was that path
+        if (isPinAuthResponse) {
+            wpayResultTitle = "WPAY PIN Auth Result";
+            wpayResultButtonText = "Confirm"; // Step 2 Button
+            if (isWpaySuccess) {
+                modalNextAction = "ACCESSTOKEN";
+            } else {
+                modalNextAction = "CLOSE";
+            }
+        }
+
         showResultModal = true;
     }
 
@@ -434,51 +470,96 @@
 
     function handleResultConfirm() {
         showResultModal = false;
-        if (isWpaySuccess) {
-            const isMembershipCheck = wpayResultData.some(
-                (d) => d.key === "status",
-            );
-            if (isMembershipCheck) {
+
+        switch (modalNextAction) {
+            case "STEP2":
                 handlePinAuth();
-            } else {
+                break;
+            case "SIGNUP":
+                openWpaySignup();
+                break;
+            case "ACCESSTOKEN":
                 handleAccessTokenCreation();
-            }
-        } else {
-            // Failure case: remove wpayUserKey from localStorage if exists
-            try {
-                const stored = localStorage.getItem("sign-in-page");
-                if (stored) {
-                    const parsed = JSON.parse(stored);
-                    if (parsed.wpayUserKey) {
-                        delete parsed.wpayUserKey;
-                        localStorage.setItem(
-                            "sign-in-page",
-                            JSON.stringify(parsed),
-                        );
-                    }
+                break;
+            case "CLOSE":
+            default:
+                // Just close (already done above), and ensure cleanup if needed (for failure cases)
+                if (!isWpaySuccess && modalNextAction === "CLOSE") {
+                    // Cleanup wpayUserKey or other data if needed
+                    // Previous logic had this check, handled via isWpaySuccess check
+                    try {
+                        const stored = localStorage.getItem("sign-in-page");
+                        if (stored) {
+                            const parsed = JSON.parse(stored);
+                            // If it was a failure that requires cleanup (like PIN Auth fail)
+                            // Note: Membership check fail doesn't store wpayUserKey anyway.
+                            // Pin Auth fail removes it. Signup fail doesn't add it.
+                            // So mostly for Pin Auth fail logic which might have pre-existing key.
+                            // But actually, update logic in message handler already removes/adds keys.
+                            // So here we might not need extra cleanup unless explicit requirement.
+                            // Re-reading code: handleWpayMessage for PinAuth removes key on failure.
+                            // So cleanup is already done there.
+                            // Only strictly need to ensure we don't proceed.
+                        }
+                    } catch (e) {}
                 }
-            } catch (e) {
-                // ignore
-            }
+                break;
         }
     }
 
     function handleResultClose() {
-        handleResultConfirm();
+        // Step 1: "X" closes modal. Confirm/Signup does action.
+        // Step 2 & Signup: "X" same as Confirm (Action or Close).
+        // Check current context via action or title?
+        // Simplest: If Step 1 (Action is STEP2 or SIGNUP), Close = Close.
+        // Else (Step 2/Signup, Action ACCESSTOKEN or CLOSE), Close = Confirm.
+
+        if (modalNextAction === "STEP2" || modalNextAction === "SIGNUP") {
+            showResultModal = false;
+        } else {
+            handleResultConfirm();
+        }
     }
 
-    async function handleMembershipCheck() {
-        // userId Check
-        if (!userId) {
-            userId = "wpayTestUser01";
-        }
-
+    function handleNextClick() {
+        // Validation
         if (!mid || !site || !service || !server) {
             alert(
                 "Please fill all required fields (Service, Site, MID, Server).",
             );
             return;
         }
+
+        // Default userId
+        if (!userId) {
+            userId = "wpayTestUser01";
+        }
+
+        // Save to LocalStorage
+        const cacheData = {
+            service,
+            server,
+            prodDomain,
+            site,
+            mid,
+            userId: userId,
+            hNum,
+            isSaveCache,
+        };
+        localStorage.setItem("sign-in-page", JSON.stringify(cacheData));
+
+        // Branching logic
+        if (!hNum) {
+            openWpaySignup();
+        } else {
+            handleMembershipCheck();
+        }
+    }
+
+    async function handleMembershipCheck() {
+        // Validation (Double check or rely on handleNextClick if called from there)
+        // Keeping basic checks for safety if called independently or refactored later
+        if (!mid || !site || !service || !server) return;
 
         const keys = MERCHANT_KEYS[mid];
         if (!keys) {
@@ -499,18 +580,7 @@
             domain = SERVICE_URLS["wpaystd"][server as "DEV" | "STG"];
         }
 
-        // Save to LocalStorage if isSaveCache is checked
-        const cacheData = {
-            service,
-            server,
-            prodDomain,
-            site,
-            mid,
-            userId: userId || "wpayTestUser01",
-            hNum,
-            isSaveCache,
-        };
-        localStorage.setItem("sign-in-page", JSON.stringify(cacheData));
+        // ... (rest of logic uses state variables directly)
 
         const params: MembershipSearchParams = {
             domain,
@@ -519,6 +589,8 @@
             userId: userId || "wpayTestUser01",
             hNum: hNum,
         };
+
+        // ... (rest of function)
 
         try {
             const resData = await searchWpayMember(params);
@@ -548,9 +620,15 @@
 
             isWpaySuccess = isSuccess;
 
+            // Set dynamic modal props
+            wpayResultTitle = "WPAY Member Auth Result";
+
             if (isSuccess && wpayUserKey) {
+                wpayResultButtonText = "Confirm"; // -> Go to Step2
+                modalNextAction = "STEP2";
+
                 try {
-                    // Save Cache if checked
+                    // Save Cache if checked (keep existing logic)
                     if (isSaveCache) {
                         const cacheData = {
                             service,
@@ -580,6 +658,9 @@
                         }
                     }
                 } catch (e) {}
+            } else {
+                wpayResultButtonText = "Signup"; // -> Go to Signup
+                modalNextAction = "SIGNUP";
             }
 
             wpayResultData = [
@@ -624,10 +705,6 @@
             showResultModal = true;
         } catch (e) {
             console.error("Membership Check Failed", e);
-            // If User not found or error, prompt signup
-            // In prompt 4 (based on history), flow might be Check -> if fail -> Signup?
-            // But existing code just alerts. Let's start with alert, or follow user preference.
-            // Assuming user wants to see result modal every time as per previous code.
             alert(
                 "회원 조회 중 오류가 발생했습니다: " +
                     (e instanceof Error ? e.message : String(e)),
@@ -806,6 +883,7 @@
                 direction="grid"
                 cols={3}
                 isError={!server && highlightMissing}
+                onOptionClick={handleServerClick}
             />
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -866,7 +944,7 @@
                     </span>
                     <input
                         id="user-id-input"
-                        class="w-full h-11 pl-10 pr-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm placeholder:text-slate-400 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow"
+                        class="w-full h-11 pl-10 pr-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm placeholder:text-slate-400 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none transition-shadow"
                         placeholder="wpayTestUser01"
                         type="text"
                         bind:value={userId}
@@ -888,7 +966,7 @@
                     </span>
                     <input
                         id="phone-input"
-                        class="w-full h-11 pl-10 pr-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm placeholder:text-slate-400 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow"
+                        class="w-full h-11 pl-10 pr-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm placeholder:text-slate-400 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none transition-shadow"
                         placeholder="Please enter numbers only"
                         type="tel"
                         value={hNum}
@@ -901,7 +979,7 @@
             <label class="flex items-center gap-2.5 cursor-pointer mb-6 group">
                 <div class="relative flex items-center">
                     <input
-                        class="peer size-5 appearance-none rounded border border-slate-300 dark:border-slate-600 bg-white checked:bg-primary checked:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                        class="peer size-5 appearance-none rounded border border-slate-300 dark:border-slate-600 bg-white checked:bg-blue-600 checked:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all"
                         type="checkbox"
                         bind:checked={isSaveCache}
                     />
@@ -919,12 +997,12 @@
                 class={`w-full h-12 font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all group relative cursor-pointer
                     ${
                         isFormValid
-                            ? "bg-primary hover:bg-blue-700 text-white hover:shadow focus:ring-primary"
+                            ? "bg-blue-600 hover:bg-blue-700 text-white hover:shadow focus:ring-blue-600"
                             : "bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed"
                     }
                 `}
                 type="button"
-                onclick={handleMembershipCheck}
+                onclick={handleNextClick}
                 disabled={!isFormValid}
                 onmouseenter={() => (highlightMissing = true)}
                 onmouseleave={() => (highlightMissing = false)}
@@ -966,15 +1044,15 @@
             class="w-full max-w-md bg-white dark:bg-slate-800 rounded-xl shadow-2xl overflow-hidden transform transition-all scale-100"
         >
             <div
-                class="p-6 bg-primary dark:bg-slate-800 flex justify-between items-center"
+                class="p-6 bg-white dark:bg-slate-800 flex justify-between items-center border-b border-slate-100 dark:border-slate-700"
             >
                 <h3
-                    class="text-lg font-bold text-white flex items-center gap-2"
+                    class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2"
                 >
                     WPAY Production Domain
                 </h3>
                 <button
-                    class="text-white/70 hover:text-white transition-colors cursor-pointer"
+                    class="text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-300 transition-colors cursor-pointer"
                     onclick={() => (showProdModal = false)}
                 >
                     <span class="material-symbols-outlined">close</span>
@@ -982,10 +1060,6 @@
             </div>
             <div class="p-6 space-y-4">
                 <div class="space-y-3">
-                    <span
-                        class="block text-sm font-medium text-slate-700 dark:text-slate-300"
-                        >PROD Domain</span
-                    >
                     <div class="grid grid-cols-1 gap-3">
                         <RadioGroup
                             options={prodDomainRadioOptions}
@@ -993,19 +1067,10 @@
                             bind:selected={prodDomain}
                             variant="box"
                             direction="column"
+                            onOptionClick={handleProdDomainClick}
                         />
                     </div>
                 </div>
-            </div>
-            <div
-                class="p-4 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3 border-t border-slate-100 dark:border-slate-700"
-            >
-                <button
-                    class="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-blue-700 shadow-sm cursor-pointer"
-                    onclick={confirmProdModal}
-                >
-                    Confirm
-                </button>
             </div>
         </div>
     </div>
@@ -1017,5 +1082,7 @@
         data={wpayResultData}
         onConfirm={handleResultConfirm}
         onClose={handleResultClose}
+        title={wpayResultTitle}
+        buttonText={wpayResultButtonText}
     />
 {/if}

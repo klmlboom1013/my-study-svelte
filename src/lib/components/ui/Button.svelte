@@ -15,8 +15,8 @@
     {type}
     class="px-4 py-2 rounded-md font-medium transition-colors border-2
     {disabled
-        ? 'bg-ui-inactive text-text-white border-ui-inactive cursor-not-allowed'
-        : 'bg-brand-primary text-text-white border-brand-primary hover:bg-brand-hover active:bg-brand-hover'}
+        ? 'bg-slate-200 text-slate-500 border-slate-200 cursor-not-allowed'
+        : 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700 active:bg-blue-700'}
     {className}"
     {disabled}
     on:click={handleClick}
