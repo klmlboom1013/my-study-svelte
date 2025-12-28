@@ -13,10 +13,10 @@ WPAY 회원 가입 요청 웹페이지를 window.open(popup)으로 오픈한다.
 
 ### WPAY 서비스 연동 가이드 선택
 - localStorage key "sign-in-page" value(JSON)의 service 값에 따라 결정 된다.
-  - WPAYSTD: "prompt/external/service-wpay/wpaystd/1. 회원 가입 요청.md"
-  - WPAYSTD2: "prompt/external/service-wpay/wpaystd2/1. 회원 가입 요청.md"
-  - WPAYCST: "prompt/external/service-wpay/wpaycst/1. 회원 가입 요청.md"
-  - WPAYPRO: "prompt/external/service-wpay/wpaypro/1. 회원 가입 요청.md"
+  - wpaystd: "prompt/external/service-wpay/wpaystd/1. 회원 가입 요청.md"
+  - wpaystd2: "prompt/external/service-wpay/wpaystd2/1. 회원 가입 요청.md"
+  - wpaycst: "prompt/external/service-wpay/wpaycst/1. 회원 가입 요청.md"
+  - wpaypro: "prompt/external/service-wpay/wpaypro/1. 회원 가입 요청.md"
 
 ### WPAY 회원 가입 성공.
 - localStorage key "sign-in-page" value(JSON)에 wpayUserKey를 추가 한다.

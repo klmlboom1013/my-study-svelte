@@ -27,7 +27,7 @@
         const accessToken = getCookie("accessToken");
 
         if (!accessToken) {
-            goto("/login");
+            goto("/signin");
             return;
         }
 
@@ -39,7 +39,7 @@
             if (!mid) {
                 console.error("No mid in token");
                 deleteCookie("accessToken");
-                goto("/login");
+                goto("/signin");
                 return;
             }
 
@@ -47,7 +47,7 @@
             if (!valid) {
                 // Invalid token, clear and redirect
                 deleteCookie("accessToken");
-                goto("/login");
+                goto("/signin");
                 return;
             }
 
@@ -55,7 +55,7 @@
         } catch (e) {
             console.error("Token decode/validation failed", e);
             deleteCookie("accessToken");
-            goto("/login");
+            goto("/signin");
         }
     });
 
@@ -64,14 +64,12 @@
         // mid Removal Logic Removed:
         // isSave=true: mid should persist.
         // isSave=false: mid is already cleared onMount.
-        goto("/login");
+        goto("/signin");
     }
 </script>
 
 {#if isValid}
-    <div
-        class="min-h-screen flex flex-col items-center justify-center bg-gray-50"
-    >
+    <div class="flex flex-col items-center">
         <h1 class="text-4xl font-bold text-blue-600 mb-4">메인 페이지</h1>
         <p class="text-xl text-gray-600">로그인에 성공하셨습니다!</p>
         <p class="mt-2 text-sm text-gray-400">JWT Token Validated</p>
@@ -84,9 +82,5 @@
         </button>
     </div>
 {:else}
-    <div
-        class="min-h-screen flex flex-col items-center justify-center bg-gray-50"
-    >
-        <p>인증 확인 중...</p>
-    </div>
+    <p>인증 확인 중...</p>
 {/if}

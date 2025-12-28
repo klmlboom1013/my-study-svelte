@@ -1,22 +1,34 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-primary: oklch(0.36 0.11 265.06);
-  --color-brand-hover: oklch(0.49 0.23 262.62);
-  --color-ui-inactive: oklch(0.83 0 0);
-  --color-ui-hint: oklch(0.75 0.04 262.99);
-  --color-text-message: oklch(44.6% 0.03 256.802);
-  --color-text-white: oklch(1 0 0);
+  --color-primary: #1767cf;
+  --color-background-light: #f6f7f8;
+  --color-background-dark: #111821;
 }
 
 @layer base {
+    body {
+        font-family: "Inter", sans-serif;
+    }
+
     input:-webkit-autofill,
     input:-webkit-autofill:hover,
     input:-webkit-autofill:focus,
     input:-webkit-autofill:active {
         -webkit-box-shadow: 0 0 0 30px white inset !important;
-        -webkit-text-fill-color: oklch(0.36 0.11 265.06) !important;
+        -webkit-text-fill-color: #111821 !important;
         transition: background-color 5000s ease-in-out 0s;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
+        input:-webkit-autofill:active {
+             -webkit-box-shadow: 0 0 0 30px #1e293b inset !important; /* slate-800 */
+             -webkit-text-fill-color: white !important;
+             transition: background-color 5000s ease-in-out 0s;
+        }
     }
 
     /* Custom Scrollbar for Webkit (Chrome, Safari, Edge) */
@@ -43,5 +55,11 @@
 
     ::-webkit-scrollbar-thumb:hover {
         background-color: rgba(107, 114, 128, 0.8); /* gray-500 */
+    }
+    
+    .custom-select {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
     }
 }

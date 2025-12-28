@@ -51,17 +51,19 @@
             autocomplete="off"
             bind:value
             {placeholder}
-            class={`w-full border-2 rounded-md py-2 pl-3 pr-10 text-base font-medium placeholder-ui-hint focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all ${isError ? "border-red-500" : "border-brand-primary"}`}
-            class:text-brand-primary={true}
+            class={`w-full h-11 pl-4 pr-10 rounded-lg border bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm outline-none transition-shadow ${
+                isError
+                    ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                    : "border-slate-300 dark:border-slate-600 focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-slate-400"
+            }`}
             onclick={() => (isOpen = true)}
         />
         <button
-            class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-brand-primary hover:text-brand-hover cursor-pointer"
-            onclick={toggle}
-            aria-label="Toggle options"
+            class="absolute right-0 top-0 bottom-0 px-2 flex items-center justify-center text-slate-300 dark:text-slate-600 pointer-events-none"
             type="button"
+            tabindex="-1"
         >
-            <ChevronDown size={20} />
+            <ChevronDown size={24} />
         </button>
     </div>
 
@@ -70,7 +72,7 @@
             opt.toLowerCase().includes(value?.toLowerCase() || ""),
         )}
         <ul
-            class="absolute z-10 w-full mt-1 bg-white border-2 border-brand-primary rounded-md shadow-lg max-h-60 overflow-auto"
+            class="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl max-h-60 overflow-auto"
             transition:fade={{ duration: 100 }}
         >
             {#if filteredOptions.length > 0}
@@ -79,7 +81,7 @@
                         role="option"
                         aria-selected={value === option}
                         tabindex="0"
-                        class="px-3 py-2 cursor-pointer hover:bg-brand-primary/10 text-brand-primary font-medium transition-colors outline-none focus:bg-brand-primary/10"
+                        class="px-4 py-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm transition-colors outline-none focus:bg-slate-50 dark:focus:bg-slate-700"
                         onclick={() => select(option)}
                         onkeydown={(e) => {
                             if (e.key === "Enter" || e.key === " ")
@@ -90,7 +92,7 @@
                     </li>
                 {/each}
             {:else}
-                <li class="px-3 py-2 text-ui-hint font-medium">
+                <li class="px-4 py-2 text-slate-400 text-sm">
                     No matches found
                 </li>
             {/if}

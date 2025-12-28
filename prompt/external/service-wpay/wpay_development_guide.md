@@ -7,10 +7,8 @@
 </aside>
 
 ## WPAY 서비스 Request URL 세팅
-- Domain (`prompt/constants/wpayUrls.md 참고`)
-  - localStorage key "sign-in-page" value(JSON)의 service, server 값에 따라 Domain을 설정 한다.
-  - "prompt/external/service-wpay/common-APIs/" 경로의 서비스를 연동하는 경우
-    - service값은 무조건 "wpaystd"로 고정하여 사용할 Domain을 찾는다.
+- Domain 
+  - prompt/constants/wpayUrls.md 참고
 - {site name}
   - localStorage key "sign-in-page" value(JSON)의 site 값에 따라 {site name}을 설정 한다. 
 
