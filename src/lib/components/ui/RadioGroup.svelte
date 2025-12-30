@@ -10,6 +10,7 @@
         isError?: boolean;
         variant?: "default" | "box"; // default is now circle, box is card-like
         cols?: number; // for grid layout
+        size?: "md" | "lg";
     }
 
     let {
@@ -21,6 +22,7 @@
         isError = false,
         variant = "box", // Default to box as it is used more often in the new markup
         cols = 3,
+        size = "md", // "md" | "lg"
     }: Props = $props();
 
     function getOptionValue(option: Option): string {
@@ -43,6 +45,8 @@
         }
         return `flex gap-3 ${direction === "column" ? "flex-col" : "flex-row w-full"}`;
     });
+
+    let heightClass = $derived(size === "lg" ? "h-12" : "h-10");
 </script>
 
 <div class={containerClass}>
@@ -63,7 +67,7 @@
                 <div
                     class={`
                         flex items-center justify-center rounded-lg border transition-all
-                        font-medium text-sm h-10
+                        font-medium text-sm ${heightClass}
                         ${
                             isError
                                 ? "border-red-500 text-red-500"

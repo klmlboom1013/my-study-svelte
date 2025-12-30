@@ -870,7 +870,7 @@
         </p>
     </div>
     <form class="px-8 pb-8 space-y-6">
-        <div class="space-y-3">
+        <div class="space-y-1.5">
             <span
                 class="block text-sm font-semibold text-slate-700 dark:text-slate-300"
                 >Server Environment {prodDomain ? `(${prodDomain})` : ""}</span
@@ -1067,6 +1067,7 @@
                             bind:selected={prodDomain}
                             variant="box"
                             direction="column"
+                            size="lg"
                             onOptionClick={handleProdDomainClick}
                         />
                     </div>
