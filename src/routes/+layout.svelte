@@ -1,8 +1,6 @@
 <script lang="ts">
 	import "../app.css";
 	import favicon from "$lib/assets/favicon.svg";
-	import Header from "$lib/components/layout/Header.svelte";
-	import Footer from "$lib/components/layout/Footer.svelte";
 
 	let { children } = $props();
 </script>
@@ -21,12 +19,4 @@
 	/>
 </svelte:head>
 
-<div
-	class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen flex flex-col font-display"
->
-	<Header />
-	<main class="flex-1 flex flex-col items-center justify-center p-4 sm:p-8">
-		{@render children()}
-		<Footer />
-	</main>
-</div>
+{@render children()}

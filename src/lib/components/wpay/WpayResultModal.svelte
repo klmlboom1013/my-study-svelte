@@ -54,8 +54,9 @@
             </button>
         </div>
         <div class="p-6 overflow-y-auto custom-scrollbar">
+            <!-- Desktop View (Table) -->
             <div
-                class="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden"
+                class="hidden md:block border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden"
             >
                 <table class="w-full text-left text-sm border-collapse">
                     <thead
@@ -120,6 +121,61 @@
                         {/if}
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Mobile View (Cards) -->
+            <div class="md:hidden space-y-4">
+                {#each data as item}
+                    <div
+                        class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 shadow-sm"
+                    >
+                        <div
+                            class="mb-3 border-b border-slate-100 dark:border-slate-700 pb-2"
+                        >
+                            <span
+                                class="block font-bold text-slate-900 dark:text-white text-lg"
+                                >{item.label}</span
+                            >
+                            <span
+                                class="block text-xs font-mono text-slate-500 dark:text-slate-400"
+                                >{item.key}</span
+                            >
+                        </div>
+
+                        <div class="space-y-3">
+                            <div>
+                                <div
+                                    class="text-xs font-semibold text-slate-500 uppercase mb-1"
+                                >
+                                    값 (Encrypted/Raw)
+                                </div>
+                                <div
+                                    class="bg-slate-50 dark:bg-slate-900/50 p-2 rounded text-xs font-mono text-slate-600 dark:text-slate-300 break-all border border-slate-100 dark:border-slate-700"
+                                >
+                                    {item.encrypted}
+                                </div>
+                            </div>
+
+                            <div>
+                                <div
+                                    class="text-xs font-semibold text-slate-500 uppercase mb-1"
+                                >
+                                    해독 값 (Decrypted)
+                                </div>
+                                <div
+                                    class="text-sm font-medium text-slate-900 dark:text-white break-all pl-1"
+                                >
+                                    {item.decrypted}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {/each}
+                {#if data.length === 0}
+                    <div class="text-center py-8 text-slate-500">
+                        데이터가 없습니다.
+                    </div>
+                {/if}
             </div>
         </div>
         <div

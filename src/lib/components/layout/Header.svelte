@@ -1,6 +1,22 @@
 <script lang="ts">
-    import logo from "$lib/assets/favicon.svg"; // Assuming a logo or icon usage, but the code used material symbols.
-    // The original code used material symbols directly. I will copy the markup exactly.
+    import logo from "$lib/assets/favicon.svg";
+
+    let showTooltip = $state(false);
+    let tooltipTimeout: number;
+
+    function handleHelpClick() {
+        if (showTooltip) {
+            showTooltip = false;
+            clearTimeout(tooltipTimeout);
+        } else {
+            showTooltip = true;
+            clearTimeout(tooltipTimeout);
+            // Auto hide after 3 seconds
+            tooltipTimeout = setTimeout(() => {
+                showTooltip = false;
+            }, 3000) as unknown as number;
+        }
+    }
 </script>
 
 <header
@@ -23,12 +39,15 @@
             <button
                 class="text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors flex items-center gap-1 cursor-help py-1 bg-transparent border-none p-0"
                 type="button"
+                onclick={handleHelpClick}
             >
                 <span class="material-symbols-outlined text-lg">help</span>
                 <span>Help</span>
             </button>
             <div
-                class="absolute right-0 top-full mt-2 w-max max-w-sm px-3 py-2 bg-slate-800 dark:bg-white text-white dark:text-slate-900 text-xs rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-1 group-hover:translate-y-0 z-50"
+                class="absolute right-0 top-full mt-2 w-max max-w-sm px-3 py-2 bg-slate-800 dark:bg-white text-white dark:text-slate-900 text-xs rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-1 group-hover:translate-y-0 z-50 {showTooltip
+                    ? 'opacity-100 visible translate-y-0'
+                    : ''}"
             >
                 문의사항은 klmlboom@kggroup.co.kr 로 보내주세요
             </div>
