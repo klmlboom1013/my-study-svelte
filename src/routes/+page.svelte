@@ -8,22 +8,6 @@
     let isValid = $state(false);
 
     onMount(async () => {
-        // Cleanup Input Info if isSaveCache is not true (Prompt 3.1 Requirement)
-        const isSaveCache = localStorage.getItem("isSaveCache");
-        if (isSaveCache !== "true") {
-            const keysToRemove = [
-                "service",
-                "server",
-                "prodDomain",
-                "site",
-                "mid",
-                "userId",
-                "hNum",
-                "isSaveCache",
-            ];
-            keysToRemove.forEach((key) => localStorage.removeItem(key));
-        }
-
         const accessToken = getCookie("accessToken");
 
         if (!accessToken) {
@@ -61,9 +45,20 @@
 
     function handleLogout() {
         deleteCookie("accessToken");
-        // mid Removal Logic Removed:
-        // isSave=true: mid should persist.
-        // isSave=false: mid is already cleared onMount.
+
+        // Cleanup Input Info if isSaveCache is not true
+        const storedData = localStorage.getItem("sign-in-page");
+        if (storedData) {
+            try {
+                const parsedData = JSON.parse(storedData);
+                if (!parsedData.isSaveCache) {
+                    localStorage.removeItem("sign-in-page");
+                }
+            } catch (e) {
+                console.error("Failed to parse sign-in-page data", e);
+            }
+        }
+
         goto("/signin");
     }
 </script>
