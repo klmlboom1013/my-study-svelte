@@ -4,6 +4,7 @@
     import { validateAccessToken } from "$lib/utils/auth/accessToken";
     import { deleteCookie, getCookie } from "$lib/utils/cookie";
     import { decodeJwt } from "jose";
+    import Footer from "$lib/components/layout/Footer.svelte";
 
     let isValid = $state(false);
 
@@ -61,6 +62,38 @@
 
         goto("/signin");
     }
+
+    // API Categories Data (for Mobile View)
+    let categories = [
+        {
+            name: "Member Token",
+            endpoint: "/v2/auth",
+            icon: "badge",
+            iconColor: "text-blue-500",
+            iconBg: "bg-blue-500/10",
+        },
+        {
+            name: "PIN Management",
+            endpoint: "/v2/security",
+            icon: "pin",
+            iconColor: "text-purple-500",
+            iconBg: "bg-purple-500/10",
+        },
+        {
+            name: "Payment Token",
+            endpoint: "/v1/tokens",
+            icon: "token",
+            iconColor: "text-amber-500",
+            iconBg: "bg-amber-500/10",
+        },
+        {
+            name: "Payment Processing",
+            endpoint: "/v1/charges",
+            icon: "payments",
+            iconColor: "text-emerald-500",
+            iconBg: "bg-emerald-500/10",
+        },
+    ];
 </script>
 
 {#if isValid}
@@ -210,196 +243,36 @@
             </div>
         </div>
 
-        <!-- API Categories Grid -->
-        <div class="flex flex-col gap-4">
-            <div class="flex items-center justify-between">
-                <h3 class="text-slate-900 dark:text-white text-xl font-bold">
-                    API Categories
-                </h3>
-                <a
-                    class="text-primary text-sm font-medium hover:text-blue-400"
-                    href="/">View all categories</a
-                >
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <!-- Card 1: Member Token -->
-                <div
-                    class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-4 hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5 group cursor-pointer h-full"
-                >
-                    <div class="flex justify-between items-start">
-                        <div
-                            class="size-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors"
+        <!-- Mobile API Categories (Visible only on mobile) -->
+        <div class="flex flex-col gap-2 md:hidden">
+            <h3
+                class="text-slate-900 dark:text-white text-sm font-semibold mb-1"
+            >
+                API Categories
+            </h3>
+            <div
+                class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 flex flex-col gap-3"
+            >
+                <div class="flex flex-col gap-1">
+                    {#each categories as category}
+                        <button
+                            class="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700/50 text-left group transition-colors"
                         >
-                            <span class="material-symbols-outlined">badge</span>
-                        </div>
-                        <span
-                            class="flex size-2.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"
-                        ></span>
-                    </div>
-                    <div class="flex flex-col gap-1 flex-1">
-                        <h4
-                            class="text-slate-900 dark:text-white font-bold text-lg"
-                        >
-                            Member Token
-                        </h4>
-                        <p
-                            class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed"
-                        >
-                            Generate, validate, and refresh user access tokens
-                            securely.
-                        </p>
-                    </div>
-                    <div
-                        class="mt-2 pt-4 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center"
-                    >
-                        <span
-                            class="text-xs text-slate-400 dark:text-slate-500 font-mono"
-                            >/v2/auth</span
-                        >
-                        <span
-                            class="text-primary text-sm font-medium flex items-center gap-1 group-hover:translate-x-1 transition-transform"
-                        >
-                            Test <span
-                                class="material-symbols-outlined text-[16px]"
-                                >arrow_forward</span
+                            <div
+                                class="size-6 rounded-md {category.iconBg} flex items-center justify-center {category.iconColor} shrink-0"
                             >
-                        </span>
-                    </div>
-                </div>
-                <!-- Card 2: PIN Management -->
-                <div
-                    class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-4 hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5 group cursor-pointer h-full"
-                >
-                    <div class="flex justify-between items-start">
-                        <div
-                            class="size-10 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:bg-purple-500 group-hover:text-white transition-colors"
-                        >
-                            <span class="material-symbols-outlined">pin</span>
-                        </div>
-                        <span
-                            class="flex size-2.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"
-                        ></span>
-                    </div>
-                    <div class="flex flex-col gap-1 flex-1">
-                        <h4
-                            class="text-slate-900 dark:text-white font-bold text-lg"
-                        >
-                            PIN Management
-                        </h4>
-                        <p
-                            class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed"
-                        >
-                            Endpoints to set, reset, or validate user security
-                            PINs.
-                        </p>
-                    </div>
-                    <div
-                        class="mt-2 pt-4 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center"
-                    >
-                        <span
-                            class="text-xs text-slate-400 dark:text-slate-500 font-mono"
-                            >/v2/security</span
-                        >
-                        <span
-                            class="text-primary text-sm font-medium flex items-center gap-1 group-hover:translate-x-1 transition-transform"
-                        >
-                            Test <span
-                                class="material-symbols-outlined text-[16px]"
-                                >arrow_forward</span
+                                <span
+                                    class="material-symbols-outlined text-[16px]"
+                                    >{category.icon}</span
+                                >
+                            </div>
+                            <span
+                                class="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors"
                             >
-                        </span>
-                    </div>
-                </div>
-                <!-- Card 3: Payment Token -->
-                <div
-                    class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-4 hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5 group cursor-pointer h-full"
-                >
-                    <div class="flex justify-between items-start">
-                        <div
-                            class="size-10 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors"
-                        >
-                            <span class="material-symbols-outlined">token</span>
-                        </div>
-                        <span
-                            class="flex size-2.5 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]"
-                            title="Maintenance"
-                        ></span>
-                    </div>
-                    <div class="flex flex-col gap-1 flex-1">
-                        <h4
-                            class="text-slate-900 dark:text-white font-bold text-lg"
-                        >
-                            Payment Token
-                        </h4>
-                        <p
-                            class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed"
-                        >
-                            Tokenize sensitive card data for PCI-compliant
-                            processing.
-                        </p>
-                    </div>
-                    <div
-                        class="mt-2 pt-4 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center"
-                    >
-                        <span
-                            class="text-xs text-slate-400 dark:text-slate-500 font-mono"
-                            >/v1/tokens</span
-                        >
-                        <span
-                            class="text-primary text-sm font-medium flex items-center gap-1 group-hover:translate-x-1 transition-transform"
-                        >
-                            Test <span
-                                class="material-symbols-outlined text-[16px]"
-                                >arrow_forward</span
-                            >
-                        </span>
-                    </div>
-                </div>
-                <!-- Card 4: Payment Processing -->
-                <div
-                    class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-4 hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5 group cursor-pointer h-full"
-                >
-                    <div class="flex justify-between items-start">
-                        <div
-                            class="size-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-colors"
-                        >
-                            <span class="material-symbols-outlined"
-                                >payments</span
-                            >
-                        </div>
-                        <span
-                            class="flex size-2.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"
-                        ></span>
-                    </div>
-                    <div class="flex flex-col gap-1 flex-1">
-                        <h4
-                            class="text-slate-900 dark:text-white font-bold text-lg"
-                        >
-                            Payment Processing
-                        </h4>
-                        <p
-                            class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed"
-                        >
-                            Execute charges, refunds, and voids on transaction
-                            IDs.
-                        </p>
-                    </div>
-                    <div
-                        class="mt-2 pt-4 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center"
-                    >
-                        <span
-                            class="text-xs text-slate-400 dark:text-slate-500 font-mono"
-                            >/v1/charges</span
-                        >
-                        <span
-                            class="text-primary text-sm font-medium flex items-center gap-1 group-hover:translate-x-1 transition-transform"
-                        >
-                            Test <span
-                                class="material-symbols-outlined text-[16px]"
-                                >arrow_forward</span
-                            >
-                        </span>
-                    </div>
+                                {category.name}
+                            </span>
+                        </button>
+                    {/each}
                 </div>
             </div>
         </div>
@@ -630,6 +503,7 @@
                 </div>
             </div>
         </div>
+        <Footer />
     </div>
 {:else}
     <p>인증 확인 중...</p>

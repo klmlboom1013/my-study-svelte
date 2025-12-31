@@ -8,7 +8,12 @@
 <div
 	class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen flex flex-col font-display"
 >
-	<Header />
+	<Header
+		showSidebarToggle={false}
+		showSearch={false}
+		showNotifications={false}
+		showEnvironment={true}
+	/>
 	<main class="flex-1 flex flex-col items-center justify-center p-4 sm:p-8">
 		{@render children()}
 		<Footer />
