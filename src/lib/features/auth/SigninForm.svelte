@@ -23,6 +23,7 @@
     import { MERCHANT_KEYS } from "$lib/utils/encryption/cryptoKeys";
     import { generateSignature } from "$lib/utils/wpay/signature";
     import { encryptSeed, decryptSeed } from "$lib/utils/encryption/cryptoSeed";
+    import { AVATARS } from "$lib/constants/avatars";
     import { SERVICE_URLS } from "$lib/constants/wpayUrls";
     import { WPAY_POPUP_CONFIG } from "$lib/constants/wpayConfig";
     import {
@@ -269,26 +270,38 @@
         const isSuccessCode =
             resData.resultCode === "0000" || resData.resultCode === "2006";
 
+        const cleanup = () => {
+            if (wpayPopup) wpayPopup.close();
+            window.removeEventListener("message", handleWpayMessage);
+        };
+
         if (isPinAuthResponse) {
             isWpaySuccess =
                 isSuccessCode && !!wtid && !!wpayUserKey && !!resData.signature;
 
-            if (!isWpaySuccess) {
-                validationError = `${resultMsg} (${resData.resultCode})`;
-                try {
-                    const stored = localStorage.getItem("sign-in-page");
-                    if (stored) {
-                        const parsed = JSON.parse(stored);
-                        delete parsed.wpayUserKey;
-                        localStorage.setItem(
-                            "sign-in-page",
-                            JSON.stringify(parsed),
-                        );
-                    }
-                } catch (e) {}
-            } else {
+            if (isWpaySuccess) {
                 validationError = "";
+                cleanup();
+                handleAccessTokenCreation();
+                return;
             }
+
+            validationError = `${resultMsg} (${resData.resultCode})`;
+            try {
+                const stored = localStorage.getItem("sign-in-page");
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    delete parsed.wpayUserKey;
+                    localStorage.setItem(
+                        "sign-in-page",
+                        JSON.stringify(parsed),
+                    );
+                }
+            } catch (e) {}
+
+            wpayResultTitle = "WPAY PIN Auth Result";
+            wpayResultButtonText = "Close";
+            modalNextAction = "CLOSE";
 
             wpayResultData = [
                 {
@@ -352,22 +365,22 @@
                         );
                     }
                 } catch (e) {}
-            } else {
-                if (!isUserIdMatch) {
-                    validationError = `사용자 ID 불일치 (요청: ${currentUserId}, 응답: ${resUserId})`;
-                } else {
-                    validationError = `${resultMsg} (${resData.resultCode})`;
-                }
+
+                cleanup();
+                handleAccessTokenCreation();
+                return;
             }
 
-            // Signup Result Props
-            wpayResultTitle = "WPAY Member Sign-up Result";
-            wpayResultButtonText = "Confirm";
-            if (isWpaySuccess) {
-                modalNextAction = "ACCESSTOKEN"; // Success -> Create Token
+            if (!isUserIdMatch) {
+                validationError = `사용자 ID 불일치 (요청: ${currentUserId}, 응답: ${resUserId})`;
             } else {
-                modalNextAction = "CLOSE"; // Failure -> Close
+                validationError = `${resultMsg} (${resData.resultCode})`;
             }
+
+            // Signup Result Props - Failure
+            wpayResultTitle = "WPAY Member Sign-up Result";
+            wpayResultButtonText = "Close";
+            modalNextAction = "CLOSE";
 
             wpayResultData = [
                 {
@@ -421,20 +434,7 @@
             ];
         }
 
-        if (wpayPopup) wpayPopup.close();
-        window.removeEventListener("message", handleWpayMessage);
-
-        // Ensure modal state is set for PIN Auth if it was that path
-        if (isPinAuthResponse) {
-            wpayResultTitle = "WPAY PIN Auth Result";
-            wpayResultButtonText = "Confirm"; // Step 2 Button
-            if (isWpaySuccess) {
-                modalNextAction = "ACCESSTOKEN";
-            } else {
-                modalNextAction = "CLOSE";
-            }
-        }
-
+        cleanup();
         showResultModal = true;
     }
 
@@ -459,6 +459,20 @@
                 userId: finalUserId,
                 mid: mid,
             });
+
+            // Randomly select an avatar
+            const randomAvatar =
+                AVATARS[Math.floor(Math.random() * AVATARS.length)];
+
+            // Save avatar to localStorage for Dashboard display
+            try {
+                const stored = localStorage.getItem("sign-in-page");
+                let cacheData = stored ? JSON.parse(stored) : {};
+                cacheData.avatarUrl = randomAvatar;
+                localStorage.setItem("sign-in-page", JSON.stringify(cacheData));
+            } catch (e) {
+                console.error("Failed to save avatar to localStorage", e);
+            }
 
             setCookie("accessToken", token, 1);
             goto("/");
@@ -620,13 +634,7 @@
 
             isWpaySuccess = isSuccess;
 
-            // Set dynamic modal props
-            wpayResultTitle = "WPAY Member Auth Result";
-
             if (isSuccess && wpayUserKey) {
-                wpayResultButtonText = "Confirm"; // -> Go to Step2
-                modalNextAction = "STEP2";
-
                 try {
                     // Save Cache if checked (keep existing logic)
                     if (isSaveCache) {
@@ -658,51 +666,58 @@
                         }
                     }
                 } catch (e) {}
+
+                // Auto-proceed to Step 2
+                handlePinAuth();
+                return;
             } else {
-                wpayResultButtonText = "Signup"; // -> Go to Signup
+                wpayResultTitle = "WPAY Member Auth Result";
+
+                // If checking membership failed (e.g. user not found), we prompt to Signup
+                wpayResultButtonText = "Signup";
                 modalNextAction = "SIGNUP";
+
+                wpayResultData = [
+                    {
+                        key: "resultCode",
+                        label: "결과 코드",
+                        encrypted: resData.resultCode || "",
+                        decrypted: "-",
+                    },
+                    {
+                        key: "resultMsg",
+                        label: "결과 메시지",
+                        encrypted: resData.resultMsg || "",
+                        decrypted: resultMsg,
+                    },
+                    {
+                        key: "wpayUserKey",
+                        label: "WPAY 사용자 키",
+                        encrypted: resData.wpayUserKey || "",
+                        decrypted: wpayUserKey,
+                    },
+                    {
+                        key: "userId",
+                        label: "사용자 ID",
+                        encrypted: resData.userId || "",
+                        decrypted: resUserId,
+                    },
+                    {
+                        key: "status",
+                        label: "상태",
+                        encrypted: status,
+                        decrypted: "-",
+                    },
+                    {
+                        key: "ci",
+                        label: "CI",
+                        encrypted: resData.ci || "",
+                        decrypted: ci,
+                    },
+                ];
+
+                showResultModal = true;
             }
-
-            wpayResultData = [
-                {
-                    key: "resultCode",
-                    label: "결과 코드",
-                    encrypted: resData.resultCode || "",
-                    decrypted: "-",
-                },
-                {
-                    key: "resultMsg",
-                    label: "결과 메시지",
-                    encrypted: resData.resultMsg || "",
-                    decrypted: resultMsg,
-                },
-                {
-                    key: "wpayUserKey",
-                    label: "WPAY 사용자 키",
-                    encrypted: resData.wpayUserKey || "",
-                    decrypted: wpayUserKey,
-                },
-                {
-                    key: "userId",
-                    label: "사용자 ID",
-                    encrypted: resData.userId || "",
-                    decrypted: resUserId,
-                },
-                {
-                    key: "status",
-                    label: "상태",
-                    encrypted: status,
-                    decrypted: "-",
-                },
-                {
-                    key: "ci",
-                    label: "CI",
-                    encrypted: resData.ci || "",
-                    decrypted: ci,
-                },
-            ];
-
-            showResultModal = true;
         } catch (e) {
             console.error("Membership Check Failed", e);
             alert(
@@ -813,11 +828,63 @@
         const wpayUserKeyItem = wpayResultData.find(
             (d) => d.key === "wpayUserKey",
         );
-        const wpayUserKey = wpayUserKeyItem?.decrypted || "";
+        let wpayUserKey = wpayUserKeyItem?.decrypted || "";
 
         if (!wpayUserKey) {
-            alert("WPAY User Key not found. Please Sign up first.");
-            // openWpaySignup(); // Optional auto-redirect
+            try {
+                const stored = localStorage.getItem("sign-in-page");
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    if (parsed.wpayUserKey) {
+                        wpayUserKey = parsed.wpayUserKey;
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to read wpayUserKey from storage", e);
+            }
+        }
+
+        // Check if wpayUserKey exists (from Step 1)
+        // If not found, we should probably fail or prompt signup, but based on prompt this case triggers failure modal.
+        // However, if we just came from Step 1, we might treat it as "Membership Info" found but "User Key" missing
+        // which conceptually matches "Not Signed Up".
+
+        // Actually, logic says: "WPAY PIN Auth 실패인 경우: ... WPAY Result Fail View Modal을 오픈 한다."
+        // Missing key prevents even starting PIN Auth.
+        // So we should treat this as a failure state.
+
+        if (!wpayUserKey) {
+            // Treat as failure
+            wpayResultTitle = "WPAY PIN Auth Result";
+            wpayResultButtonText = "Close";
+            modalNextAction = "CLOSE";
+
+            // Construct a local failure response
+            const failData = {
+                resultCode: "9999",
+                resultMsg: "WPAY User Key not found. Please Sign up first.",
+                mid: mid || "",
+                wtid: "",
+                wpayUserKey: "",
+                signature: "",
+            };
+
+            wpayResultData = [
+                {
+                    key: "resultCode",
+                    label: "결과 코드",
+                    encrypted: "",
+                    decrypted: failData.resultCode,
+                },
+                {
+                    key: "resultMsg",
+                    label: "결과 메시지",
+                    encrypted: "",
+                    decrypted: failData.resultMsg,
+                },
+            ];
+
+            showResultModal = true;
             return;
         }
 

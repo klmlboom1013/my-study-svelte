@@ -38,9 +38,13 @@
 | status | String | 2 | | | |
 | ci | String | 100 | ○ | | |
 
-- WPAY 회원 가입 요청 결과 성공 여부 판단은 아래 조건을 모두 만족 해야 한다.
-  - Response Data의 resultCode 값이 "0000"
+- WPAY Response Data 성공(Success) 여부 판단 조건.
+  - HTTP 통신 Status Code가 200 이다.
+  - Response Data의 resultCode 값이 "0000" 이다.
   - Response Data의 wpayUserKey 값이 존재 한다.
-  - Response Data의 userId 값이 존재 하며 Request Data의 userId 값과 일치 한다.
-  - Response Data의 status 값이 "00" 이다.
+  - Response Data의 userId 값이 존재 한다.
   - Response Data의 ci 값이 존재 한다.
+  - Response Data의 status 값이 "00" 이다.
+  - Encrypt 속성 필드는 복호화 한다.
+  - Encoded 속성 필드는 URL Decode 한다. (URL Decode 수행 후 "+" 문자가 포함된 경우 공백으로 치환 한다.)
+  - Response Data의 복호화된 userId 값이 Request Data의 userId 값과 일치 한다.

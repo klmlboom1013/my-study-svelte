@@ -5,11 +5,36 @@
     let { children } = $props();
 
     // Mock User Data for UI
-    let userProfile = {
-        name: "Alex Morgan",
+    let userProfile = $state({
+        name: "Guest",
         role: "Senior Developer",
         image: "https://lh3.googleusercontent.com/aida-public/AB6AXuCblOgtDjtnDJSLaGqLAuOkd-LFd1CiGCSNlBhdoAqHa72HSCnsXRkRGbsmxjW8Olvrsdc03v8dN1MxiJv6v6A8OmIX7U2kBifHV5-0oT2OMWTbx_Ro5vF94zQ6ef5NKqZZphDBu4qV5JcL7mgQT3cXx4mOCBwfHT9aqpM4pNbOYBtyafKRfTSiuWAqi8fVzU3ildxAnzcp5JN0GsYEGmMQloAZ5cc2QbA6ywyeMzdOyK3yBCZw2fRTSIkH8eP5B9bq3GWopqcENC4",
-    };
+    });
+
+    onMount(() => {
+        try {
+            const stored = localStorage.getItem("sign-in-page");
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (parsed.userId) {
+                    userProfile.name = parsed.userId;
+                }
+                if (parsed.hNum && parsed.hNum.length >= 6) {
+                    const hNum = parsed.hNum;
+                    // Format: (010) 2***-**17
+                    // (First 3 digits) + " " + 4th digit + "***-**" + Last 2 digits
+                    userProfile.role = `(${hNum.substring(0, 3)}) ${hNum.substring(3, 4)}***-**${hNum.substring(hNum.length - 2)}`;
+                } else {
+                    userProfile.role = "Developer";
+                }
+                if (parsed.avatarUrl) {
+                    userProfile.image = parsed.avatarUrl;
+                }
+            }
+        } catch (e) {
+            console.error("Failed to load user profile", e);
+        }
+    });
 
     let isMobileMenuOpen = $state(false);
 
@@ -40,7 +65,7 @@
                             {userProfile.name}
                         </h1>
                         <p
-                            class="text-slate-500 dark:text-[#92adc9] text-sm font-normal leading-normal"
+                            class="text-slate-500 dark:text-[#92adc9] text-xs font-normal leading-normal"
                         >
                             {userProfile.role}
                         </p>
