@@ -37,9 +37,14 @@
     });
 
     let isMobileMenuOpen = $state(false);
+    let isSidebarOpen = $state(true);
 
     function toggleMobileMenu() {
         isMobileMenuOpen = !isMobileMenuOpen;
+    }
+
+    function toggleSidebar() {
+        isSidebarOpen = !isSidebarOpen;
     }
 </script>
 
@@ -48,7 +53,7 @@
 >
     <!-- Sidebar Navigation -->
     <aside
-        class="hidden lg:flex flex-col w-72 h-full border-r border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark shrink-0"
+        class={`hidden ${isSidebarOpen ? "lg:flex" : ""} flex-col w-72 h-full border-r border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark shrink-0 transition-all duration-300`}
     >
         <div class="flex h-full flex-col justify-between p-4">
             <div class="flex flex-col gap-4">
@@ -153,6 +158,14 @@
                 <div
                     class="flex items-center gap-3 text-slate-900 dark:text-white"
                 >
+                    <button
+                        class="hidden lg:flex items-center justify-center rounded-lg size-9 hover:bg-slate-100 dark:hover:bg-border-dark text-slate-900 dark:text-white transition-colors"
+                        onclick={toggleSidebar}
+                        title={isSidebarOpen ? "Close Sidebar" : "Open Sidebar"}
+                    >
+                        <span class="material-symbols-outlined">menu</span>
+                    </button>
+
                     <div class="size-8 text-primary">
                         <svg
                             fill="currentColor"
@@ -206,6 +219,7 @@
                 <div class="flex gap-2">
                     <button
                         class="flex items-center justify-center rounded-lg size-9 bg-slate-50 dark:bg-card-dark hover:bg-slate-100 dark:hover:bg-border-dark text-slate-900 dark:text-white border border-slate-200 dark:border-border-dark transition-colors"
+                        title="알람 기능 지원 준비중 입니다."
                     >
                         <span class="material-symbols-outlined text-[20px]"
                             >notifications</span
