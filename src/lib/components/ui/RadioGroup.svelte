@@ -11,6 +11,7 @@
         variant?: "default" | "box"; // default is now circle, box is card-like
         cols?: number; // for grid layout
         size?: "md" | "lg";
+        disabled?: boolean;
     }
 
     let {
@@ -23,6 +24,7 @@
         variant = "box", // Default to box as it is used more often in the new markup
         cols = 3,
         size = "md", // "md" | "lg"
+        disabled = false,
     }: Props = $props();
 
     function getOptionValue(option: Option): string {
@@ -55,13 +57,16 @@
         {@const label = getOptionLabel(option)}
 
         {#if variant === "box"}
-            <label class="cursor-pointer relative">
+            <label
+                class={`relative ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+            >
                 <input
                     type="radio"
                     name={groupName}
                     {value}
                     bind:group={selected}
-                    onclick={() => onOptionClick?.(value)}
+                    {disabled}
+                    onclick={() => !disabled && onOptionClick?.(value)}
                     class="peer sr-only"
                 />
                 <div
@@ -69,9 +74,11 @@
                         flex items-center justify-center rounded-lg border transition-all
                         font-medium text-sm ${heightClass}
                         ${
-                            isError
-                                ? "border-red-500 text-red-500"
-                                : "border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 peer-checked:border-blue-600 peer-checked:ring-1 peer-checked:ring-blue-600 peer-checked:bg-blue-600/5 peer-checked:text-blue-600"
+                            disabled
+                                ? "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 peer-checked:bg-blue-600/10 peer-checked:border-blue-600 dark:peer-checked:border-blue-700 peer-checked:text-blue-600 dark:peer-checked:text-blue-400"
+                                : isError
+                                  ? "border-red-500 text-red-500"
+                                  : "border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 peer-checked:border-blue-600 peer-checked:ring-1 peer-checked:ring-blue-600 peer-checked:bg-blue-600/5 peer-checked:text-blue-600"
                         }
                     `}
                 >

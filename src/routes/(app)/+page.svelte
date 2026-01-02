@@ -113,24 +113,56 @@
                     view recent activity.
                 </p>
             </div>
-            <div class="flex gap-2">
-                <button
-                    onclick={handleLogout}
-                    class="bg-red-500 hover:bg-red-600 text-white px-5 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition-all shadow-lg shadow-red-500/20"
+        </div>
+
+        <!-- Mobile API Categories (Visible only on mobile) -->
+        <div class="flex flex-col gap-2 md:hidden">
+            <!-- Mobile Search Bar -->
+            <label class="flex flex-col w-full h-10 mb-2">
+                <div
+                    class="flex w-full flex-1 items-stretch rounded-lg h-full border border-slate-200 dark:border-slate-700 focus-within:border-primary/50 transition-colors bg-white dark:bg-slate-800"
                 >
-                    <span class="material-symbols-outlined text-[20px]"
-                        >logout</span
+                    <div
+                        class="text-slate-400 dark:text-[#92adc9] flex items-center justify-center pl-3"
                     >
-                    Logout
-                </button>
-                <button
-                    class="bg-primary hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition-all shadow-lg shadow-primary/20"
-                >
-                    <span class="material-symbols-outlined text-[20px]"
-                        >add</span
-                    >
-                    New Test Suite
-                </button>
+                        <span class="material-symbols-outlined text-[20px]"
+                            >search</span
+                        >
+                    </div>
+                    <input
+                        class="flex w-full min-w-0 flex-1 resize-none overflow-hidden bg-transparent rounded-r-lg text-slate-900 dark:text-white focus:outline-0 placeholder:text-slate-400 dark:placeholder:text-[#5a718a] px-2 text-sm"
+                        placeholder="Endpoint / to Search"
+                    />
+                </div>
+            </label>
+
+            <h3 class="text-slate-900 dark:text-white text-xl font-bold mb-2">
+                API Categories
+            </h3>
+            <div
+                class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 flex flex-col gap-3"
+            >
+                <div class="flex flex-col gap-1">
+                    {#each categories as category}
+                        <button
+                            class="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700/50 text-left group transition-colors"
+                        >
+                            <div
+                                class="size-6 rounded-md {category.iconBg} flex items-center justify-center {category.iconColor} shrink-0"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-[16px]"
+                                    >{category.icon}</span
+                                >
+                            </div>
+                            <span
+                                class="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors"
+                            >
+                                {category.name}
+                            </span>
+                        </button>
+                    {/each}
+                </div>
             </div>
         </div>
 
@@ -240,40 +272,6 @@
                 <p class="text-slate-400 dark:text-slate-500 text-xs mt-2">
                     Optimal performance
                 </p>
-            </div>
-        </div>
-
-        <!-- Mobile API Categories (Visible only on mobile) -->
-        <div class="flex flex-col gap-2 md:hidden">
-            <h3
-                class="text-slate-900 dark:text-white text-sm font-semibold mb-1"
-            >
-                API Categories
-            </h3>
-            <div
-                class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 flex flex-col gap-3"
-            >
-                <div class="flex flex-col gap-1">
-                    {#each categories as category}
-                        <button
-                            class="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700/50 text-left group transition-colors"
-                        >
-                            <div
-                                class="size-6 rounded-md {category.iconBg} flex items-center justify-center {category.iconColor} shrink-0"
-                            >
-                                <span
-                                    class="material-symbols-outlined text-[16px]"
-                                    >{category.icon}</span
-                                >
-                            </div>
-                            <span
-                                class="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors"
-                            >
-                                {category.name}
-                            </span>
-                        </button>
-                    {/each}
-                </div>
             </div>
         </div>
 

@@ -3,7 +3,7 @@
 
     interface Props {
         text: string;
-        position?: "top" | "bottom" | "left" | "right";
+        position?: "top" | "bottom" | "left" | "right" | "bottom-end";
         delay?: number;
         children?: import("svelte").Snippet;
     }
@@ -30,6 +30,7 @@
         bottom: "-bottom-2 left-1/2 -translate-x-1/2 translate-y-full mt-2",
         left: "-left-2 top-1/2 -translate-y-1/2 -translate-x-full mr-2",
         right: "-right-2 top-1/2 -translate-y-1/2 translate-x-full ml-2",
+        "bottom-end": "-bottom-2 right-0 translate-y-full mt-2",
     };
 </script>
 

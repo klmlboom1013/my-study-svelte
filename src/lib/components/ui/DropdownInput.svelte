@@ -8,6 +8,7 @@
         placeholder?: string;
         id?: string;
         isError?: boolean;
+        disabled?: boolean;
     }
 
     let {
@@ -16,12 +17,14 @@
         placeholder = "",
         id = undefined,
         isError = false,
+        disabled = false,
     }: Props = $props();
 
     let isOpen = $state(false);
     let containerRef: HTMLDivElement;
 
     function toggle() {
+        if (disabled) return;
         isOpen = !isOpen;
     }
 
@@ -51,12 +54,19 @@
             autocomplete="off"
             bind:value
             {placeholder}
-            class={`w-full h-11 pl-4 pr-10 rounded-lg border bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm outline-none transition-shadow ${
-                isError
+            {disabled}
+            class={`w-full h-11 pl-4 pr-10 rounded-lg border text-sm outline-none transition-shadow ${
+                disabled
+                    ? "bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-500 cursor-not-allowed"
+                    : "bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+            } ${
+                !disabled && isError
                     ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                    : "border-slate-300 dark:border-slate-600 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 placeholder:text-slate-400"
+                    : !disabled
+                      ? "border-slate-300 dark:border-slate-600 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 placeholder:text-slate-400"
+                      : ""
             }`}
-            onclick={() => (isOpen = true)}
+            onclick={() => !disabled && (isOpen = true)}
         />
         <button
             class="absolute right-0 top-0 bottom-0 px-2 flex items-center justify-center text-slate-300 dark:text-slate-600 pointer-events-none"

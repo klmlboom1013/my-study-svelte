@@ -27,7 +27,7 @@
 {#if isOpen}
     <!-- Backdrop -->
     <div
-        class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+        class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
         transition:fade={{ duration: 200 }}
         onclick={(e) => {
             if (e.target === e.currentTarget) close();
@@ -46,7 +46,7 @@
     >
         <!-- Modal Content -->
         <div
-            class={`bg-white rounded-xl shadow-2xl w-full ${width} overflow-hidden relative`}
+            class={`bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full ${width} overflow-hidden relative border border-transparent dark:border-slate-800`}
             transition:scale={{ duration: 200, start: 0.95 }}
             role="dialog"
             aria-modal="true"
@@ -54,12 +54,12 @@
         >
             <!-- Header -->
             <div
-                class="bg-white px-6 py-4 flex justify-between items-center text-slate-900 border-b border-slate-100"
+                class="bg-white dark:bg-slate-900 px-6 py-4 flex justify-between items-center text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800"
             >
                 <h2 class="text-xl font-bold">{title}</h2>
                 <button
                     onclick={close}
-                    class="hover:bg-slate-100 text-slate-500 hover:text-slate-700 p-1 rounded-full transition-colors"
+                    class="hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded-full transition-colors"
                 >
                     <X size={24} />
                 </button>

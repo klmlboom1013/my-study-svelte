@@ -1,4 +1,10 @@
 <script lang="ts">
+    interface Props {
+        isModal?: boolean;
+        onComplete?: () => void;
+    }
+
+    let { isModal = false, onComplete }: Props = $props();
     import { onMount, onDestroy, tick } from "svelte";
     import { goto } from "$app/navigation";
     import {
@@ -18,6 +24,8 @@
         SITE_MERCHANT_ID_MAPPING,
         type ServerType,
         type ServiceType,
+        type SiteType,
+        type MerchantIdType,
         type ProdServerDomain,
     } from "$lib/constants/wpayServerType";
     import { MERCHANT_KEYS } from "$lib/utils/encryption/cryptoKeys";
@@ -38,12 +46,14 @@
     const prodServerOptions = Object.values(PROD_SERVER_DOMAINS);
 
     // State
-    let service = $state("");
+    // State
+    let isConfigVisible = $state(false);
+    let service = $state("wpaystd2");
     // @ts-ignore
-    let server = $state<ServerType>("");
+    let server = $state<ServerType>(SERVER_TYPES.STG);
     let prodDomain = $state(""); // Default to empty
-    let site = $state("");
-    let mid = $state("");
+    let site = $state("stdwpay");
+    let mid = $state("INIwpayT03");
 
     // Reactive Options
     let siteOptions = $derived(
@@ -137,11 +147,15 @@
                 isSaveCache = parsedData.isSaveCache || false;
 
                 if (isSaveCache) {
-                    service = parsedData.service || "";
-                    server = (parsedData.server as ServerType) || "";
+                    // Force defaults for fixed fields, ignore stored values for them
+                    // service = parsedData.service || "wpaystd2";
+                    // server = (parsedData.server as ServerType) || SERVER_TYPES.STG;
+                    // site = parsedData.site || "stdwpay";
+                    // mid = parsedData.mid || "INIwpayT03";
+
+                    // Only load other fields
                     prodDomain = parsedData.prodDomain || "";
-                    site = parsedData.site || "";
-                    mid = parsedData.mid || "";
+
                     userId = parsedData.userId || "wpayTestUser01";
                     hNum = parsedData.hNum || "";
                 } else {
@@ -163,7 +177,7 @@
         if (storedTokenStr && mid) {
             try {
                 const isValid = await validateAccessToken(storedTokenStr, mid);
-                if (isValid) {
+                if (isValid && !isModal) {
                     goto("/");
                 }
             } catch (e) {
@@ -475,7 +489,11 @@
             }
 
             setCookie("accessToken", token, 1);
-            goto("/");
+            if (isModal && onComplete) {
+                onComplete();
+            } else {
+                goto("/");
+            }
         } catch (e) {
             console.error("Token creation failed", e);
             alert("로그인 토큰 생성 실패");
@@ -935,65 +953,88 @@
         <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
             Configure your environment to proceed.
         </p>
+
+        <button
+            type="button"
+            class="mt-4 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 transition-colors"
+            onclick={() => (isConfigVisible = !isConfigVisible)}
+        >
+            <span class="material-symbols-outlined text-[16px]">
+                {isConfigVisible ? "expand_less" : "expand_more"}
+            </span>
+            {isConfigVisible ? "Hide Configuration" : "Show Configuration"}
+        </button>
     </div>
     <form class="px-8 pb-8 space-y-6">
-        <div class="space-y-1.5">
-            <span
-                class="block text-sm font-semibold text-slate-700 dark:text-slate-300"
-                >Server Environment {prodDomain ? `(${prodDomain})` : ""}</span
+        {#if isConfigVisible}
+            <div
+                class="space-y-6 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-700/50"
             >
-            <RadioGroup
-                options={serverRadioOptions}
-                groupName="server"
-                bind:selected={server}
-                variant="box"
-                direction="grid"
-                cols={3}
-                isError={!server && highlightMissing}
-                onOptionClick={handleServerClick}
-            />
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="space-y-1.5 col-span-1 sm:col-span-2">
-                <label
-                    class="text-sm font-medium text-slate-700 dark:text-slate-300"
-                    for="service-input">Service</label
-                >
-                <DropdownInput
-                    id="service-input"
-                    options={serviceOptions}
-                    bind:value={service}
-                    placeholder="Select a Service"
-                    isError={!service && highlightMissing}
-                />
+                <div class="space-y-1.5">
+                    <span
+                        class="block text-sm font-semibold text-slate-700 dark:text-slate-300"
+                        >Server Environment {prodDomain
+                            ? `(${prodDomain})`
+                            : ""}</span
+                    >
+                    <RadioGroup
+                        options={serverRadioOptions}
+                        groupName="server"
+                        bind:selected={server}
+                        variant="box"
+                        direction="grid"
+                        cols={3}
+                        isError={!server && highlightMissing}
+                        onOptionClick={handleServerClick}
+                        disabled={true}
+                    />
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="space-y-1.5 col-span-1 sm:col-span-2">
+                        <label
+                            class="text-sm font-medium text-slate-700 dark:text-slate-300"
+                            for="service-input">Service</label
+                        >
+                        <DropdownInput
+                            id="service-input"
+                            options={serviceOptions}
+                            bind:value={service}
+                            placeholder="Select a Service"
+                            isError={!service && highlightMissing}
+                            disabled={true}
+                        />
+                    </div>
+                    <div class="space-y-1.5">
+                        <label
+                            class="text-sm font-medium text-slate-700 dark:text-slate-300"
+                            for="site-input">Site</label
+                        >
+                        <DropdownInput
+                            id="site-input"
+                            options={siteOptions}
+                            bind:value={site}
+                            placeholder="Select Site"
+                            isError={!site && highlightMissing}
+                            disabled={true}
+                        />
+                    </div>
+                    <div class="space-y-1.5">
+                        <label
+                            class="text-sm font-medium text-slate-700 dark:text-slate-300"
+                            for="mid-input">Merchant ID</label
+                        >
+                        <DropdownInput
+                            id="mid-input"
+                            options={merchantIdOptions}
+                            bind:value={mid}
+                            placeholder="Select MID"
+                            isError={!mid && highlightMissing}
+                            disabled={true}
+                        />
+                    </div>
+                </div>
             </div>
-            <div class="space-y-1.5">
-                <label
-                    class="text-sm font-medium text-slate-700 dark:text-slate-300"
-                    for="site-input">Site</label
-                >
-                <DropdownInput
-                    id="site-input"
-                    options={siteOptions}
-                    bind:value={site}
-                    placeholder="Select Site"
-                    isError={!site && highlightMissing}
-                />
-            </div>
-            <div class="space-y-1.5">
-                <label
-                    class="text-sm font-medium text-slate-700 dark:text-slate-300"
-                    for="mid-input">Merchant ID</label
-                >
-                <DropdownInput
-                    id="mid-input"
-                    options={merchantIdOptions}
-                    bind:value={mid}
-                    placeholder="Select MID"
-                    isError={!mid && highlightMissing}
-                />
-            </div>
-        </div>
+        {/if}
         <hr class="border-slate-100 dark:border-slate-700" />
         <div class="space-y-4">
             <div class="space-y-1.5">
