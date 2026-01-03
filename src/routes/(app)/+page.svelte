@@ -63,6 +63,15 @@
         goto("/signin");
     }
 
+    // Mobile Search Logic
+    let mobileSearchTerm = $state("");
+
+    function handleMobileSearchKeydown(event: KeyboardEvent) {
+        if (event.key === "Enter" && mobileSearchTerm.trim()) {
+            goto(`/endpoint?q=${encodeURIComponent(mobileSearchTerm.trim())}`);
+        }
+    }
+
     // API Categories Data (for Mobile View)
     let categories = [
         {
@@ -132,6 +141,8 @@
                     <input
                         class="flex w-full min-w-0 flex-1 resize-none overflow-hidden bg-transparent rounded-r-lg text-slate-900 dark:text-white focus:outline-0 placeholder:text-slate-400 dark:placeholder:text-[#5a718a] px-2 text-sm"
                         placeholder="Endpoint / to Search"
+                        bind:value={mobileSearchTerm}
+                        onkeydown={handleMobileSearchKeydown}
                     />
                 </div>
             </label>

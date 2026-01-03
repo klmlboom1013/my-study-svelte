@@ -4,16 +4,6 @@
     import Tooltip from "$lib/components/ui/Tooltip.svelte";
     import { goto } from "$app/navigation";
     import { deleteCookie } from "$lib/utils/cookie";
-    import { SERVICE_URLS } from "$lib/constants/wpayUrls";
-    import {
-        PROD_SERVER_DOMAINS,
-        SERVER_TYPES,
-        type ServiceType,
-        type SiteType,
-        type ServerType,
-        type ProdServerDomain,
-    } from "$lib/constants/wpayServerType";
-    import ConfigModal from "$lib/components/layout/ConfigModal.svelte";
 
     import type { MouseEventHandler } from "svelte/elements";
 
@@ -50,13 +40,17 @@
     let dropdownRef = $state<HTMLDivElement | null>(null);
     let buttonRef = $state<HTMLButtonElement | null>(null);
 
-    // Domain Dropdown State
-    let showDomainDropdown = $state(false);
-    let domainDropdownRef = $state<HTMLDivElement | null>(null);
-    let domainButtonRef = $state<HTMLButtonElement | null>(null);
-    let domainList = $state<{ label: string; url: string }[]>([]);
-    let selectedDomain = $state<{ label: string; url: string } | null>(null);
-    let copiedUrl = $state<string | null>(null);
+    // Global Search Logic
+    let headerSearchTerm = $state("");
+
+    function handleSearchKeydown(event: KeyboardEvent) {
+        if (event.key === "Enter" && headerSearchTerm.trim()) {
+            goto(`/endpoint?q=${encodeURIComponent(headerSearchTerm.trim())}`);
+            // Optional: clear search term after searching, or keep it.
+            // keeping it might be better UX if they want to modify it.
+            // For now, let's keep it.
+        }
+    }
 
     // Random Avatar Logic
     const avatarSeeds = [
@@ -80,6 +74,8 @@
         "Amy",
         "Ben",
         "Eva",
+        "Ben",
+        "Eva",
     ];
 
     function getRandomAvatar() {
@@ -94,55 +90,6 @@
                 const data = JSON.parse(stored);
                 userInfo.userId = data.userId || "Guest";
                 userInfo.avatarUrl = data.avatarUrl || getRandomAvatar();
-
-                // Load Domain List logic
-                const service = data.service as ServiceType;
-                const site = data.site as SiteType;
-
-                if (service && site && SERVICE_URLS[service]) {
-                    const urls = SERVICE_URLS[service];
-                    domainList = [
-                        { label: "DEV", url: `${urls.DEV}/${site}` },
-                        { label: "STG", url: `${urls.STG}/${site}` },
-                        {
-                            label: "PROD (GLB)",
-                            url: `${urls.PROD[PROD_SERVER_DOMAINS.GLB]}/${site}`,
-                        },
-                        {
-                            label: "PROD (KS)",
-                            url: `${urls.PROD[PROD_SERVER_DOMAINS.KS]}/${site}`,
-                        },
-                        {
-                            label: "PROD (FC)",
-                            url: `${urls.PROD[PROD_SERVER_DOMAINS.FC]}/${site}`,
-                        },
-                    ];
-
-                    // Set default selected domain
-                    const server = data.server as ServerType;
-                    const prodDomain = data.prodDomain as ProdServerDomain;
-                    let targetLabel = "DEV"; // Default fallback
-
-                    if (server === SERVER_TYPES.DEV) {
-                        targetLabel = "DEV";
-                    } else if (server === SERVER_TYPES.STG) {
-                        targetLabel = "STG";
-                    } else if (server === SERVER_TYPES.PROD) {
-                        if (prodDomain === PROD_SERVER_DOMAINS.GLB) {
-                            targetLabel = "PROD (GLB)";
-                        } else if (prodDomain === PROD_SERVER_DOMAINS.KS) {
-                            targetLabel = "PROD (KS)";
-                        } else if (prodDomain === PROD_SERVER_DOMAINS.FC) {
-                            targetLabel = "PROD (FC)";
-                        } else {
-                            targetLabel = "PROD (GLB)"; // Default PROD fallback
-                        }
-                    }
-
-                    selectedDomain =
-                        domainList.find((d) => d.label === targetLabel) ||
-                        domainList[0];
-                }
             } else {
                 userInfo.avatarUrl = getRandomAvatar();
             }
@@ -166,16 +113,6 @@
             ) {
                 showUserMenu = false;
             }
-
-            if (
-                showDomainDropdown &&
-                domainDropdownRef &&
-                domainButtonRef &&
-                !domainDropdownRef.contains(event.target as Node) &&
-                !domainButtonRef.contains(event.target as Node)
-            ) {
-                showDomainDropdown = false;
-            }
         }
 
         document.addEventListener("mousedown", handleClickOutside);
@@ -198,34 +135,6 @@
 
         goto("/signin");
         showUserMenu = false;
-    }
-
-    function toggleDomainDropdown() {
-        showDomainDropdown = !showDomainDropdown;
-    }
-
-    function handleItemClick(item: { label: string; url: string }) {
-        selectedDomain = item;
-        showDomainDropdown = false;
-    }
-
-    async function handleCopyUrl(url: string) {
-        try {
-            await navigator.clipboard.writeText(url);
-            copiedUrl = url;
-            setTimeout(() => {
-                copiedUrl = null;
-            }, 2000);
-        } catch (err) {
-            console.error("Failed to copy!", err);
-        }
-    }
-
-    // Config Modal
-    let showConfigModal = $state(false);
-
-    function handleConfigSave() {
-        loadUserInfo(); // Reload to update domains/config
     }
 </script>
 
@@ -272,70 +181,6 @@
     <!-- Right Section: Search > Create > History > Avatar -->
     <div class="flex items-center gap-3 justify-end flex-1">
         {#if showSearch}
-            <!-- Domain Dropdown -->
-            {#if domainList.length > 0 && selectedDomain}
-                <div class="relative">
-                    <Tooltip text="Domains" delay={100}>
-                        <button
-                            bind:this={domainButtonRef}
-                            onclick={toggleDomainDropdown}
-                            class="flex items-center gap-2 justify-between px-3 h-9 rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white transition-colors border border-slate-200 dark:border-border-dark min-w-[70px] md:min-w-[200px]"
-                        >
-                            <span class="text-sm md:hidden"
-                                >{selectedDomain.label}</span
-                            >
-                            <span class="text-sm hidden md:block"
-                                >{selectedDomain.url}</span
-                            >
-                            <span class="material-symbols-outlined text-[20px]"
-                                >arrow_drop_down_circle</span
-                            >
-                        </button>
-                    </Tooltip>
-
-                    {#if showDomainDropdown}
-                        <div
-                            bind:this={domainDropdownRef}
-                            class="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-72 bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] rounded-xl shadow-xl overflow-hidden z-50 py-2 sm:left-0 sm:translate-x-0"
-                        >
-                            <div
-                                class="px-4 py-2 text-xs font-semibold text-slate-500 dark:text-[#8b949e] uppercase tracking-wider"
-                            >
-                                Available Domains
-                            </div>
-                            {#each domainList as item}
-                                <button
-                                    class="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-[#1f6feb] group transition-colors flex items-center justify-between gap-2 {selectedDomain.label ===
-                                    item.label
-                                        ? 'bg-slate-50 dark:bg-white/5'
-                                        : ''}"
-                                    onclick={() => handleItemClick(item)}
-                                >
-                                    <div class="min-w-0 flex-1">
-                                        <div
-                                            class="text-sm font-medium text-slate-900 dark:text-[#c9d1d9] group-hover:text-slate-900 dark:group-hover:text-white"
-                                        >
-                                            {item.label}
-                                        </div>
-                                        <div
-                                            class="text-xs text-slate-500 dark:text-[#8b949e] truncate group-hover:text-slate-600 dark:group-hover:text-[#e6edf3]"
-                                        >
-                                            {item.url}
-                                        </div>
-                                    </div>
-                                    {#if selectedDomain.label === item.label}
-                                        <span
-                                            class="material-symbols-outlined text-[16px] text-primary"
-                                            >check</span
-                                        >
-                                    {/if}
-                                </button>
-                            {/each}
-                        </div>
-                    {/if}
-                </div>
-            {/if}
-
             <!-- Search Bar -->
             <label class="hidden md:flex flex-col w-full max-w-sm h-9">
                 <div
@@ -351,6 +196,8 @@
                     <input
                         class="flex w-full min-w-0 flex-1 resize-none overflow-hidden bg-transparent rounded-r-lg text-slate-900 dark:text-white focus:outline-0 placeholder:text-slate-400 dark:placeholder:text-[#5a718a] px-2 text-sm"
                         placeholder="Endpoint / to Search"
+                        bind:value={headerSearchTerm}
+                        onkeydown={handleSearchKeydown}
                     />
                     <div class="flex items-center pr-2">
                         <kbd
@@ -460,19 +307,6 @@
                                     >
                                     Profile
                                 </button>
-                                <button
-                                    onclick={() => {
-                                        showUserMenu = false;
-                                        showConfigModal = true;
-                                    }}
-                                    class="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-slate-100 dark:hover:bg-[#1f6feb] dark:hover:text-white transition-colors"
-                                >
-                                    <span
-                                        class="material-symbols-outlined text-[18px] text-slate-500 dark:text-[#8b949e] group-hover:text-current"
-                                        >settings</span
-                                    >
-                                    Configuration
-                                </button>
                             </div>
 
                             <div
@@ -498,9 +332,3 @@
         {/if}
     </div>
 </header>
-
-<ConfigModal
-    bind:isOpen={showConfigModal}
-    onClose={() => (showConfigModal = false)}
-    onSave={handleConfigSave}
-/>

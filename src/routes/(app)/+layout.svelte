@@ -5,10 +5,16 @@
     import SidebarNav from "$lib/components/layout/SidebarNav.svelte";
     import { onMount } from "svelte";
     import { fade, fly } from "svelte/transition";
+    import { afterNavigate } from "$app/navigation";
 
     let { children } = $props();
 
     let isDrawerOpen = $state(false);
+
+    // Auto-close drawer on navigation
+    afterNavigate(() => {
+        isDrawerOpen = false;
+    });
 
     // User Profile Data
     let userProfile = $state({

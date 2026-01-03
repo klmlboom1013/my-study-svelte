@@ -787,6 +787,7 @@
                                     >add</span
                                 > Add Field
                             </button>
+                            <button
                                 onclick={() => (isResponseJsonModalOpen = true)}
                                 class="px-3 py-2 text-sm font-bold text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-500 dark:hover:text-green-400 dark:hover:bg-green-900/20 rounded-lg transition-colors flex items-center gap-1"
                             >
@@ -799,7 +800,7 @@
                     </div>
                 {/if}
             </section>
-            
+
             <ResponseDataJsonModal
                 bind:isOpen={isResponseJsonModalOpen}
                 bind:responseData
