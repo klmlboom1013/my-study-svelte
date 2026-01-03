@@ -31,6 +31,23 @@
         types.find((t) => t.value === value) || types[0],
     );
 
+    let triggerBtn: HTMLButtonElement;
+    let dropdownPosition = $state({ top: 0, left: 0, width: 0 });
+
+    function toggle() {
+        if (!isOpen) {
+            const rect = triggerBtn.getBoundingClientRect();
+            dropdownPosition = {
+                top: rect.bottom + 4,
+                left: rect.left,
+                width: rect.width,
+            };
+            isOpen = true;
+        } else {
+            isOpen = false;
+        }
+    }
+
     function select(type: string) {
         value = type;
         isOpen = false;
@@ -42,7 +59,8 @@
     use:clickOutside={() => (isOpen = false)}
 >
     <button
-        onclick={() => (isOpen = !isOpen)}
+        bind:this={triggerBtn}
+        onclick={toggle}
         class="w-full flex items-center justify-center gap-2 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors focus:ring-2 focus:ring-primary/20 outline-none"
         title={selectedType.desc}
     >
@@ -56,7 +74,8 @@
 
     {#if isOpen}
         <div
-            class="absolute top-full left-0 z-10 mt-1 w-full min-w-[100px] bg-white dark:bg-card-dark rounded-lg shadow-lg border border-slate-100 dark:border-border-dark py-1 overflow-hidden"
+            class="fixed z-[9999] bg-white dark:bg-card-dark rounded-lg shadow-lg border border-slate-100 dark:border-border-dark py-1 overflow-hidden"
+            style="top: {dropdownPosition.top}px; left: {dropdownPosition.left}px; min-width: 100px;"
             transition:scale={{ duration: 150, start: 0.95 }}
         >
             {#each types as type}

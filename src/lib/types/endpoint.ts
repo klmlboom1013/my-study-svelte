@@ -12,6 +12,16 @@ export interface RequestDataField {
     description?: string;
 }
 
+export interface ResponseDataField {
+    name: string;
+    type: "string" | "number" | "boolean";
+    length?: number;
+    encrypt: boolean;
+    decoded: boolean;
+    signingOrder?: number;
+    description?: string;
+}
+
 export interface Endpoint {
     id: string;
     name: string;
@@ -29,6 +39,7 @@ export interface Endpoint {
         customHeaders?: { key: string; value: string }[];
     };
     requestData: RequestDataField[];
+    responseData: ResponseDataField[];
     createdAt: number;
     updatedAt: number;
 }

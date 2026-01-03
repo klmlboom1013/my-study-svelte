@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
+    import { page } from "$app/stores";
     import {
         SERVICE_OPTIONS,
         SERVICE_SITE_MAPPING,
@@ -15,13 +16,13 @@
         RequestType,
     } from "$lib/types/endpoint";
     import { endpointService } from "$lib/services/endpointService";
-
     import RequestDataJsonModal from "$lib/components/endpoint/RequestDataJsonModal.svelte";
     import ResponseDataJsonModal from "$lib/components/endpoint/ResponseDataJsonModal.svelte";
     import TypeSelector from "$lib/components/endpoint/TypeSelector.svelte";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import DropdownInput from "$lib/components/ui/DropdownInput.svelte";
 
+    let endpointId = $state("");
     let name = $state("");
     let description = $state("");
     let method = $state<HttpMethod>("POST");
@@ -70,6 +71,10 @@
         responseData = responseData.filter((_, i) => i !== index);
     }
 
+    let contentType = $state("application/json");
+    let charset = $state("UTF-8");
+    let createdAt = $state(0);
+
     let customHeaders = $state<{ key: string; value: string }[]>([
         { key: "", value: "" },
     ]);
@@ -82,41 +87,89 @@
         customHeaders = customHeaders.filter((_, i) => i !== index);
     }
 
+    let isBasicOpen = $state(true);
+    let isRequestOpen = $state(true);
+    let isConfigOpen = $state(true);
+    let isResponseOpen = $state(true);
+
     // Derived site options based on selected service
     let siteOptions = $derived(SERVICE_SITE_MAPPING[selectedService] || []);
 
-    // Set default site when service changes
+    onMount(() => {
+        endpointId = $page.params.id ?? "";
+        if (!endpointId) {
+            alert("Invalid Endpoint ID");
+            goto("/endpoint");
+            return;
+        }
+        const endpoint = endpointService.getEndpoint(endpointId);
+
+        if (endpoint) {
+            name = endpoint.name;
+            description = endpoint.description || "";
+            method = endpoint.method;
+            uri = endpoint.uri;
+            requestType = endpoint.requestType;
+            selectedService =
+                (endpoint.scope?.service as ServiceType) || SERVICE_OPTIONS[0];
+            selectedSite = endpoint.scope?.site || "";
+            contentType = endpoint.config?.contentType || "application/json";
+            charset = endpoint.config?.charset || "UTF-8";
+            customHeaders = endpoint.config?.customHeaders || [
+                { key: "", value: "" },
+            ];
+            requestData = endpoint.requestData || [];
+            responseData = endpoint.responseData || [];
+            createdAt = endpoint.createdAt;
+            createdAt = endpoint.createdAt;
+        } else {
+            alert("Endpoint not found");
+            goto("/endpoint");
+        }
+    });
+
+    // Set default values ONLY when user interacts (not on initial load)
+    // We need to be careful not to overwrite loaded data with defaults
     $effect(() => {
+        // Only update site if service changes AND the current site is not valid for the new service
+        // But we need to distinguish between initial load and user change.
+        // For simplicity, we trust the loaded data is consistent.
+        // If user changes service, we default site.
         if (
             siteOptions.length > 0 &&
             !siteOptions.includes(selectedSite as any)
         ) {
+            // If currently selected site is NOT in the new options, reset it.
+            // This might happen on initial load if data is inconsistent, or on user input.
+            // However, on mount, we set selectedService then selectedSite.
+            // If we change selectedService via UI, selectedSite might become invalid.
             selectedSite = siteOptions[0];
         } else if (siteOptions.length === 0) {
             selectedSite = "";
         }
     });
 
-    let contentType = $state("application/json");
-    let charset = $state("UTF-8");
-
-    // Default Content-Type logic
+    // Similar logic for Content-Type, we don't want to overwrite if user has custom setting loaded
     $effect(() => {
-        if (requestType === "REST") {
+        // Only apply default if we are sure it's a user change or we want to enforce it.
+        // For now, let's keep it simple: if requestType changes, we update contentType IF it matches the 'other' default
+        // OR just enforce it like creation page for now.
+        if (
+            requestType === "REST" &&
+            contentType === "application/x-www-form-urlencoded"
+        ) {
             contentType = "application/json";
-        } else if (requestType === "FORM") {
+        } else if (
+            requestType === "FORM" &&
+            contentType === "application/json"
+        ) {
             contentType = "application/x-www-form-urlencoded";
         }
     });
 
-    let isBasicOpen = $state(true);
-    let isRequestOpen = $state(true);
-    let isConfigOpen = $state(true);
-    let isResponseOpen = $state(true);
-
     function handleSave() {
-        const newEndpoint: Endpoint = {
-            id: crypto.randomUUID(),
+        const updatedEndpoint: Endpoint = {
+            id: endpointId,
             name,
             description,
             method,
@@ -133,20 +186,19 @@
             },
             requestData,
             responseData,
-            createdAt: Date.now(),
+            createdAt: createdAt,
             updatedAt: Date.now(),
         };
 
-        // Save to LocalStorage
-        endpointService.saveEndpoint(newEndpoint);
-        console.log("Saved Endpoint:", newEndpoint);
+        endpointService.updateEndpoint(updatedEndpoint);
+        console.log("Updated Endpoint:", updatedEndpoint);
 
-        alert("Endpoint Saved!");
-        goto("/");
+        alert("Endpoint Updated!");
+        goto(`/endpoint/${endpointId}`);
     }
 
     function handleCancel() {
-        goto("/");
+        goto(`/endpoint/${endpointId}`);
     }
 </script>
 
@@ -155,15 +207,16 @@
         items={[
             { label: "Home", href: "/" },
             { label: "Test Endpoint", href: "/endpoint" },
-            { label: "New Endpoint" },
+            { label: name || "Endpoint", href: `/endpoint/${endpointId}` },
+            { label: "Edit" },
         ]}
     />
     <div class="mb-8">
         <h1 class="text-3xl font-bold text-slate-900 dark:text-white mb-2">
-            New Endpoint
+            Edit Endpoint
         </h1>
         <p class="text-slate-500 dark:text-slate-400">
-            Create a new API endpoint configuration for testing.
+            Modify API endpoint configuration.
         </p>
     </div>
 
@@ -487,7 +540,8 @@
                                             class="p-2 font-medium text-center w-16"
                                             >UrlEnc</th
                                         >
-                                        <th class="p-2 font-medium w-12"
+                                        <th
+                                            class="p-2 font-medium text-center w-12"
                                             >Sign Order</th
                                         >
                                         <th class="p-2 font-medium"
@@ -787,6 +841,7 @@
                                     >add</span
                                 > Add Field
                             </button>
+                            <button
                                 onclick={() => (isResponseJsonModalOpen = true)}
                                 class="px-3 py-2 text-sm font-bold text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-500 dark:hover:text-green-400 dark:hover:bg-green-900/20 rounded-lg transition-colors flex items-center gap-1"
                             >
@@ -799,7 +854,7 @@
                     </div>
                 {/if}
             </section>
-            
+
             <ResponseDataJsonModal
                 bind:isOpen={isResponseJsonModalOpen}
                 bind:responseData
@@ -820,7 +875,7 @@
                     disabled={!name || !uri}
                     class="px-5 py-2.5 rounded-lg text-sm font-bold text-white bg-primary hover:bg-primary/90 shadow-md shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
                 >
-                    Save Endpoint
+                    Update Endpoint
                 </button>
             </div>
         </div>
