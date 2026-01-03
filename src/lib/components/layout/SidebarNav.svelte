@@ -20,6 +20,8 @@
         allowTextWrap = false,
     }: Props = $props();
 
+    import { goto } from "$app/navigation";
+
     // Primary Navigation Data (Top Level)
     let primaryNav = [
         { name: "Report", icon: "description" },
@@ -32,6 +34,7 @@
     ];
 
     // API Categories Data (Moved from Dashboard)
+    // ... items ...
     let categories = [
         {
             id: "auth",
@@ -77,9 +80,30 @@
 
     <!-- Action Button Removed: Replaced by inline 'New' button -->
 
-    {#if showCollections}
-        <!-- Primary Navigation Section -->
-        <div class="flex flex-col gap-1 mt-2">
+    <!-- Primary Navigation Section -->
+    <div class="flex flex-col gap-1 mt-2">
+        <!-- Home Button -->
+        <button
+            onclick={() => goto('/')}
+            class="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-border-dark text-left group transition-colors"
+        >
+            <div
+                class="size-8 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:text-primary transition-colors shrink-0"
+            >
+                <span class="material-symbols-outlined text-[20px]"
+                    >home</span
+                >
+            </div>
+            <span
+                class="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors {allowTextWrap
+                    ? 'whitespace-normal break-words'
+                    : 'truncate'}"
+            >
+                Home
+            </span>
+        </button>
+
+        {#if showCollections}
             {#each primaryNav as item}
                 <button
                     class="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-border-dark text-left group transition-colors"
@@ -100,8 +124,10 @@
                     </span>
                 </button>
             {/each}
-        </div>
+        {/if}
+    </div>
 
+    {#if showCollections}
         <!-- Separator -->
         <div class="h-px bg-slate-200 dark:bg-border-dark my-2"></div>
     {/if}
