@@ -24,13 +24,13 @@
 
     // Primary Navigation Data (Top Level)
     let primaryNav = [
-        { name: "Report", icon: "description" },
-        { name: "Issue", icon: "bug_report" },
-        { name: "Test Suite", icon: "science" },
-        { name: "Test Endpoint", icon: "api" },
-        { name: "API Collections", icon: "folder_open" },
-        { name: "API Categories", icon: "category" },
-        { name: "Settings", icon: "settings" },
+        { name: "Report", icon: "description", path: "/report" },
+        { name: "Issue", icon: "bug_report", path: "/issue" },
+        { name: "Test Suite", icon: "science", path: "/test-suite" },
+        { name: "Test Endpoint", icon: "api", path: "/endpoint" },
+        { name: "API Collections", icon: "folder_open", path: "/collections" },
+        { name: "API Categories", icon: "category", path: "/categories" },
+        { name: "Settings", icon: "settings", path: "/settings" },
     ];
 
     // API Categories Data (Moved from Dashboard)
@@ -84,15 +84,13 @@
     <div class="flex flex-col gap-1 mt-2">
         <!-- Home Button -->
         <button
-            onclick={() => goto('/')}
+            onclick={() => goto("/")}
             class="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-border-dark text-left group transition-colors"
         >
             <div
                 class="size-8 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:text-primary transition-colors shrink-0"
             >
-                <span class="material-symbols-outlined text-[20px]"
-                    >home</span
-                >
+                <span class="material-symbols-outlined text-[20px]">home</span>
             </div>
             <span
                 class="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors {allowTextWrap
@@ -106,6 +104,7 @@
         {#if showCollections}
             {#each primaryNav as item}
                 <button
+                    onclick={() => item.path && goto(item.path)}
                     class="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-border-dark text-left group transition-colors"
                 >
                     <div
