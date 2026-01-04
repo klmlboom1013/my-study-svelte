@@ -7,6 +7,10 @@
         type ServiceType,
         type SiteType,
     } from "$lib/constants/wpayServerType";
+    import {
+        APPLICATION_OPTIONS,
+        type ApplicationType,
+    } from "$lib/constants/application";
     import type {
         Endpoint,
         HttpMethod,
@@ -22,6 +26,7 @@
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import DropdownInput from "$lib/components/ui/DropdownInput.svelte";
 
+    let selectedApplication = $state<ApplicationType>("WPAY");
     let name = $state("");
     let description = $state("");
     let method = $state<HttpMethod>("POST");
@@ -122,6 +127,7 @@
             method,
             uri,
             requestType,
+            application: selectedApplication,
             scope: {
                 service: selectedService,
                 site: selectedSite,
@@ -198,6 +204,19 @@
                         <div class="flex flex-col gap-2">
                             <label
                                 class="text-sm font-medium text-slate-700 dark:text-slate-300"
+                                for="application"
+                            >
+                                Application <span class="text-red-500">*</span>
+                            </label>
+                            <DropdownInput
+                                bind:value={selectedApplication}
+                                options={[...APPLICATION_OPTIONS]}
+                                placeholder="Select Application"
+                            />
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label
+                                class="text-sm font-medium text-slate-700 dark:text-slate-300"
                                 for="name"
                             >
                                 Endpoint Name <span class="text-red-500">*</span
@@ -212,31 +231,33 @@
                             />
                         </div>
 
-                        <div class="flex flex-col gap-2">
-                            <label
-                                class="text-sm font-medium text-slate-700 dark:text-slate-300"
-                                for="scope"
-                            >
-                                Scope (Service / Site)
-                            </label>
-                            <div class="flex gap-2">
-                                <div class="flex-1">
-                                    <DropdownInput
-                                        bind:value={selectedService}
-                                        options={[...SERVICE_OPTIONS]}
-                                        placeholder="Service"
-                                    />
-                                </div>
-                                <div class="flex-1">
-                                    <DropdownInput
-                                        bind:value={selectedSite}
-                                        options={siteOptions}
-                                        placeholder="Site"
-                                        disabled={siteOptions.length === 0}
-                                    />
+                        {#if selectedApplication === "WPAY"}
+                            <div class="flex flex-col gap-2">
+                                <label
+                                    class="text-sm font-medium text-slate-700 dark:text-slate-300"
+                                    for="scope"
+                                >
+                                    Scope (Service / Site)
+                                </label>
+                                <div class="flex gap-2">
+                                    <div class="flex-1">
+                                        <DropdownInput
+                                            bind:value={selectedService}
+                                            options={[...SERVICE_OPTIONS]}
+                                            placeholder="Service"
+                                        />
+                                    </div>
+                                    <div class="flex-1">
+                                        <DropdownInput
+                                            bind:value={selectedSite}
+                                            options={siteOptions}
+                                            placeholder="Site"
+                                            disabled={siteOptions.length === 0}
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        {/if}
                         <div
                             class="col-span-1 md:col-span-2 flex flex-col gap-2"
                         >
@@ -504,6 +525,7 @@
                                             <td class="p-2">
                                                 <input
                                                     type="text"
+                                                    name="requestKey_{i}"
                                                     bind:value={field.name}
                                                     placeholder="Field Name"
                                                     class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none"
@@ -519,6 +541,7 @@
                                             <td class="p-2">
                                                 <input
                                                     type="number"
+                                                    name="requestLen_{i}"
                                                     bind:value={field.length}
                                                     disabled={field.type !==
                                                         "string"}
@@ -532,6 +555,7 @@
                                             <td class="p-2 text-center">
                                                 <input
                                                     type="checkbox"
+                                                    name="requestReq_{i}"
                                                     bind:checked={
                                                         field.required
                                                     }
@@ -541,6 +565,7 @@
                                             <td class="p-2 text-center">
                                                 <input
                                                     type="checkbox"
+                                                    name="requestEnc_{i}"
                                                     bind:checked={field.encrypt}
                                                     class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/50"
                                                 />
@@ -548,6 +573,7 @@
                                             <td class="p-2 text-center">
                                                 <input
                                                     type="checkbox"
+                                                    name="requestUrl_{i}"
                                                     bind:checked={field.encoded}
                                                     class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/50"
                                                 />
@@ -555,6 +581,7 @@
                                             <td class="p-2">
                                                 <input
                                                     type="number"
+                                                    name="requestSign_{i}"
                                                     bind:value={
                                                         field.signingOrder
                                                     }
@@ -565,6 +592,7 @@
                                             <td class="p-2">
                                                 <input
                                                     type="text"
+                                                    name="requestDesc_{i}"
                                                     bind:value={
                                                         field.description
                                                     }
@@ -692,6 +720,7 @@
                                             <td class="p-2">
                                                 <input
                                                     type="text"
+                                                    name="responseKey_{i}"
                                                     bind:value={field.name}
                                                     placeholder="Field Name"
                                                     class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none"
@@ -707,6 +736,7 @@
                                             <td class="p-2">
                                                 <input
                                                     type="number"
+                                                    name="responseLen_{i}"
                                                     bind:value={field.length}
                                                     disabled={field.type !==
                                                         "string"}
@@ -720,6 +750,7 @@
                                             <td class="p-2 text-center">
                                                 <input
                                                     type="checkbox"
+                                                    name="responseEnc_{i}"
                                                     bind:checked={field.encrypt}
                                                     class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/50"
                                                 />
@@ -727,6 +758,7 @@
                                             <td class="p-2 text-center">
                                                 <input
                                                     type="checkbox"
+                                                    name="responseDec_{i}"
                                                     bind:checked={field.decoded}
                                                     class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/50"
                                                 />
@@ -734,6 +766,7 @@
                                             <td class="p-2 text-center">
                                                 <input
                                                     type="number"
+                                                    name="responseSign_{i}"
                                                     bind:value={
                                                         field.signingOrder
                                                     }
@@ -749,6 +782,7 @@
                                             <td class="p-2">
                                                 <input
                                                     type="text"
+                                                    name="responseDesc_{i}"
                                                     bind:value={
                                                         field.description
                                                     }

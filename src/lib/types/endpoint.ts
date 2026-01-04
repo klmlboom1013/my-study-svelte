@@ -26,6 +26,7 @@ export interface Endpoint {
     id: string;
     name: string;
     description?: string;
+    application: string; // "WPAY" | "Express" | "Smart"
     method: HttpMethod;
     uri: string;
     requestType: RequestType;

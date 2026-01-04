@@ -124,6 +124,11 @@
                     <div class="flex items-start justify-between mb-3">
                         <div class="flex items-center gap-2">
                             <span
+                                class="px-2 py-1 rounded text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                            >
+                                {endpoint.application}
+                            </span>
+                            <span
                                 class="px-2 py-1 rounded text-xs font-bold bg-slate-100 dark:bg-background-dark text-slate-700 dark:text-slate-300"
                             >
                                 {endpoint.method}

@@ -8,7 +8,13 @@ export const endpointService = {
      */
     saveEndpoint: (endpoint: Endpoint): void => {
         const stored = localStorage.getItem(STORAGE_KEY);
-        const endpoints: Endpoint[] = stored ? JSON.parse(stored) : [];
+        // Ensure read endpoints also get migrated (though less critical here if we trust the new endpoint)
+        const endpoints: Endpoint[] = stored
+            ? JSON.parse(stored).map((e: any) => ({
+                ...e,
+                application: e.application || "WPAY",
+            }))
+            : [];
         endpoints.push(endpoint);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(endpoints));
     },
@@ -18,7 +24,13 @@ export const endpointService = {
      */
     getEndpoints: (): Endpoint[] => {
         const stored = localStorage.getItem(STORAGE_KEY);
-        return stored ? JSON.parse(stored) : [];
+        if (!stored) return [];
+        const parsed = JSON.parse(stored);
+        // Migration: inject default application if missing
+        return parsed.map((e: any) => ({
+            ...e,
+            application: e.application || "WPAY",
+        }));
     },
 
     /**
@@ -33,7 +45,13 @@ export const endpointService = {
      */
     deleteEndpoint: (id: string): void => {
         const stored = localStorage.getItem(STORAGE_KEY);
-        const endpoints: Endpoint[] = stored ? JSON.parse(stored) : [];
+        // Migration during read
+        const endpoints: Endpoint[] = stored
+            ? JSON.parse(stored).map((e: any) => ({
+                ...e,
+                application: e.application || "WPAY",
+            }))
+            : [];
         const newEndpoints = endpoints.filter((e) => e.id !== id);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(newEndpoints));
     },
@@ -44,7 +62,12 @@ export const endpointService = {
     getEndpoint: (id: string): Endpoint | undefined => {
         const stored = localStorage.getItem(STORAGE_KEY);
         const endpoints: Endpoint[] = stored ? JSON.parse(stored) : [];
-        return endpoints.find((e) => e.id === id);
+        const endpoint = endpoints.find((e) => e.id === id);
+        // Migration
+        if (endpoint && !endpoint.application) {
+            return { ...endpoint, application: "WPAY" };
+        }
+        return endpoint;
     },
 
     /**
@@ -52,7 +75,12 @@ export const endpointService = {
      */
     updateEndpoint: (updatedEndpoint: Endpoint): void => {
         const stored = localStorage.getItem(STORAGE_KEY);
-        const endpoints: Endpoint[] = stored ? JSON.parse(stored) : [];
+        const endpoints: Endpoint[] = stored
+            ? JSON.parse(stored).map((e: any) => ({
+                ...e,
+                application: e.application || "WPAY",
+            }))
+            : [];
         const index = endpoints.findIndex((e) => e.id === updatedEndpoint.id);
 
         if (index !== -1) {

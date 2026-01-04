@@ -57,7 +57,7 @@
                     {endpoint.description || "No description provided."}
                 </p>
             </div>
-            <div class="flex gap-2 w-full md:w-auto">
+            <div class="hidden md:flex gap-2 w-full md:w-auto">
                 <button
                     onclick={() => goto(`/endpoint/${endpointId}/edit`)}
                     class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium shadow-sm shadow-primary/20"
@@ -204,7 +204,7 @@
                     </h2>
                 </div>
                 {#if endpoint.requestData && endpoint.requestData.length > 0}
-                    <div class="overflow-x-auto">
+                    <div class="hidden md:block overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr
@@ -301,9 +301,8 @@
                                             {#if field.signingOrder}
                                                 <span
                                                     class="inline-flex items-center justify-center size-5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-bold"
+                                                    >{field.signingOrder}</span
                                                 >
-                                                    {field.signingOrder}
-                                                </span>
                                             {:else}
                                                 <span class="text-slate-300"
                                                     >-</span
@@ -318,6 +317,114 @@
                                 {/each}
                             </tbody>
                         </table>
+                    </div>
+                    <!-- Mobile View -->
+                    <div class="md:hidden flex flex-col gap-4 p-4">
+                        {#each endpoint.requestData as field}
+                            <div
+                                class="bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-lg p-4 shadow-sm flex flex-col gap-3"
+                            >
+                                <div class="flex justify-between items-start">
+                                    <div class="flex flex-col">
+                                        <span
+                                            class="font-bold text-slate-900 dark:text-white"
+                                            >{field.name}</span
+                                        >
+                                        <span
+                                            class="text-xs text-slate-500 dark:text-slate-400 mt-1"
+                                            >{field.description ||
+                                                "No description"}</span
+                                        >
+                                    </div>
+                                    <span
+                                        class="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                                    >
+                                        {field.type}
+                                        {#if field.type === "string" && field.length}
+                                            ({field.length})
+                                        {/if}
+                                    </span>
+                                </div>
+                                <div
+                                    class="grid grid-cols-4 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800"
+                                >
+                                    <div
+                                        class="flex flex-col items-center gap-1"
+                                    >
+                                        <span
+                                            class="text-[10px] uppercase font-bold text-slate-400"
+                                            >Req</span
+                                        >
+                                        {#if field.required}
+                                            <span
+                                                class="material-symbols-outlined text-green-500 text-[20px]"
+                                                >check_circle</span
+                                            >
+                                        {:else}
+                                            <span
+                                                class="material-symbols-outlined text-slate-300 text-[20px]"
+                                                >remove</span
+                                            >
+                                        {/if}
+                                    </div>
+                                    <div
+                                        class="flex flex-col items-center gap-1"
+                                    >
+                                        <span
+                                            class="text-[10px] uppercase font-bold text-slate-400"
+                                            >Enc</span
+                                        >
+                                        {#if field.encrypt}
+                                            <span
+                                                class="material-symbols-outlined text-purple-500 text-[20px]"
+                                                >lock</span
+                                            >
+                                        {:else}
+                                            <span
+                                                class="material-symbols-outlined text-slate-300 text-[20px]"
+                                                >lock_open</span
+                                            >
+                                        {/if}
+                                    </div>
+                                    <div
+                                        class="flex flex-col items-center gap-1"
+                                    >
+                                        <span
+                                            class="text-[10px] uppercase font-bold text-slate-400"
+                                            >Url</span
+                                        >
+                                        {#if field.encoded}
+                                            <span
+                                                class="material-symbols-outlined text-green-500 text-[20px]"
+                                                >check_circle</span
+                                            >
+                                        {:else}
+                                            <span
+                                                class="material-symbols-outlined text-slate-300 text-[20px]"
+                                                >remove</span
+                                            >
+                                        {/if}
+                                    </div>
+                                    <div
+                                        class="flex flex-col items-center gap-1"
+                                    >
+                                        <span
+                                            class="text-[10px] uppercase font-bold text-slate-400"
+                                            >Sign</span
+                                        >
+                                        {#if field.signingOrder}
+                                            <span
+                                                class="inline-flex items-center justify-center size-5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-bold"
+                                                >{field.signingOrder}</span
+                                            >
+                                        {:else}
+                                            <span class="text-slate-300">-</span
+                                            >
+                                        {/if}
+                                    </div>
+                                </div>
+                            </div>
+                        {/each}
                     </div>
                 {:else}
                     <div
@@ -340,7 +447,7 @@
                     </h2>
                 </div>
                 {#if endpoint.responseData && endpoint.responseData.length > 0}
-                    <div class="overflow-x-auto">
+                    <div class="hidden md:block overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr
@@ -420,9 +527,8 @@
                                             {#if endpoint.requestType === "FORM" && field.signingOrder}
                                                 <span
                                                     class="inline-flex items-center justify-center size-5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-bold"
+                                                    >{field.signingOrder}</span
                                                 >
-                                                    {field.signingOrder}
-                                                </span>
                                             {:else}
                                                 <span class="text-slate-300"
                                                     >-</span
@@ -437,6 +543,95 @@
                                 {/each}
                             </tbody>
                         </table>
+                    </div>
+                    <!-- Mobile View -->
+                    <div class="md:hidden flex flex-col gap-4 p-4">
+                        {#each endpoint.responseData as field}
+                            <div
+                                class="bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-lg p-4 shadow-sm flex flex-col gap-3"
+                            >
+                                <div class="flex justify-between items-start">
+                                    <div class="flex flex-col">
+                                        <span
+                                            class="font-bold text-slate-900 dark:text-white"
+                                            >{field.name}</span
+                                        >
+                                        <span
+                                            class="text-xs text-slate-500 dark:text-slate-400 mt-1"
+                                            >{field.description ||
+                                                "No description"}</span
+                                        >
+                                    </div>
+                                    <span
+                                        class="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                                    >
+                                        {field.type}
+                                        {#if field.type === "string" && field.length}
+                                            ({field.length})
+                                        {/if}
+                                    </span>
+                                </div>
+                                <div
+                                    class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800"
+                                >
+                                    <div
+                                        class="flex flex-col items-center gap-1"
+                                    >
+                                        <span
+                                            class="text-[10px] uppercase font-bold text-slate-400"
+                                            >Enc</span
+                                        >
+                                        {#if field.encrypt}
+                                            <span
+                                                class="material-symbols-outlined text-purple-500 text-[20px]"
+                                                >lock</span
+                                            >
+                                        {:else}
+                                            <span
+                                                class="material-symbols-outlined text-slate-300 text-[20px]"
+                                                >lock_open</span
+                                            >
+                                        {/if}
+                                    </div>
+                                    <div
+                                        class="flex flex-col items-center gap-1"
+                                    >
+                                        <span
+                                            class="text-[10px] uppercase font-bold text-slate-400"
+                                            >UrlDec</span
+                                        >
+                                        {#if field.decoded}
+                                            <span
+                                                class="material-symbols-outlined text-green-500 text-[20px]"
+                                                >check_circle</span
+                                            >
+                                        {:else}
+                                            <span
+                                                class="material-symbols-outlined text-slate-300 text-[20px]"
+                                                >remove</span
+                                            >
+                                        {/if}
+                                    </div>
+                                    <div
+                                        class="flex flex-col items-center gap-1"
+                                    >
+                                        <span
+                                            class="text-[10px] uppercase font-bold text-slate-400"
+                                            >Sign</span
+                                        >
+                                        {#if endpoint.requestType === "FORM" && field.signingOrder}
+                                            <span
+                                                class="inline-flex items-center justify-center size-5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-bold"
+                                                >{field.signingOrder}</span
+                                            >
+                                        {:else}
+                                            <span class="text-slate-300">-</span
+                                            >
+                                        {/if}
+                                    </div>
+                                </div>
+                            </div>
+                        {/each}
                     </div>
                 {:else}
                     <div
