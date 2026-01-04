@@ -3,7 +3,9 @@
     import { onMount } from "svelte";
     import Tooltip from "$lib/components/ui/Tooltip.svelte";
     import { goto } from "$app/navigation";
-    import { deleteCookie } from "$lib/utils/cookie";
+    import LoginButton from "$lib/components/auth/LoginButton.svelte";
+    import { initAuth } from "$lib/services/authService";
+    import { syncService } from "$lib/services/syncService";
 
     import type { MouseEventHandler } from "svelte/elements";
 
@@ -31,111 +33,20 @@
         showUserControls = true,
     }: Props = $props();
 
-    // User Info State
-    let userInfo = $state({
-        userId: "Guest",
-        avatarUrl: "",
-    });
-    let showUserMenu = $state(false);
-    let dropdownRef = $state<HTMLDivElement | null>(null);
-    let buttonRef = $state<HTMLButtonElement | null>(null);
-
     // Global Search Logic
     let headerSearchTerm = $state("");
 
     function handleSearchKeydown(event: KeyboardEvent) {
         if (event.key === "Enter" && headerSearchTerm.trim()) {
             goto(`/endpoint?q=${encodeURIComponent(headerSearchTerm.trim())}`);
-            // Optional: clear search term after searching, or keep it.
-            // keeping it might be better UX if they want to modify it.
-            // For now, let's keep it.
-        }
-    }
-
-    // Random Avatar Logic
-    const avatarSeeds = [
-        "Felix",
-        "Aneka",
-        "Zoe",
-        "Jack",
-        "Bella",
-        "Leo",
-        "Mia",
-        "Max",
-        "Lara",
-        "Tom",
-        "Sky",
-        "Sam",
-        "Sora",
-        "Kai",
-        "Juno",
-        "Nora",
-        "Rex",
-        "Amy",
-        "Ben",
-        "Eva",
-        "Ben",
-        "Eva",
-    ];
-
-    function getRandomAvatar() {
-        const randomIndex = Math.floor(Math.random() * avatarSeeds.length);
-        return `https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeeds[randomIndex]}`;
-    }
-
-    function loadUserInfo() {
-        try {
-            const stored = localStorage.getItem("sign-in-page");
-            if (stored) {
-                const data = JSON.parse(stored);
-                userInfo.userId = data.userId || "Guest";
-                userInfo.avatarUrl = data.avatarUrl || getRandomAvatar();
-            } else {
-                userInfo.avatarUrl = getRandomAvatar();
-            }
-        } catch (e) {
-            console.error("Failed to load user info", e);
-            userInfo.avatarUrl = getRandomAvatar();
         }
     }
 
     onMount(() => {
-        loadUserInfo();
-
-        // Click outside listener
-        function handleClickOutside(event: MouseEvent) {
-            if (
-                showUserMenu &&
-                dropdownRef &&
-                buttonRef &&
-                !dropdownRef.contains(event.target as Node) &&
-                !buttonRef.contains(event.target as Node)
-            ) {
-                showUserMenu = false;
-            }
-        }
-
-        document.addEventListener("mousedown", handleClickOutside);
-
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
+        // Initialize Auth and Sync Services
+        initAuth();
+        syncService.init();
     });
-
-    function toggleUserMenu() {
-        showUserMenu = !showUserMenu;
-    }
-
-    function handleSignOut() {
-        // Clear auth token
-        deleteCookie("accessToken");
-
-        // Optional: Clear or update localStorage if needed
-        // localStorage.removeItem("sign-in-page"); // Keeping it might be useful for remembering last login
-
-        goto("/signin");
-        showUserMenu = false;
-    }
 </script>
 
 <header
@@ -239,95 +150,8 @@
                     </button>
                 </Tooltip>
 
-                <!-- Avatar -->
-                <div class="relative">
-                    <Tooltip text="User Menu" delay={100} position="bottom-end">
-                        <button
-                            bind:this={buttonRef}
-                            class="ml-2 rounded-full overflow-hidden border border-slate-200 dark:border-border-dark size-8 flex items-center justify-center bg-slate-100 dark:bg-border-dark focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
-                            onclick={toggleUserMenu}
-                        >
-                            <img
-                                src={userInfo.avatarUrl}
-                                alt="User Avatar"
-                                class="w-full h-full object-cover"
-                            />
-                        </button>
-                    </Tooltip>
-
-                    {#if showUserMenu}
-                        <div
-                            bind:this={dropdownRef}
-                            class="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] rounded-xl shadow-xl overflow-hidden z-50 text-slate-700 dark:text-[#c9d1d9]"
-                        >
-                            <!-- User Info Section -->
-                            <div
-                                class="px-4 py-3 border-b border-slate-200 dark:border-[#30363d] flex items-center gap-3"
-                            >
-                                <div
-                                    class="size-10 rounded-full border border-slate-200 dark:border-[#30363d] overflow-hidden shrink-0"
-                                >
-                                    <img
-                                        src={userInfo.avatarUrl}
-                                        alt="User Avatar"
-                                        class="w-full h-full object-cover"
-                                    />
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <div
-                                        class="font-semibold text-sm truncate text-slate-900 dark:text-[#e6edf3]"
-                                    >
-                                        {userInfo.userId}
-                                    </div>
-                                    <div
-                                        class="text-xs text-slate-500 dark:text-[#8b949e]"
-                                    >
-                                        Set status
-                                    </div>
-                                </div>
-                                <!-- Change Button (Visual only) -->
-                                <button
-                                    class="text-slate-400 hover:text-slate-600 dark:text-[#8b949e] dark:hover:text-[#58a6ff]"
-                                >
-                                    <span
-                                        class="material-symbols-outlined text-sm"
-                                        >cached</span
-                                    >
-                                </button>
-                            </div>
-
-                            <!-- Menu Items -->
-                            <div class="p-2">
-                                <button
-                                    class="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-slate-100 dark:hover:bg-[#1f6feb] dark:hover:text-white transition-colors"
-                                >
-                                    <span
-                                        class="material-symbols-outlined text-[18px] text-slate-500 dark:text-[#8b949e] group-hover:text-current"
-                                        >person</span
-                                    >
-                                    Profile
-                                </button>
-                            </div>
-
-                            <div
-                                class="h-px bg-slate-200 dark:bg-[#30363d] mx-2"
-                            ></div>
-
-                            <div class="p-2">
-                                <button
-                                    onclick={handleSignOut}
-                                    class="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-slate-100 dark:hover:bg-[#1f6feb] dark:hover:text-white transition-colors"
-                                >
-                                    <span
-                                        class="material-symbols-outlined text-[18px] text-slate-500 dark:text-[#8b949e] group-hover:text-current"
-                                        >logout</span
-                                    >
-                                    Sign out
-                                </button>
-                            </div>
-                        </div>
-                    {/if}
-                </div>
+                <!-- Auth Button (Login / User Menu) -->
+                <LoginButton />
             </div>
         {/if}
     </div>

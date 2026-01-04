@@ -27,6 +27,7 @@
 	"dependencies": {
 		"@kr-yeon/kisa-seed": "^1.0.5",
 		"buffer": "^6.0.3",
+		"firebase": "^12.7.0",
 		"jose": "^6.1.3",
 		"lucide-svelte": "^0.561.0"
 	}

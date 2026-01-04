@@ -17,6 +17,7 @@ export const endpointService = {
             : [];
         endpoints.push(endpoint);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(endpoints));
+        endpointService.notifyChange();
     },
 
     /**
@@ -54,6 +55,7 @@ export const endpointService = {
             : [];
         const newEndpoints = endpoints.filter((e) => e.id !== id);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(newEndpoints));
+        endpointService.notifyChange();
     },
 
     /**
@@ -86,6 +88,23 @@ export const endpointService = {
         if (index !== -1) {
             endpoints[index] = { ...updatedEndpoint, updatedAt: Date.now() };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(endpoints));
+            endpointService.notifyChange();
         }
+    },
+
+    // --- Sync Support ---
+    listeners: [] as (() => void)[],
+
+    onChange: (listener: () => void) => {
+        endpointService.listeners.push(listener);
+    },
+
+    notifyChange: () => {
+        endpointService.listeners.forEach((l) => l());
+    },
+
+    importEndpoints: (endpoints: Endpoint[]) => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(endpoints));
+        endpointService.notifyChange();
     }
 };
