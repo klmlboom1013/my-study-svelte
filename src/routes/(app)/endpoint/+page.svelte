@@ -168,12 +168,13 @@
                         </div>
                     </div>
 
-                    <h3
-                        class="text-lg font-semibold text-slate-900 dark:text-white mb-1 group-hover:text-primary transition-colors cursor-pointer truncate"
-                        onclick={() => goto(`/endpoint/${endpoint.id}`)}
-                    >
-                        {endpoint.name}
-                    </h3>
+                    <a href={`/endpoint/${endpoint.id}`} class="block focus:outline-none">
+                        <h3
+                            class="text-lg font-semibold text-slate-900 dark:text-white mb-1 group-hover:text-primary transition-colors truncate"
+                        >
+                            {endpoint.name}
+                        </h3>
+                    </a>
 
                     <div
                         class="font-mono text-xs text-slate-500 dark:text-slate-400 mb-4 truncate bg-slate-50 dark:bg-background-dark px-2 py-1 rounded"

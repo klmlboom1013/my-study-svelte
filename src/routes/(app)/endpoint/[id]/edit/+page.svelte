@@ -387,11 +387,11 @@
 
                         <div class="flex flex-col gap-6">
                             <div class="flex flex-col gap-2">
-                                <label
+                                <span
                                     class="text-sm font-medium text-slate-700 dark:text-slate-300"
                                 >
                                     Request Type
-                                </label>
+                                </span>
                                 <div
                                     class="inline-flex bg-slate-100 dark:bg-background-dark p-1 rounded-lg w-fit"
                                 >
@@ -426,9 +426,9 @@
                                     </h3>
 
                                     <div class="flex flex-col gap-2">
-                                        <label
+                                        <span
                                             class="text-xs font-bold text-slate-500 uppercase tracking-wider"
-                                            >Content-Type & Charset</label
+                                            >Content-Type & Charset</span
                                         >
                                         <div class="flex gap-2">
                                             <div class="flex-1">
@@ -458,9 +458,9 @@
                                     </div>
 
                                     <div class="flex flex-col gap-3 pt-2">
-                                        <label
+                                        <span
                                             class="text-xs font-bold text-slate-500 uppercase tracking-wider"
-                                            >Custom Headers</label
+                                            >Custom Headers</span
                                         >
                                         {#each customHeaders as header, i}
                                             <div
