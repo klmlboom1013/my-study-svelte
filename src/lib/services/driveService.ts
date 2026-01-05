@@ -4,10 +4,10 @@ interface DriveFile {
 }
 
 export const driveService = {
-    // List files in the App Data Folder to find config.json
-    async listFiles(accessToken: string): Promise<DriveFile[]> {
-        const query = "name = 'config.json' and spaces = 'appDataFolder'";
-        const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id, name)`;
+    // List files in the App Data Folder to find a specific file
+    async listFiles(accessToken: string, filename: string): Promise<DriveFile[]> {
+        const query = `name = '${filename}'`;
+        const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&spaces=appDataFolder&fields=files(id, name)`;
 
         const response = await fetch(url, {
             headers: {
@@ -16,7 +16,9 @@ export const driveService = {
         });
 
         if (!response.ok) {
-            throw new Error(`Drive List Error: ${response.statusText}`);
+            const errorText = await response.text();
+            console.error("Drive List Error Details:", response.status, errorText);
+            throw new Error(`Drive List Error: ${response.status} ${errorText}`);
         }
 
         const data = await response.json();
@@ -40,10 +42,10 @@ export const driveService = {
         return await response.json();
     },
 
-    // Create a new config.json file in App Data Folder
-    async createFile(accessToken: string, content: any): Promise<DriveFile> {
+    // Create a new file in App Data Folder
+    async createFile(accessToken: string, filename: string, content: any): Promise<DriveFile> {
         const metadata = {
-            name: "config.json",
+            name: filename,
             parents: ["appDataFolder"],
         };
 
@@ -92,5 +94,30 @@ export const driveService = {
         }
 
         return await response.json();
+    },
+
+    // Helper: Save Endpoints (Create or Update)
+    async saveEndpoints(accessToken: string, data: any[]): Promise<void> {
+        const filename = "endpoints.json";
+        const files = await this.listFiles(accessToken, filename);
+
+        if (files.length > 0) {
+            // Update the first found file
+            await this.updateFile(accessToken, files[0].id, data);
+        } else {
+            // Create new file
+            await this.createFile(accessToken, filename, data);
+        }
+    },
+
+    // Helper: Load Endpoints
+    async loadEndpoints(accessToken: string): Promise<any[] | null> {
+        const filename = "endpoints.json";
+        const files = await this.listFiles(accessToken, filename);
+
+        if (files.length > 0) {
+            return await this.downloadFile(accessToken, files[0].id);
+        }
+        return null; // Not found
     },
 };

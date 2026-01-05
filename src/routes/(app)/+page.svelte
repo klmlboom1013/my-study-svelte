@@ -106,9 +106,9 @@
 </script>
 
 {#if isValid}
-    <div class="max-w-[1200px] mx-auto flex flex-col gap-8 pb-10">
+    <div class="max-w-6xl mx-auto flex flex-col gap-8 py-8 px-4">
         <!-- Page Heading -->
-        <div class="flex flex-wrap justify-between items-end gap-4">
+        <div class="flex flex-wrap justify-between items-end gap-4 mt-9">
             <div class="flex flex-col gap-2">
                 <h1
                     class="text-slate-900 dark:text-white text-3xl md:text-4xl font-black tracking-tight"

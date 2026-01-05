@@ -4,26 +4,53 @@
     import { page } from "$app/stores";
     import { endpointService } from "$lib/services/endpointService";
     import type { Endpoint } from "$lib/types/endpoint";
+    import { driveService } from "$lib/services/driveService";
+    import { authStore, loginWithGoogle } from "$lib/services/authService";
+    import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
+    import { get } from "svelte/store";
 
     let endpoints = $state<Endpoint[]>([]);
     let searchTerm = $state("");
+    let filterApp = $state("");
 
     onMount(() => {
         endpoints = endpointService.getEndpoints();
 
-        // Initialize search term from URL query parameter
+        // Initialize search term and app filter from URL query parameter
         const queryTerm = $page.url.searchParams.get("q");
         if (queryTerm) {
             searchTerm = queryTerm;
+        }
+
+        const appParam = $page.url.searchParams.get("app");
+        if (appParam) {
+            filterApp = appParam;
         }
     });
 
     // React to URL changes if the user searches again while on this page
     $effect(() => {
         const queryTerm = $page.url.searchParams.get("q");
+        const appParam = $page.url.searchParams.get("app");
+
         untrack(() => {
             if (queryTerm !== null && queryTerm !== searchTerm) {
                 searchTerm = queryTerm;
+            }
+            // Check if appParam changed or if it was removed (which means All/Reset)
+            // But if appParam is null, it means not in URL. If filterApp was set, we should clear it?
+            // In header we delete 'app' param if 'All' or empty.
+            if (appParam !== null && appParam !== filterApp) {
+                filterApp = appParam;
+            } else if (
+                appParam === null &&
+                filterApp !== "" &&
+                filterApp !== "All"
+            ) {
+                // If url param removed but we have filter, reset it?
+                // Actually Header logic: delete param if 'All'.
+                // So if param is missing, treat as 'All'.
+                filterApp = "All";
             }
         });
     });
@@ -31,11 +58,17 @@
     let filteredEndpoints = $derived(
         endpoints.filter((endpoint) => {
             const term = searchTerm.toLowerCase();
-            return (
+            const matchesSearch =
                 endpoint.name.toLowerCase().includes(term) ||
                 endpoint.uri.toLowerCase().includes(term) ||
-                endpoint.method.toLowerCase().includes(term)
-            );
+                endpoint.method.toLowerCase().includes(term);
+
+            const matchesApp =
+                !filterApp ||
+                filterApp === "All" ||
+                endpoint.application === filterApp;
+
+            return matchesSearch && matchesApp;
         }),
     );
 
@@ -45,10 +78,91 @@
             endpoints = endpointService.getEndpoints();
         }
     }
+
+    let isSyncing = $state(false);
+
+    async function handleDriveBackup() {
+        if (isSyncing) return;
+
+        let token = $authStore.accessToken;
+
+        // If not logged in or no token, try login first
+        if (!token) {
+            try {
+                const result = await loginWithGoogle();
+                token = result.token;
+            } catch (error) {
+                alert("Google Login failed.");
+                return;
+            }
+        }
+
+        if (!token) return;
+
+        try {
+            isSyncing = true;
+            // Get latest data directly from service
+            const dataToSave = endpointService.getEndpoints();
+            await driveService.saveEndpoints(token, dataToSave);
+            alert("Backup successful! (Saved to Google Drive App Data)");
+        } catch (error: any) {
+            console.error(error);
+            alert(`Backup failed: ${error.message}`);
+        } finally {
+            isSyncing = false;
+        }
+    }
+
+    async function handleDriveRestore() {
+        if (isSyncing) return;
+
+        if (
+            !confirm(
+                "This will overwrite your current local endpoints. Continue?",
+            )
+        )
+            return;
+
+        let token = $authStore.accessToken;
+
+        // If not logged in or no token, try login first
+        if (!token) {
+            try {
+                const result = await loginWithGoogle();
+                token = result.token;
+            } catch (error) {
+                alert("Google Login failed.");
+                return;
+            }
+        }
+
+        if (!token) return;
+
+        try {
+            isSyncing = true;
+            const data = await driveService.loadEndpoints(token);
+            if (data) {
+                // Save to local storage via service
+                endpointService.importEndpoints(data);
+                endpoints = endpointService.getEndpoints(); // Refresh view
+                alert("Restore successful!");
+            } else {
+                alert("No backup found in Google Drive.");
+            }
+        } catch (error: any) {
+            console.error(error);
+            alert(`Restore failed: ${error.message}`);
+        } finally {
+            isSyncing = false;
+        }
+    }
 </script>
 
 <div class="max-w-6xl mx-auto py-8 px-4">
-    <div class="flex items-center justify-between mb-6">
+    <Breadcrumbs
+        items={[{ label: "Home", href: "/" }, { label: "Test Endpoint" }]}
+    />
+    <div class="flex items-end justify-between mb-6">
         <div>
             <h1 class="text-3xl font-bold text-slate-900 dark:text-white mb-2">
                 Endpoints
@@ -56,6 +170,42 @@
             <p class="text-slate-500 dark:text-slate-400">
                 Manage your API endpoints and configurations.
             </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <button
+                onclick={handleDriveBackup}
+                disabled={isSyncing}
+                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-card-dark dark:text-slate-300 dark:border-border-dark dark:hover:bg-background-dark disabled:opacity-50"
+            >
+                {#if isSyncing}
+                    <span
+                        class="material-symbols-outlined text-[20px] animate-spin"
+                        >sync</span
+                    >
+                {:else}
+                    <span class="material-symbols-outlined text-[20px]"
+                        >cloud_upload</span
+                    >
+                {/if}
+                <span class="hidden sm:inline">Backup</span>
+            </button>
+            <button
+                onclick={handleDriveRestore}
+                disabled={isSyncing}
+                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-card-dark dark:text-slate-300 dark:border-border-dark dark:hover:bg-background-dark disabled:opacity-50"
+            >
+                {#if isSyncing}
+                    <span
+                        class="material-symbols-outlined text-[20px] animate-spin"
+                        >sync</span
+                    >
+                {:else}
+                    <span class="material-symbols-outlined text-[20px]"
+                        >cloud_download</span
+                    >
+                {/if}
+                <span class="hidden sm:inline">Restore</span>
+            </button>
         </div>
     </div>
 
@@ -168,7 +318,10 @@
                         </div>
                     </div>
 
-                    <a href={`/endpoint/${endpoint.id}`} class="block focus:outline-none">
+                    <a
+                        href={`/endpoint/${endpoint.id}`}
+                        class="block focus:outline-none"
+                    >
                         <h3
                             class="text-lg font-semibold text-slate-900 dark:text-white mb-1 group-hover:text-primary transition-colors truncate"
                         >

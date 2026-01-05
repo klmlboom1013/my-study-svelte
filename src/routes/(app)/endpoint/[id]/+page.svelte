@@ -32,7 +32,7 @@
     }
 </script>
 
-<div class="w-full max-w-4xl mx-auto py-8 px-0 md:px-4">
+<div class="w-full max-w-6xl mx-auto py-8 px-0 md:px-4">
     <div class="px-4 md:px-0">
         <Breadcrumbs
             items={[

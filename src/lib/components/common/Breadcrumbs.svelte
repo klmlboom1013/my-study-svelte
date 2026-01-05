@@ -10,12 +10,12 @@
 </script>
 
 <nav class="flex items-center text-sm font-medium mb-4" aria-label="Breadcrumb">
-    <ol class="inline-flex items-center space-x-1 md:space-x-3">
+    <ol class="flex flex-wrap items-center justify-start gap-1 md:gap-2">
         {#each items as item, i}
             <li class="inline-flex items-center">
                 {#if i > 0}
                     <span
-                        class="material-symbols-outlined text-slate-400 text-[16px] mx-1"
+                        class="material-symbols-outlined text-slate-400 text-[16px] mr-1"
                     >
                         chevron_right
                     </span>

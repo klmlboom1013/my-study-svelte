@@ -1,10 +1,13 @@
 <script lang="ts">
     import logo from "$lib/assets/favicon.svg";
     import { onMount } from "svelte";
-    import Tooltip from "$lib/components/ui/Tooltip.svelte";
+    import { page } from "$app/stores";
     import { goto } from "$app/navigation";
+    import Tooltip from "$lib/components/ui/Tooltip.svelte";
     import UserMenu from "$lib/components/auth/UserMenu.svelte";
+    import SelectBox from "$lib/components/ui/SelectBox.svelte";
     import { initAuth } from "$lib/services/authService";
+    import { endpointService } from "$lib/services/endpointService";
     import { syncService } from "$lib/services/syncService";
 
     import type { MouseEventHandler } from "svelte/elements";
@@ -35,17 +38,77 @@
 
     // Global Search Logic
     let headerSearchTerm = $state("");
+    let selectedApp = $state("");
+    let applications = $state<string[]>([]);
 
-    function handleSearchKeydown(event: KeyboardEvent) {
-        if (event.key === "Enter" && headerSearchTerm.trim()) {
-            goto(`/endpoint?q=${encodeURIComponent(headerSearchTerm.trim())}`);
+    function updateUrl() {
+        const params = new URLSearchParams($page.url.searchParams);
+        if (headerSearchTerm.trim()) {
+            params.set("q", headerSearchTerm.trim());
+        } else {
+            params.delete("q");
+        }
+
+        if (selectedApp) {
+            params.set("app", selectedApp);
+        } else {
+            params.delete("app");
+        }
+
+        // Only navigate if we are on the endpoint page or forcing a search
+        // But for global search, we redirect to /endpoint
+        if ($page.url.pathname === "/endpoint") {
+            goto(`/endpoint?${params.toString()}`, {
+                keepFocus: true,
+                noScroll: true,
+            });
+        } else {
+            goto(`/endpoint?${params.toString()}`);
         }
     }
+
+    function handleSearchKeydown(event: KeyboardEvent) {
+        if (event.key === "Enter") {
+            updateUrl();
+        }
+    }
+
+    // Watch selectedApp change
+    $effect(() => {
+        if (selectedApp !== undefined && $page.url.pathname === "/endpoint") {
+            // We need to avoid infinite loop if the URL change triggers this.
+            // But selectedApp is local state.
+            // Let's debounce or just update?
+            // Actually, best practice: URL -> State. State Change -> URL.
+            // But here we want the dropdown to drive the URL.
+
+            // Simple check: if mismatch
+            const currentApp = $page.url.searchParams.get("app") || "";
+            if (selectedApp !== currentApp) {
+                updateUrl();
+            }
+        }
+    });
 
     onMount(() => {
         // Initialize Auth and Sync Services
         initAuth();
         syncService.init();
+
+        // Load Applications
+        const endpoints = endpointService.getEndpoints();
+        const uniqueApps = Array.from(
+            new Set(endpoints.map((e) => e.application || "WPAY")),
+        );
+        applications = ["All", ...uniqueApps];
+
+        // Init State from URL
+        const q = $page.url.searchParams.get("q");
+        if (q) headerSearchTerm = q;
+
+        const app = $page.url.searchParams.get("app");
+        if (app) selectedApp = app;
+        else selectedApp = "All"; // Default
     });
 </script>
 
@@ -92,6 +155,16 @@
     <!-- Right Section: Search > Create > History > Avatar -->
     <div class="flex items-center gap-3 justify-end flex-1">
         {#if showSearch}
+            <!-- Application Dropdown -->
+            <div class="block md:block w-32 md:w-40">
+                <SelectBox
+                    id="header-app-select"
+                    placeholder="Application"
+                    options={applications}
+                    bind:value={selectedApp}
+                />
+            </div>
+
             <!-- Search Bar -->
             <label class="hidden md:flex flex-col w-full max-w-sm h-9">
                 <div
@@ -122,21 +195,26 @@
         {/if}
 
         {#if showUserControls}
-            <div
-                class="flex items-center gap-2 border-l border-slate-200 dark:border-border-dark pl-3 ml-1"
-            >
+            <div class="flex items-center gap-2">
+                <!-- Divider -->
+                <div
+                    class="w-px h-4 bg-slate-200 dark:bg-border-dark mx-1"
+                ></div>
+
                 <!-- Create Test Button (+) -->
-                <Tooltip text="new Endpoint" delay={100}>
-                    <button
-                        onclick={() => goto("/endpoint/new")}
-                        class="flex items-center justify-center rounded-lg size-8 hover:bg-slate-100 dark:hover:bg-border-dark text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer"
-                    >
-                        <span class="material-symbols-outlined text-[20px]"
-                            >add</span
+                <div class="hidden md:block">
+                    <Tooltip text="new Endpoint" delay={100}>
+                        <button
+                            onclick={() => goto("/endpoint/new")}
+                            class="flex items-center justify-center rounded-lg size-8 hover:bg-slate-100 dark:hover:bg-border-dark text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer"
                         >
-                        <span class="sr-only">new Endpoint</span>
-                    </button>
-                </Tooltip>
+                            <span class="material-symbols-outlined text-[20px]"
+                                >add</span
+                            >
+                            <span class="sr-only">new Endpoint</span>
+                        </button>
+                    </Tooltip>
+                </div>
 
                 <!-- History Button -->
                 <Tooltip text="Recent Activity" delay={100}>
