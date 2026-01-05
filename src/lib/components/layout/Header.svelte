@@ -3,7 +3,7 @@
     import { onMount } from "svelte";
     import Tooltip from "$lib/components/ui/Tooltip.svelte";
     import { goto } from "$app/navigation";
-    import LoginButton from "$lib/components/auth/LoginButton.svelte";
+    import UserMenu from "$lib/components/auth/UserMenu.svelte";
     import { initAuth } from "$lib/services/authService";
     import { syncService } from "$lib/services/syncService";
 
@@ -150,8 +150,12 @@
                     </button>
                 </Tooltip>
 
-                <!-- Auth Button (Login / User Menu) -->
-                <LoginButton />
+                <div
+                    class="w-px h-4 bg-slate-200 dark:bg-border-dark mx-1"
+                ></div>
+
+                <!-- User Menu -->
+                <UserMenu />
             </div>
         {/if}
     </div>

@@ -103,13 +103,19 @@
                 {#if searchTerm}
                     Try adjusting your search terms.
                 {:else}
-                    Create your first endpoint to get started with API testing.
+                    <span class="hidden md:inline"
+                        >Create your first endpoint to get started with API
+                        testing.</span
+                    >
+                    <span class="md:hidden"
+                        >Endpoint creation is not supported on mobile browsers.</span
+                    >
                 {/if}
             </p>
             {#if !searchTerm}
                 <button
                     onclick={() => goto("/endpoint/new")}
-                    class="text-primary font-medium hover:underline"
+                    class="text-primary font-medium hover:underline hidden md:inline-block"
                 >
                     Create new endpoint
                 </button>
