@@ -120,4 +120,29 @@ export const driveService = {
         }
         return null; // Not found
     },
+
+    // Helper: Save Profile
+    async saveProfile(accessToken: string, data: any): Promise<void> {
+        const filename = "profile.json";
+        const files = await this.listFiles(accessToken, filename);
+
+        if (files.length > 0) {
+            // Update the first found file
+            await this.updateFile(accessToken, files[0].id, data);
+        } else {
+            // Create new file
+            await this.createFile(accessToken, filename, data);
+        }
+    },
+
+    // Helper: Load Profile
+    async loadProfile(accessToken: string): Promise<any | null> {
+        const filename = "profile.json";
+        const files = await this.listFiles(accessToken, filename);
+
+        if (files.length > 0) {
+            return await this.downloadFile(accessToken, files[0].id);
+        }
+        return null; // Not found
+    },
 };

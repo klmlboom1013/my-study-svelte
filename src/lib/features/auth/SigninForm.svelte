@@ -12,6 +12,7 @@
         validateAccessToken,
     } from "$lib/utils/auth/accessToken";
     import { setCookie, getCookie } from "$lib/utils/cookie";
+    import { profileStore } from "$lib/stores/profileStore";
 
     import DropdownInput from "$lib/components/ui/DropdownInput.svelte";
     import RadioGroup from "$lib/components/ui/RadioGroup.svelte";
@@ -478,14 +479,14 @@
             const randomAvatar =
                 AVATARS[Math.floor(Math.random() * AVATARS.length)];
 
-            // Save avatar to localStorage for Dashboard display
+            // Save avatar and userId to profileStore (localStorage 'profile')
             try {
-                const stored = localStorage.getItem("sign-in-page");
-                let cacheData = stored ? JSON.parse(stored) : {};
-                cacheData.avatarUrl = randomAvatar;
-                localStorage.setItem("sign-in-page", JSON.stringify(cacheData));
+                profileStore.updateProfile({
+                    userId: finalUserId,
+                    avatarUrl: randomAvatar,
+                });
             } catch (e) {
-                console.error("Failed to save avatar to localStorage", e);
+                console.error("Failed to save avatar to profileStore", e);
             }
 
             setCookie("accessToken", token, 1);

@@ -25,14 +25,37 @@
 
     onMount(() => {
         try {
-            const stored = localStorage.getItem("sign-in-page");
+            // Read from new separate 'profile' storage
+            const stored = localStorage.getItem("profile");
             if (stored) {
                 const parsed = JSON.parse(stored);
-                if (parsed.userId) userProfile.name = parsed.userId;
+
+                // Name: User ID -> Nickname (if exists) -> User ID
+                if (parsed.nickname) {
+                    userProfile.name = parsed.nickname;
+                } else if (parsed.userId) {
+                    userProfile.name = parsed.userId;
+                }
+
                 if (parsed.avatarUrl) userProfile.avatar = parsed.avatarUrl;
-                if (parsed.hNum && parsed.hNum.length >= 6) {
-                    const hNum = parsed.hNum;
-                    userProfile.role = `(${hNum.substring(0, 3)}) ${hNum.substring(3, 4)}***-**${hNum.substring(hNum.length - 2)}`;
+
+                // Role: hNum -> Role (Job Category)
+                if (
+                    parsed.jobCategory &&
+                    parsed.jobCategory !== "Please Select"
+                ) {
+                    userProfile.role = parsed.jobCategory;
+                } else {
+                    userProfile.role = "User";
+                }
+            } else {
+                // Fallback to legacy sign-in-page logic (minimal)
+                const legacy = localStorage.getItem("sign-in-page");
+                if (legacy) {
+                    const parsed = JSON.parse(legacy);
+                    if (parsed.userId) userProfile.name = parsed.userId;
+                    if (parsed.avatarUrl) userProfile.avatar = parsed.avatarUrl;
+                    userProfile.role = "User";
                 }
             }
         } catch (e) {

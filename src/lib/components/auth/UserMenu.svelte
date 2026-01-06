@@ -8,28 +8,23 @@
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
     import { setCookie } from "$lib/utils/cookie";
+    import { profileStore } from "$lib/stores/profileStore";
 
     // State
     let isLoading = $state(false);
     let isOpen = $state(false);
     let containerRef: HTMLDivElement;
 
-    // App User State
-    let appUserId = $state("Guest");
-    let avatarUrl = $state("");
+    // App User State (Reactive from store)
+    let appUserId = $derived($profileStore.userId || "Guest");
+    let avatarUrl = $derived($profileStore.avatarUrl || "");
     let imageLoadError = $state(false);
 
-    onMount(() => {
-        // Load App User Info from localStorage
-        try {
-            const storedData = localStorage.getItem("sign-in-page");
-            if (storedData) {
-                const parsed = JSON.parse(storedData);
-                appUserId = parsed.userId || "Guest";
-                avatarUrl = parsed.avatarUrl || "";
-            }
-        } catch (e) {
-            console.error("Failed to load user info", e);
+    // Initial load handled by profileStore.init() imported
+    // We can reset image error if avatar url changes
+    $effect(() => {
+        if (avatarUrl) {
+            imageLoadError = false;
         }
     });
 

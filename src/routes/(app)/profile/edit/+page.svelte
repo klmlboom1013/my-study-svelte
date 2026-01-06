@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
+    import { profileStore } from "$lib/stores/profileStore";
 
     let userId = $state("");
     let avatarUrl = $state("");
@@ -12,7 +13,31 @@
     let company = $state("");
     let team = $state("");
     let jobTitle = $state("");
+    let positionSelect = $state("Please select");
+    const positionOptions = [
+        "Please select",
+        "Manager",
+        "Leader",
+        "Direct Input",
+    ];
+
     let jobCategory = $state("");
+    let roleSelect = $state("Please Select");
+    const roleOptions = [
+        "Please Select",
+        "Developer",
+        "FrontEnd Developer",
+        "BackEnd Developer",
+        "Planner",
+        "Service Planner",
+        "Business Planner",
+        "Business Analyst (BA)",
+        "Product Manager (PM)",
+        "Product Owner (PO)",
+        "Product Designer",
+        "UX Designer",
+        "Direct Input",
+    ];
     let nickname = $state("");
 
     // Applications
@@ -22,9 +47,25 @@
 
     onMount(() => {
         try {
-            const storedData = localStorage.getItem("sign-in-page");
-            if (storedData) {
-                const parsed = JSON.parse(storedData);
+            // Subscribe to store for initial load (or check localStorage 'profile' directly if needed, but store is safer if initialized)
+            // Since store init happens in module scope or layout generally, we can just look at $profileStore if using it, or manual.
+            // But here we are setting local state ONE TIME on mount.
+
+            // Prefer reading from 'profile' manually to ensure fresh read or use $profileStore
+            const stored = localStorage.getItem("profile");
+
+            // Fallback for migration if store hasn't run or empty (store init handles migration too though)
+            // Let's rely on store logic but read explicitly to populate local state variables
+            let parsed: any = {};
+            if (stored) {
+                parsed = JSON.parse(stored);
+            } else {
+                // Try legacy if not found (though store init should have done it)
+                const legacy = localStorage.getItem("sign-in-page");
+                if (legacy) parsed = JSON.parse(legacy);
+            }
+
+            if (parsed) {
                 userId = parsed.userId || "";
                 avatarUrl = parsed.avatarUrl || "";
 
@@ -32,7 +73,27 @@
                 company = parsed.company || "";
                 team = parsed.team || "";
                 jobTitle = parsed.jobTitle || "";
+                if (["Manager", "Leader"].includes(jobTitle)) {
+                    positionSelect = jobTitle;
+                } else if (!jobTitle) {
+                    positionSelect = "Please select";
+                } else {
+                    positionSelect = "Direct Input";
+                }
                 jobCategory = parsed.jobCategory || "";
+
+                if (
+                    roleOptions.includes(jobCategory) &&
+                    jobCategory !== "Direct Input" &&
+                    jobCategory !== "Please Select"
+                ) {
+                    roleSelect = jobCategory;
+                } else if (!jobCategory) {
+                    roleSelect = "Please Select";
+                } else {
+                    roleSelect = "Direct Input";
+                }
+
                 nickname = parsed.nickname || "";
                 applications = parsed.applications || [];
             }
@@ -72,8 +133,8 @@
         successMessage = "";
 
         try {
-            // Update localStorage
-            const storedData = localStorage.getItem("sign-in-page");
+            // Update localStorage (Profile)
+            const storedData = localStorage.getItem("profile");
             let data = storedData ? JSON.parse(storedData) : {};
 
             data = {
@@ -89,7 +150,8 @@
                 applications,
             };
 
-            localStorage.setItem("sign-in-page", JSON.stringify(data));
+            // Update store and localStorage
+            profileStore.updateProfile(data);
 
             // Show success message briefly then redirect
             successMessage = "Profile updated successfully!";
@@ -105,6 +167,26 @@
 
     const handleCancel = () => {
         goto("/profile");
+    };
+
+    const handlePositionChange = () => {
+        if (positionSelect === "Please select") {
+            jobTitle = "";
+        } else if (positionSelect !== "Direct Input") {
+            jobTitle = positionSelect;
+        } else {
+            jobTitle = "";
+        }
+    };
+
+    const handleRoleChange = () => {
+        if (roleSelect === "Please Select") {
+            jobCategory = "";
+        } else if (roleSelect !== "Direct Input") {
+            jobCategory = roleSelect;
+        } else {
+            jobCategory = "";
+        }
     };
 </script>
 
@@ -277,27 +359,53 @@
                         <label
                             for="jobTitle"
                             class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"
-                            >Job Title</label
+                            >Position</label
                         >
-                        <input
-                            id="jobTitle"
-                            type="text"
-                            bind:value={jobTitle}
-                            class="appearance-none block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 placeholder-slate-500 text-slate-900 dark:text-white dark:bg-slate-800 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        />
+                        <select
+                            id="positionSelect"
+                            bind:value={positionSelect}
+                            onchange={handlePositionChange}
+                            class="appearance-none block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm mb-2"
+                        >
+                            {#each positionOptions as option}
+                                <option value={option}>{option}</option>
+                            {/each}
+                        </select>
+                        {#if positionSelect === "Direct Input"}
+                            <input
+                                id="jobTitle"
+                                type="text"
+                                bind:value={jobTitle}
+                                class="appearance-none block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 placeholder-slate-500 text-slate-900 dark:text-white dark:bg-slate-800 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                placeholder="Enter your position"
+                            />
+                        {/if}
                     </div>
                     <div>
                         <label
-                            for="jobCategory"
+                            for="roleSelect"
                             class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"
-                            >Job Category</label
+                            >Role</label
                         >
-                        <input
-                            id="jobCategory"
-                            type="text"
-                            bind:value={jobCategory}
-                            class="appearance-none block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 placeholder-slate-500 text-slate-900 dark:text-white dark:bg-slate-800 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        />
+                        <select
+                            id="roleSelect"
+                            bind:value={roleSelect}
+                            onchange={handleRoleChange}
+                            class="appearance-none block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm mb-2"
+                        >
+                            {#each roleOptions as option}
+                                <option value={option}>{option}</option>
+                            {/each}
+                        </select>
+                        {#if roleSelect === "Direct Input"}
+                            <input
+                                id="jobCategory"
+                                type="text"
+                                bind:value={jobCategory}
+                                class="appearance-none block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 placeholder-slate-500 text-slate-900 dark:text-white dark:bg-slate-800 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                placeholder="Enter your role"
+                            />
+                        {/if}
                     </div>
                 </div>
             </div>
