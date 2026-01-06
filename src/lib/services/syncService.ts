@@ -29,7 +29,7 @@ export const syncService = {
         if (isSyncing) return;
         isSyncing = true;
         try {
-            const files = await driveService.listFiles(accessToken);
+            const files = await driveService.listFiles(accessToken, "config.json");
             const configFile = files.find((f: any) => f.name === "config.json");
 
             if (configFile) {
@@ -72,7 +72,7 @@ export const syncService = {
             if (driveFileId) {
                 await driveService.updateFile(user.accessToken, driveFileId, content);
             } else {
-                const newFile = await driveService.createFile(user.accessToken, content);
+                const newFile = await driveService.createFile(user.accessToken, "config.json", content);
                 driveFileId = newFile.id;
             }
             console.log("Synced to Drive");
