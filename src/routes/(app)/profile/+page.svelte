@@ -4,58 +4,131 @@
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import { driveService } from "$lib/services/driveService";
     import { authStore, loginWithGoogle } from "$lib/services/authService";
+    import { profileStore } from "$lib/stores/profileStore"; // Import store for consistent updates
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
 
     let displayName = $state("Guest");
-    let userId = $state("Guest"); // Keep internal ID if needed, but display name is priority
+    let userId = $state("Guest");
     let avatarUrl = $state("");
     let company = $state("");
     let team = $state("");
     let jobTitle = $state("");
     let role = $state("User");
 
+    // Timestamps
+    let saveDateTime = $state("");
+    let backupDateTime = $state("");
+    let restoreDateTime = $state("");
+
+    // Alert Modal State
+    let isAlertOpen = $state(false);
+    let alertTitle = $state("");
+    let alertMessage = $state("");
+    let alertType = $state<"alert" | "confirm">("alert");
+    let onAlertConfirm = $state<(() => void) | undefined>(undefined);
+
+    function showAlert(title: string, message: string) {
+        alertTitle = title;
+        alertMessage = message;
+        alertType = "alert";
+        onAlertConfirm = undefined;
+        isAlertOpen = true;
+    }
+
+    function showConfirm(title: string, message: string): Promise<boolean> {
+        return new Promise((resolve) => {
+            alertTitle = title;
+            alertMessage = message;
+            alertType = "confirm";
+            onAlertConfirm = () => resolve(true);
+
+            // Handle cancel/close as false
+            const originalOnClose = () => resolve(false);
+
+            // We need a way to hook into close/cancel from the promise wrapper context if we want robust promise handling
+            // But for simple "Ok" -> resolve(true), "Cancel" -> implied resolve(false) via close logic if we wire it up.
+            // Simplified:
+            isAlertOpen = true;
+        });
+    }
+
+    // Since showConfirm needs to handle the "Cancel" case to resolve false,
+    // we need to update how AlertModal is used or handle the cancel callback.
+    // Let's create a dedicated handler for the modal's onCancel prop in the template.
+    let onAlertCancel = $state<(() => void) | undefined>(undefined);
+
+    function showConfirmPromise(
+        title: string,
+        message: string,
+    ): Promise<boolean> {
+        return new Promise((resolve) => {
+            alertTitle = title;
+            alertMessage = message;
+            alertType = "confirm";
+            onAlertConfirm = () => resolve(true);
+            onAlertCancel = () => resolve(false);
+            isAlertOpen = true;
+        });
+    }
+
     onMount(() => {
-        // Use profileStore or fallback to localStorage 'profile'
+        loadProfileFromStorage();
+    });
+
+    function loadProfileFromStorage() {
         const stored = localStorage.getItem("profile");
         if (stored) {
             try {
                 const data = JSON.parse(stored);
-                if (data.userId) userId = data.userId;
 
-                // Display Name: Nickname -> UserId
-                displayName = data.nickname || data.userId || "Guest";
+                // Nested Structure Support
+                if (data.basicInfo) {
+                    userId = data.basicInfo.userId || "Guest";
+                    displayName =
+                        data.basicInfo.nickname ||
+                        data.basicInfo.userId ||
+                        "Guest";
+                    avatarUrl = data.basicInfo.avatarUrl || "";
 
-                if (data.avatarUrl) avatarUrl = data.avatarUrl;
-                if (data.company) company = data.company;
-                if (data.team) team = data.team;
-                if (data.jobTitle) jobTitle = data.jobTitle;
+                    if (data.testerInformation) {
+                        company = data.testerInformation.company || "";
+                        team = data.testerInformation.team || "";
+                        jobTitle = data.testerInformation.position || "";
+                        role = data.testerInformation.role || "User";
+                    }
 
-                // Role: Job Category
-                if (data.jobCategory && data.jobCategory !== "Please Select") {
-                    role = data.jobCategory;
-                } else {
-                    role = "User"; // Reset or default
+                    saveDateTime = data.saveDateTime || "";
+                    backupDateTime = data.backupDateTime || "";
+                    restoreDateTime = data.restoreDateTime || "";
+                }
+                // Legacy Fallback
+                else {
+                    if (data.userId) userId = data.userId;
+                    displayName = data.nickname || data.userId || "Guest";
+                    avatarUrl = data.avatarUrl || "";
+                    company = data.company || "";
+                    team = data.team || "";
+                    jobTitle = data.jobTitle || "";
+                    role =
+                        data.jobCategory && data.jobCategory !== "Please Select"
+                            ? data.jobCategory
+                            : "User";
                 }
             } catch (e) {
                 console.error("Failed to parse profile", e);
             }
         } else {
-            // Check legacy sign-in-page for minimal display if profile missing
             const legacy = localStorage.getItem("sign-in-page");
             if (legacy) {
                 try {
                     const data = JSON.parse(legacy);
                     if (data.userId) userId = data.userId;
                     displayName = data.userId || "Guest";
-                    if (data.avatarUrl) avatarUrl = data.avatarUrl;
-
-                    // Legacy default
-                    role = "User";
-                } catch (e) {
-                    console.error("Failed to parse legacy profile", e);
-                }
+                    avatarUrl = data.avatarUrl || "";
+                } catch (e) {}
             }
         }
-    });
+    }
 
     const handleEdit = () => {
         goto("/profile/edit");
@@ -63,100 +136,138 @@
 
     let isSyncing = $state(false);
 
-    async function handleDriveBackup() {
+    async function executeWithRetry(
+        operationName: string,
+        action: (token: string) => Promise<void>,
+    ) {
         if (isSyncing) return;
+        isSyncing = true;
 
         let token = $authStore.accessToken;
 
-        // If not logged in or no token, try login first
-        if (!token) {
-            try {
+        try {
+            // First attempt
+            if (!token) {
+                // If no token immediately, try login first
                 const result = await loginWithGoogle();
                 token = result.token;
-            } catch (error) {
-                alert("Google Login failed.");
-                return;
             }
-        }
 
-        if (!token) return;
+            if (!token) throw new Error("Failed to retrieve access token.");
 
-        try {
-            isSyncing = true;
-            const storedData = localStorage.getItem("profile");
-            let data = storedData ? JSON.parse(storedData) : {};
-
-            await driveService.saveProfile(token, data);
-            alert("Backup successful! (Saved to Google Drive App Data)");
+            // Perform action
+            await action(token);
         } catch (error: any) {
-            console.error(error);
-            alert(`Backup failed: ${error.message}`);
+            // Check for 401 Unauthorized or specific Drive API error indicating invalid credentials
+            const isAuthError =
+                error.message.includes("401") ||
+                error.message.includes("Invalid Credentials") ||
+                error.message.includes("unauthorized");
+
+            if (isAuthError) {
+                console.log(
+                    "Token expired or invalid. Retrying with fresh login...",
+                );
+                try {
+                    // Retry: Force login to get fresh token
+                    const result = await loginWithGoogle();
+                    token = result.token;
+
+                    if (!token)
+                        throw new Error(
+                            "Failed to retrieve access token on retry.",
+                        );
+
+                    // Retry action
+                    await action(token);
+                } catch (retryError: any) {
+                    console.error("Retry failed:", retryError);
+                    showAlert(
+                        `${operationName} Failed`,
+                        `Authentication failed. Please try logging in again.\nError: ${retryError.message}`,
+                    );
+                }
+            } else {
+                // Not an auth error, just fail
+                console.error(error);
+                showAlert(`${operationName} Failed`, `Error: ${error.message}`);
+            }
         } finally {
             isSyncing = false;
         }
+    }
+
+    async function handleDriveBackup() {
+        await executeWithRetry("Backup", async (token) => {
+            const storedData = localStorage.getItem("profile");
+            if (!storedData) {
+                throw new Error(
+                    "No profile data to backup. Please edit profile first.",
+                );
+            }
+
+            let data = JSON.parse(storedData);
+
+            // Update Backup Timestamp
+            const now = new Date().toISOString();
+            data.backupDateTime = now;
+            backupDateTime = now; // Update Local State
+
+            // Save to Drive
+            await driveService.saveProfile(token, data);
+
+            // Update Local Store with new timestamp
+            profileStore.updateProfile(data);
+
+            showAlert(
+                "Backup Successful",
+                "Your profile has been saved to Google Drive (App Data).",
+            );
+        });
     }
 
     async function handleDriveRestore() {
-        if (isSyncing) return;
+        // Confirmation before starting the sync process
+        const confirmed = await showConfirmPromise(
+            "Confirm Restore",
+            "This will overwrite your current local profile with the backup from Google Drive.\n\nAre you sure you want to continue?",
+        );
 
-        if (
-            !confirm(
-                "This will overwrite your current local profile. Continue?",
-            )
-        )
-            return;
+        if (!confirmed) return;
 
-        let token = $authStore.accessToken;
-
-        // If not logged in or no token, try login first
-        if (!token) {
-            try {
-                const result = await loginWithGoogle();
-                token = result.token;
-            } catch (error) {
-                alert("Google Login failed.");
-                return;
-            }
-        }
-
-        if (!token) return;
-
-        try {
-            isSyncing = true;
+        await executeWithRetry("Restore", async (token) => {
             const data = await driveService.loadProfile(token);
             if (data) {
-                // Save to local storage (profile)
-                localStorage.setItem("profile", JSON.stringify(data));
+                // Update Restore Timestamp
+                const now = new Date().toISOString();
+                data.restoreDateTime = now;
 
-                // Refresh view logic (similar to onMount)
-                if (data.userId) userId = data.userId;
-                displayName = data.nickname || data.userId || "Guest";
-                if (data.avatarUrl) avatarUrl = data.avatarUrl;
-                if (data.company) company = data.company;
-                if (data.team) team = data.team;
-                if (data.jobTitle) jobTitle = data.jobTitle;
+                // Save to local storage via store
+                profileStore.updateProfile(data);
 
-                // Role: Job Category
-                if (data.jobCategory && data.jobCategory !== "Please Select") {
-                    role = data.jobCategory;
-                } else {
-                    role = "User";
-                }
+                showAlert(
+                    "Restore Successful",
+                    "Your profile has been restored from Google Drive.",
+                );
 
-                alert("Restore successful!");
-                // Reload to ensure all components update if needed, though state update above handles immediate view
-                location.reload();
+                onAlertConfirm = () => {
+                    location.reload();
+                };
             } else {
-                alert("No profile backup found in Google Drive.");
+                throw new Error("No profile backup found in Google Drive.");
             }
-        } catch (error: any) {
-            console.error(error);
-            alert(`Restore failed: ${error.message}`);
-        } finally {
-            isSyncing = false;
-        }
+        });
     }
 </script>
+
+<AlertModal
+    bind:isOpen={isAlertOpen}
+    title={alertTitle}
+    message={alertMessage}
+    type={alertType}
+    onConfirm={onAlertConfirm}
+    onCancel={onAlertCancel}
+/>
 
 <div class="max-w-6xl mx-auto py-8 px-4">
     <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Profile" }]} />
@@ -245,7 +356,7 @@
                         <span class="material-symbols-outlined text-[18px]"
                             >edit</span
                         >
-                        Edit Profile
+                        <span class="hidden sm:inline">Edit Profile</span>
                     </button>
                 </div>
             </div>
@@ -260,35 +371,35 @@
                 <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
                     {role} • <span class="text-xs">{userId}</span>
                 </p>
-                <!-- Add more user details if available, currently mostly placeholders or derived -->
-                <div
-                    class="flex items-center gap-4 mt-4 pt-4 border-t border-slate-100 dark:border-border-dark/50"
-                >
-                    <div class="flex flex-col">
-                        <span
-                            class="text-xs text-slate-400 uppercase tracking-wider"
-                            >Status</span
-                        >
-                        <span
-                            class="text-sm font-medium text-green-600 flex items-center gap-1"
-                        >
-                            <span class="h-2 w-2 rounded-full bg-green-500"
-                            ></span>
-                            Active
-                        </span>
+
+                <!-- Timestamps Display (Optional but good for debug/status) -->
+                {#if saveDateTime || backupDateTime || restoreDateTime}
+                    <div class="mt-2 text-xs text-slate-400 space-y-0.5">
+                        {#if saveDateTime}
+                            <p>
+                                Last Saved: {new Date(
+                                    saveDateTime,
+                                ).toLocaleString()}
+                            </p>
+                        {/if}
+                        {#if backupDateTime}
+                            <p>
+                                Last Backup: {new Date(
+                                    backupDateTime,
+                                ).toLocaleString()}
+                            </p>
+                        {/if}
+                        {#if restoreDateTime}
+                            <p>
+                                Last Restore: {new Date(
+                                    restoreDateTime,
+                                ).toLocaleString()}
+                            </p>
+                        {/if}
                     </div>
-                    <div
-                        class="flex flex-col border-l border-slate-100 dark:border-border-dark/50 pl-4"
-                    >
-                        <span
-                            class="text-xs text-slate-400 uppercase tracking-wider"
-                            >Joined</span
-                        >
-                        <span class="text-sm text-slate-700 dark:text-slate-300"
-                            >2026-01-01</span
-                        >
-                    </div>
-                </div>
+                {/if}
+
+                <!-- Status and Joined removed as per request -->
             </div>
         </div>
     </div>

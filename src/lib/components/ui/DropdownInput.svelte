@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { ChevronDown } from "lucide-svelte";
+    import { ChevronDown, X } from "lucide-svelte";
     import { fade } from "svelte/transition";
 
     interface Props {
@@ -21,16 +21,27 @@
     }: Props = $props();
 
     let isOpen = $state(false);
+    let isFocused = $state(false); // Track focus state
     let containerRef: HTMLDivElement;
 
     function toggle() {
         if (disabled) return;
         isOpen = !isOpen;
+        if (isOpen) isFocused = true; // Ensure logic consistency
     }
 
     function select(option: string) {
         value = option;
         isOpen = false;
+        isFocused = false; // Optional: blur after select? Or keep focus?
+    }
+
+    function clear(e: Event) {
+        e.stopPropagation(); // Prevent toggling dropdown
+        value = "";
+        // Keep focus
+        const input = containerRef.querySelector("input");
+        input?.focus();
     }
 
     function handleOutsideClick(event: MouseEvent) {
@@ -47,7 +58,7 @@
 <svelte:window onclick={handleOutsideClick} />
 
 <div class="relative w-full" bind:this={containerRef}>
-    <div class="relative">
+    <div class="relative group">
         <input
             type="text"
             {id}
@@ -67,14 +78,34 @@
                       : ""
             }`}
             onclick={() => !disabled && (isOpen = true)}
+            onfocus={() => (isFocused = true)}
+            onblur={() => {
+                // Delay to allow clear button click to register
+                setTimeout(() => {
+                    isFocused = false;
+                }, 150);
+            }}
         />
-        <button
-            class="absolute right-0 top-0 bottom-0 px-2 flex items-center justify-center text-slate-300 dark:text-slate-600 pointer-events-none"
-            type="button"
-            tabindex="-1"
-        >
-            <ChevronDown size={24} />
-        </button>
+        {#if value && !disabled && (isFocused || isOpen)}
+            <button
+                class="absolute right-0 top-0 bottom-0 px-2 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors z-10"
+                type="button"
+                onmousedown={(e) => e.preventDefault()}
+                onclick={clear}
+                tabindex="-1"
+                aria-label="Clear input"
+            >
+                <X size={18} />
+            </button>
+        {:else}
+            <button
+                class="absolute right-0 top-0 bottom-0 px-2 flex items-center justify-center text-slate-300 dark:text-slate-600 pointer-events-none"
+                type="button"
+                tabindex="-1"
+            >
+                <ChevronDown size={24} />
+            </button>
+        {/if}
     </div>
 
     {#if isOpen}

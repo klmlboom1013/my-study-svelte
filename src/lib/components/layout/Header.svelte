@@ -7,7 +7,7 @@
     import UserMenu from "$lib/components/auth/UserMenu.svelte";
     import SelectBox from "$lib/components/ui/SelectBox.svelte";
     import { initAuth } from "$lib/services/authService";
-    import { endpointService } from "$lib/services/endpointService";
+    import { profileStore } from "$lib/stores/profileStore";
     import { syncService } from "$lib/services/syncService";
 
     import type { MouseEventHandler } from "svelte/elements";
@@ -39,7 +39,14 @@
     // Global Search Logic
     let headerSearchTerm = $state("");
     let selectedApp = $state("");
-    let applications = $state<string[]>([]);
+
+    // Subscribe to profileStore for applications list
+    let applications = $derived.by(() => {
+        const apps =
+            $profileStore.myApplications?.map((app) => app.appName) || [];
+        const uniqueApps = Array.from(new Set(apps)).filter(Boolean);
+        return ["All", ...uniqueApps];
+    });
 
     function updateUrl() {
         const params = new URLSearchParams($page.url.searchParams);
@@ -49,7 +56,7 @@
             params.delete("q");
         }
 
-        if (selectedApp) {
+        if (selectedApp && selectedApp !== "All") {
             params.set("app", selectedApp);
         } else {
             params.delete("app");
@@ -78,12 +85,9 @@
         if (selectedApp !== undefined && $page.url.pathname === "/endpoint") {
             // We need to avoid infinite loop if the URL change triggers this.
             // But selectedApp is local state.
-            // Let's debounce or just update?
-            // Actually, best practice: URL -> State. State Change -> URL.
-            // But here we want the dropdown to drive the URL.
 
             // Simple check: if mismatch
-            const currentApp = $page.url.searchParams.get("app") || "";
+            const currentApp = $page.url.searchParams.get("app") || "All";
             if (selectedApp !== currentApp) {
                 updateUrl();
             }
@@ -94,13 +98,6 @@
         // Initialize Auth and Sync Services
         initAuth();
         syncService.init();
-
-        // Load Applications
-        const endpoints = endpointService.getEndpoints();
-        const uniqueApps = Array.from(
-            new Set(endpoints.map((e) => e.application || "WPAY")),
-        );
-        applications = ["All", ...uniqueApps];
 
         // Init State from URL
         const q = $page.url.searchParams.get("q");

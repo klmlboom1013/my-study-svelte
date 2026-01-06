@@ -16,8 +16,17 @@
     let containerRef: HTMLDivElement;
 
     // App User State (Reactive from store)
-    let appUserId = $derived($profileStore.userId || "Guest");
-    let avatarUrl = $derived($profileStore.avatarUrl || "");
+    // App User State (Reactive from store)
+    // Prioritize nested basicInfo, then fallback to legacy root properties
+    let appUserId = $derived(
+        $profileStore.basicInfo?.nickname ||
+            $profileStore.basicInfo?.userId ||
+            $profileStore.userId ||
+            "Guest",
+    );
+    let avatarUrl = $derived(
+        $profileStore.basicInfo?.avatarUrl || $profileStore.avatarUrl || "",
+    );
     let imageLoadError = $state(false);
 
     // Initial load handled by profileStore.init() imported

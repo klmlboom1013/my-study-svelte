@@ -482,8 +482,20 @@
             // Save avatar and userId to profileStore (localStorage 'profile')
             try {
                 profileStore.updateProfile({
-                    userId: finalUserId,
-                    avatarUrl: randomAvatar,
+                    id: crypto.randomUUID(),
+                    saveDateTime: new Date().toISOString(),
+                    basicInfo: {
+                        userId: finalUserId,
+                        nickname: finalUserId,
+                        avatarUrl: randomAvatar,
+                    },
+                    testerInformation: {
+                        company: "",
+                        team: "",
+                        position: "",
+                        role: "",
+                    },
+                    myApplications: [],
                 });
             } catch (e) {
                 console.error("Failed to save avatar to profileStore", e);

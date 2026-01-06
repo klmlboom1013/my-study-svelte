@@ -2,16 +2,43 @@ import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
 export interface ProfileData {
-    userId?: string;
-    avatarUrl?: string;
-    // Add other fields as needed for global access, 
-    // but for UserMenu, userId and avatarUrl are primary.
-    [key: string]: any;
+    id: string;
+    saveDateTime?: string;
+    backupDateTime?: string;
+    restoreDateTime?: string;
+    basicInfo: {
+        userId: string;
+        nickname: string;
+        avatarUrl: string;
+    };
+    testerInformation: {
+        company: string;
+        team: string;
+        position: string;
+        role: string;
+    };
+    myApplications: {
+        id: string; // Internal ID for UI rendering keys, maybe keep it but output structure requires appName/desc
+        appName: string;
+        description: string;
+    }[];
+    [key: string]: any; // Allow legacy properties during migration
 }
 
 const initialState: ProfileData = {
-    userId: 'Guest',
-    avatarUrl: ''
+    id: '',
+    basicInfo: {
+        userId: 'Guest',
+        nickname: '',
+        avatarUrl: ''
+    },
+    testerInformation: {
+        company: '',
+        team: '',
+        position: '',
+        role: ''
+    },
+    myApplications: []
 };
 
 function createProfileStore() {
@@ -24,35 +51,51 @@ function createProfileStore() {
             if (browser) {
                 try {
                     const profileStored = localStorage.getItem("profile");
-
                     if (profileStored) {
-                        // Load from profile
-                        set(JSON.parse(profileStored));
+                        const parsed = JSON.parse(profileStored);
+                        // Simple validation or migration could go here if needed
+                        // For now assumig we will overwrite/refactor, but to be safe for existing data:
+                        // We might need to migrate old flat structure to new nested if it exists?
+                        // Given the user said "restore from drive" is the main way, we can start fresh or try to map.
+                        // Let's blindly load if it looks like the new structure, else partial map.
+
+                        if (parsed.basicInfo) {
+                            set(parsed);
+                        } else {
+                            // Migration from flat to nested (temporary fallback)
+                            set({
+                                id: parsed.id || '',
+                                basicInfo: {
+                                    userId: parsed.userId || 'Guest',
+                                    nickname: parsed.nickname || '',
+                                    avatarUrl: parsed.avatarUrl || ''
+                                },
+                                testerInformation: {
+                                    company: parsed.company || '',
+                                    team: parsed.team || '',
+                                    position: parsed.jobTitle || '',
+                                    role: parsed.jobCategory || ''
+                                },
+                                myApplications: parsed.applications ? parsed.applications.map((app: any) => ({
+                                    id: app.id || crypto.randomUUID(),
+                                    appName: app.name || '',
+                                    description: app.description || ''
+                                })) : []
+                            });
+                        }
                     } else {
-                        // Migration: Check sign-in-page if profile is missing
+                        // Check legacy sign-in only if really needed, but maybe better to start clean as Guest
                         const signInStored = localStorage.getItem("sign-in-page");
                         if (signInStored) {
                             const parsed = JSON.parse(signInStored);
-                            const initialProfile: ProfileData = {
-                                userId: parsed.userId || "Guest",
-                                avatarUrl: parsed.avatarUrl || "",
-                                // Copy other potential fields if they existed there during transition
-                                company: parsed.company,
-                                team: parsed.team,
-                                jobTitle: parsed.jobTitle,
-                                jobCategory: parsed.jobCategory,
-                                nickname: parsed.nickname,
-                                applications: parsed.applications
-                            };
-
-                            // Clean undefined fields
-                            Object.keys(initialProfile).forEach(key =>
-                                initialProfile[key] === undefined && delete initialProfile[key]
-                            );
-
-                            set(initialProfile);
-                            // Persist to new location
-                            localStorage.setItem("profile", JSON.stringify(initialProfile));
+                            set({
+                                ...initialState,
+                                basicInfo: {
+                                    userId: parsed.userId || 'Guest',
+                                    nickname: '',
+                                    avatarUrl: ''
+                                }
+                            });
                         }
                     }
                 } catch (e) {
@@ -62,13 +105,17 @@ function createProfileStore() {
         },
         // Update both store and localStorage
         updateProfile: (data: ProfileData) => {
-            update(state => {
-                const newState = { ...state, ...data };
-                if (browser) {
-                    localStorage.setItem("profile", JSON.stringify(newState));
-                }
-                return newState;
-            });
+            set(data);
+            if (browser) {
+                localStorage.setItem("profile", JSON.stringify(data));
+            }
+        },
+        // Helper to update specific section (optional)
+        set: (data: ProfileData) => {
+            set(data);
+            if (browser) {
+                localStorage.setItem("profile", JSON.stringify(data));
+            }
         }
     };
 }

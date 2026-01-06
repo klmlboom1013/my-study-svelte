@@ -41,61 +41,118 @@
     let nickname = $state("");
 
     // Applications
+    const APP_OPTIONS = [
+        { name: "WPAY", description: "Simple Payment Service" },
+        { name: "Express", description: "Create Payment Button" },
+        { name: "Smart", description: "SMS Payment Link" },
+        { name: "sbuckwpay", description: "Starbucks Simple Payment" },
+    ];
+
     let applications = $state<
-        { id: string; name: string; description: string }[]
+        { id: string; appName: string; description: string }[]
     >([]);
 
     onMount(() => {
         try {
-            // Subscribe to store for initial load (or check localStorage 'profile' directly if needed, but store is safer if initialized)
-            // Since store init happens in module scope or layout generally, we can just look at $profileStore if using it, or manual.
-            // But here we are setting local state ONE TIME on mount.
-
-            // Prefer reading from 'profile' manually to ensure fresh read or use $profileStore
             const stored = localStorage.getItem("profile");
 
-            // Fallback for migration if store hasn't run or empty (store init handles migration too though)
-            // Let's rely on store logic but read explicitly to populate local state variables
-            let parsed: any = {};
+            // Check if we need to fall back to legacy 'sign-in-page' if profile is completely missing
+            // But normally profileStore init handles this.
+            // We just read what's there.
+
             if (stored) {
-                parsed = JSON.parse(stored);
+                const parsed = JSON.parse(stored);
+
+                // Handle New Struture
+                if (parsed.basicInfo) {
+                    userId = parsed.basicInfo.userId || "";
+                    nickname = parsed.basicInfo.nickname || "";
+                    avatarUrl = parsed.basicInfo.avatarUrl || "";
+
+                    if (parsed.testerInformation) {
+                        company = parsed.testerInformation.company || "";
+                        team = parsed.testerInformation.team || "";
+
+                        // Map Position
+                        const pos = parsed.testerInformation.position || "";
+                        if (["Manager", "Leader"].includes(pos)) {
+                            positionSelect = pos;
+                            jobTitle = pos;
+                        } else if (pos) {
+                            positionSelect = "Direct Input";
+                            jobTitle = pos;
+                        } else {
+                            positionSelect = "Please select";
+                            jobTitle = "";
+                        }
+
+                        // Map Role
+                        const role = parsed.testerInformation.role || "";
+                        if (
+                            roleOptions.includes(role) &&
+                            role !== "Direct Input" &&
+                            role !== "Please Select"
+                        ) {
+                            roleSelect = role;
+                            jobCategory = role;
+                        } else if (role) {
+                            roleSelect = "Direct Input";
+                            jobCategory = role;
+                        } else {
+                            roleSelect = "Please Select";
+                            jobCategory = "";
+                        }
+                    }
+
+                    if (parsed.myApplications) {
+                        applications = parsed.myApplications.map(
+                            (app: any) => ({
+                                id: app.id || crypto.randomUUID(),
+                                appName: app.appName || "",
+                                description: app.description || "",
+                            }),
+                        );
+                    }
+                }
+                // Handle Legacy/Transition Structure (Flat)
+                else {
+                    userId = parsed.userId || "Guest"; // Fallback
+                    nickname = parsed.nickname || "";
+                    avatarUrl = parsed.avatarUrl || "";
+                    company = parsed.company || "";
+                    team = parsed.team || "";
+
+                    const pos = parsed.jobTitle || "";
+                    jobTitle = pos;
+                    if (["Manager", "Leader"].includes(pos)) {
+                        positionSelect = pos;
+                    } else if (pos) {
+                        positionSelect = "Direct Input";
+                    }
+
+                    const role = parsed.jobCategory || "";
+                    jobCategory = role;
+                    if (roleOptions.includes(role)) {
+                        roleSelect = role;
+                    } else if (role) {
+                        roleSelect = "Direct Input";
+                    }
+
+                    if (parsed.applications) {
+                        applications = parsed.applications.map((app: any) => ({
+                            id: app.id || crypto.randomUUID(),
+                            appName: app.name || "", // Note 'name' vs 'appName'
+                            description: app.description || "",
+                        }));
+                    }
+                }
             } else {
-                // Try legacy if not found (though store init should have done it)
+                // Completely empty, check sign-in-page for userId
                 const legacy = localStorage.getItem("sign-in-page");
-                if (legacy) parsed = JSON.parse(legacy);
-            }
-
-            if (parsed) {
-                userId = parsed.userId || "";
-                avatarUrl = parsed.avatarUrl || "";
-
-                // Load extended profile data
-                company = parsed.company || "";
-                team = parsed.team || "";
-                jobTitle = parsed.jobTitle || "";
-                if (["Manager", "Leader"].includes(jobTitle)) {
-                    positionSelect = jobTitle;
-                } else if (!jobTitle) {
-                    positionSelect = "Please select";
-                } else {
-                    positionSelect = "Direct Input";
+                if (legacy) {
+                    const lData = JSON.parse(legacy);
+                    userId = lData.userId || "Guest";
                 }
-                jobCategory = parsed.jobCategory || "";
-
-                if (
-                    roleOptions.includes(jobCategory) &&
-                    jobCategory !== "Direct Input" &&
-                    jobCategory !== "Please Select"
-                ) {
-                    roleSelect = jobCategory;
-                } else if (!jobCategory) {
-                    roleSelect = "Please Select";
-                } else {
-                    roleSelect = "Direct Input";
-                }
-
-                nickname = parsed.nickname || "";
-                applications = parsed.applications || [];
             }
         } catch (e) {
             console.error("Failed to load user info", e);
@@ -110,7 +167,7 @@
     const addApplication = () => {
         applications = [
             ...applications,
-            { id: crypto.randomUUID(), name: "", description: "" },
+            { id: crypto.randomUUID(), appName: "", description: "" },
         ];
     };
 
@@ -120,12 +177,23 @@
 
     const updateApplication = (
         id: string,
-        field: "name" | "description",
+        field: "appName" | "description",
         value: string,
     ) => {
-        applications = applications.map((app) =>
-            app.id === id ? { ...app, [field]: value } : app,
-        );
+        applications = applications.map((app) => {
+            if (app.id !== id) return app;
+
+            if (field === "appName") {
+                const option = APP_OPTIONS.find((o) => o.name === value);
+                return {
+                    ...app,
+                    appName: value,
+                    description: option ? option.description : app.description,
+                };
+            }
+
+            return { ...app, [field]: value };
+        });
     };
 
     const handleSave = async () => {
@@ -133,25 +201,46 @@
         successMessage = "";
 
         try {
-            // Update localStorage (Profile)
-            const storedData = localStorage.getItem("profile");
-            let data = storedData ? JSON.parse(storedData) : {};
+            // Read existing to preserve ID or other fields if any
+            const storedString = localStorage.getItem("profile");
+            const existing = storedString ? JSON.parse(storedString) : {};
 
-            data = {
-                ...data,
-                // userId is read-only regarding input, but we persist it to ensure structure
-                userId,
-                avatarUrl,
-                company,
-                team,
-                jobTitle,
-                jobCategory,
-                nickname,
-                applications,
+            // Construct new data structure
+            const now = new Date().toISOString();
+
+            const newData = {
+                id: existing.id || crypto.randomUUID(),
+                saveDateTime: now,
+                // Preserve backup/restore times
+                backupDateTime: existing.backupDateTime,
+                restoreDateTime: existing.restoreDateTime,
+
+                basicInfo: {
+                    userId: userId || "Guest",
+                    nickname,
+                    avatarUrl,
+                },
+                testerInformation: {
+                    company,
+                    team,
+                    position: jobTitle,
+                    role: jobCategory,
+                },
+                myApplications: applications
+                    .filter(
+                        (app, index, self) =>
+                            index ===
+                            self.findIndex((t) => t.appName === app.appName),
+                    )
+                    .map((app) => ({
+                        id: app.id,
+                        appName: app.appName,
+                        description: app.description,
+                    })),
             };
 
             // Update store and localStorage
-            profileStore.updateProfile(data);
+            profileStore.updateProfile(newData);
 
             // Show success message briefly then redirect
             successMessage = "Profile updated successfully!";
@@ -465,19 +554,26 @@
                                             class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1"
                                             >App Name</label
                                         >
-                                        <input
+                                        <select
                                             id={`app-name-${app.id}`}
-                                            type="text"
-                                            value={app.name}
-                                            oninput={(e) =>
+                                            value={app.appName}
+                                            onchange={(e) =>
                                                 updateApplication(
                                                     app.id,
-                                                    "name",
+                                                    "appName",
                                                     e.currentTarget.value,
                                                 )}
-                                            class="appearance-none block w-full px-3 py-1.5 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white dark:bg-slate-800 rounded focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                            placeholder="Application Name"
-                                        />
+                                            class="appearance-none block w-full px-3 py-1.5 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                        >
+                                            <option value="" disabled
+                                                >Select Application</option
+                                            >
+                                            {#each APP_OPTIONS as option}
+                                                <option value={option.name}
+                                                    >{option.name}</option
+                                                >
+                                            {/each}
+                                        </select>
                                     </div>
                                     <div>
                                         <label

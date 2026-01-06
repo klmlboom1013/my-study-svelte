@@ -6,6 +6,12 @@
     import { onMount } from "svelte";
     import { fade, fly } from "svelte/transition";
     import { afterNavigate } from "$app/navigation";
+    import { auth } from "$lib/firebase/firebase";
+    import { onAuthStateChanged } from "firebase/auth";
+    import { profileStore } from "$lib/stores/profileStore";
+    import { authStore } from "$lib/services/authService";
+    import { driveService } from "$lib/services/driveService";
+    import { get } from "svelte/store";
 
     let { children } = $props();
 
@@ -24,43 +30,98 @@
     });
 
     onMount(() => {
-        try {
-            // Read from new separate 'profile' storage
-            const stored = localStorage.getItem("profile");
-            if (stored) {
-                const parsed = JSON.parse(stored);
+        // Firebase Auth Listener (Keep for basic user sync if needed, though we rely on store)
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            // This is just to ensure authStore has the user if page refreshes
+            // But accessToken is lost on refresh.
+            if (user) {
+                authStore.update((s) => ({ ...s, firebaseUser: user }));
+            }
+        });
 
-                // Name: User ID -> Nickname (if exists) -> User ID
-                if (parsed.nickname) {
-                    userProfile.name = parsed.nickname;
-                } else if (parsed.userId) {
-                    userProfile.name = parsed.userId;
-                }
+        // Watch authStore for Access Token to trigger Auto-Restore
+        // This ensures we run ONLY when we have a valid token (e.g. after explicit login)
+        const authUnsub = authStore.subscribe(async (state) => {
+            if (state.accessToken && state.firebaseUser) {
+                // Prevent repeated restores if already restored recently?
+                // For now, we just restore. Since this runs on login.
 
-                if (parsed.avatarUrl) userProfile.avatar = parsed.avatarUrl;
+                // We should check if we already have a "restored" profile to avoid overwriting edits?
+                // But the requirement is "Auto-Restore on Login".
 
-                // Role: hNum -> Role (Job Category)
-                if (
-                    parsed.jobCategory &&
-                    parsed.jobCategory !== "Please Select"
-                ) {
-                    userProfile.role = parsed.jobCategory;
-                } else {
-                    userProfile.role = "User";
-                }
-            } else {
-                // Fallback to legacy sign-in-page logic (minimal)
-                const legacy = localStorage.getItem("sign-in-page");
-                if (legacy) {
-                    const parsed = JSON.parse(legacy);
-                    if (parsed.userId) userProfile.name = parsed.userId;
-                    if (parsed.avatarUrl) userProfile.avatar = parsed.avatarUrl;
-                    userProfile.role = "User";
+                // Check if profile is default/guest before restoring?
+                // Or check timestamps?
+                // Let's try to restore.
+
+                try {
+                    // Verify if we really need to restore.
+                    // Maybe only if local profile is "fresh" (no saveDateTime) or user requests it?
+                    // But user wants "Auto Restore".
+
+                    // Optimization: check if we just restored to avoid loops if store updates trigger this.
+                    // But store update of profile doesn't trigger authStore update.
+
+                    const profile = await driveService.loadProfile(
+                        state.accessToken,
+                    );
+                    if (profile) {
+                        const current = get(profileStore);
+                        // Optional: Compare timestamps?
+                        // If Drive backup is newer than local save?
+                        // For now, Strict Auto-Restore as per request.
+
+                        profile.restoreDateTime = new Date().toISOString();
+                        profileStore.updateProfile(profile);
+                        console.log(
+                            "Auto-Restored profile from Drive via Token",
+                        );
+                    }
+                } catch (e) {
+                    console.error("Auto-Restore failed", e);
                 }
             }
-        } catch (e) {
-            console.error("Failed to load user profile", e);
-        }
+        });
+
+        // Subscribe to profile store to update UI
+        const profileUnsub = profileStore.subscribe((data) => {
+            // Name mapping (Nickname > UserId)
+            if (data.basicInfo?.nickname) {
+                userProfile.name = data.basicInfo.nickname;
+            } else if (data.basicInfo?.userId) {
+                userProfile.name = data.basicInfo.userId;
+            } else if (data.userId) {
+                userProfile.name = data.userId; // Legacy/Fallback
+            } else {
+                userProfile.name = "Guest";
+            }
+
+            // Avatar
+            if (data.basicInfo?.avatarUrl) {
+                userProfile.avatar = data.basicInfo.avatarUrl;
+            } else if (data.avatarUrl) {
+                userProfile.avatar = data.avatarUrl;
+            }
+
+            // Role
+            let role = "User";
+            if (
+                data.testerInformation?.role &&
+                data.testerInformation.role !== "Please Select"
+            ) {
+                role = data.testerInformation.role;
+            } else if (
+                data.jobCategory &&
+                data.jobCategory !== "Please Select"
+            ) {
+                role = data.jobCategory;
+            }
+            userProfile.role = role;
+        });
+
+        return () => {
+            unsubscribe();
+            profileUnsub();
+        };
     });
 </script>
 

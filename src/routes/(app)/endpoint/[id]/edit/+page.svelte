@@ -24,10 +24,32 @@
     import ResponseDataJsonModal from "$lib/components/endpoint/ResponseDataJsonModal.svelte";
     import TypeSelector from "$lib/components/endpoint/TypeSelector.svelte";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
+    import { profileStore } from "$lib/stores/profileStore";
     import DropdownInput from "$lib/components/ui/DropdownInput.svelte";
 
     let endpointId = $state("");
     let selectedApplication = $state<ApplicationType>("WPAY");
+
+    // Dynamic Application Options from Profile
+    let applicationOptions = $derived.by(() => {
+        const apps =
+            $profileStore.myApplications?.map(
+                (app) => app.appName as ApplicationType,
+            ) || [];
+        // Ensure we always have valid ApplicationTypes.
+        // Filter against defined APPLICATION_OPTIONS to be safe, or cast if we trust profile.
+        // For now, let's filter to only show valid ones to avoid type issues,
+        // OR trust the profile and fallback to standard options if empty.
+        const validApps = apps.filter((app) =>
+            APPLICATION_OPTIONS.includes(app),
+        );
+
+        // If user has no apps configured, fallback to default static options
+        if (validApps.length === 0) return [...APPLICATION_OPTIONS];
+
+        return Array.from(new Set(validApps));
+    });
+
     let name = $state("");
     let description = $state("");
     let method = $state<HttpMethod>("POST");
@@ -265,7 +287,7 @@
                             </label>
                             <DropdownInput
                                 bind:value={selectedApplication}
-                                options={[...APPLICATION_OPTIONS]}
+                                options={applicationOptions}
                                 placeholder="Select Application"
                             />
                         </div>
