@@ -7,11 +7,35 @@
     import { driveService } from "$lib/services/driveService";
     import { authStore, loginWithGoogle } from "$lib/services/authService";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
     import { get } from "svelte/store";
 
     let endpoints = $state<Endpoint[]>([]);
     let searchTerm = $state("");
     let filterApp = $state("");
+
+    // Alert Modal State
+    let isAlertOpen = $state(false);
+    let alertTitle = $state("");
+    let alertMessage = $state("");
+    let alertType = $state<"alert" | "confirm">("alert");
+    let onAlertConfirm = $state<(() => void) | undefined>(undefined);
+    let onAlertCancel = $state<(() => void) | undefined>(undefined);
+
+    function showAlert(
+        title: string,
+        message: string,
+        type: "alert" | "confirm" = "alert",
+        onConfirm?: () => void,
+        onCancel?: () => void,
+    ) {
+        alertTitle = title;
+        alertMessage = message;
+        alertType = type;
+        onAlertConfirm = onConfirm;
+        onAlertCancel = onCancel;
+        isAlertOpen = true;
+    }
 
     onMount(() => {
         endpoints = endpointService.getEndpoints();
@@ -73,10 +97,15 @@
     );
 
     function handleDelete(id: string) {
-        if (confirm("Are you sure you want to delete this endpoint?")) {
-            endpointService.deleteEndpoint(id);
-            endpoints = endpointService.getEndpoints();
-        }
+        showAlert(
+            "Delete Endpoint",
+            "Are you sure you want to delete this endpoint?",
+            "confirm",
+            () => {
+                endpointService.deleteEndpoint(id);
+                endpoints = endpointService.getEndpoints();
+            },
+        );
     }
 
     let isSyncing = $state(false);
@@ -92,7 +121,7 @@
                 const result = await loginWithGoogle();
                 token = result.token;
             } catch (error) {
-                alert("Google Login failed.");
+                showAlert("Sync Error", "Google Login failed.");
                 return;
             }
         }
@@ -104,10 +133,47 @@
             // Get latest data directly from service
             const dataToSave = endpointService.getEndpoints();
             await driveService.saveEndpoints(token, dataToSave);
-            alert("Backup successful! (Saved to Google Drive App Data)");
+            showAlert(
+                "Success",
+                "Backup successful! (Saved to Google Drive App Data)",
+            );
         } catch (error: any) {
             console.error(error);
-            alert(`Backup failed: ${error.message}`);
+            if (error.message.includes("401")) {
+                showAlert(
+                    "Authentication Expired",
+                    "Authentication expired. Do you want to login again and retry?",
+                    "confirm",
+                    async () => {
+                        try {
+                            const result = await loginWithGoogle();
+                            if (result.token) {
+                                isSyncing = true; // Set syncing true again for retry
+                                const dataToSave =
+                                    endpointService.getEndpoints();
+                                await driveService.saveEndpoints(
+                                    result.token,
+                                    dataToSave,
+                                );
+                                showAlert(
+                                    "Success",
+                                    "Backup successful! (Saved to Google Drive App Data)",
+                                );
+                            }
+                        } catch (retryError) {
+                            console.error("Retry failed:", retryError);
+                            showAlert(
+                                "Error",
+                                "Retry failed. Please try again later.",
+                            );
+                        } finally {
+                            isSyncing = false;
+                        }
+                    },
+                );
+                return; // Exit here, let the callback handle logic
+            }
+            showAlert("Error", `Backup failed: ${error.message}`);
         } finally {
             isSyncing = false;
         }
@@ -116,47 +182,100 @@
     async function handleDriveRestore() {
         if (isSyncing) return;
 
-        if (
-            !confirm(
-                "This will overwrite your current local endpoints. Continue?",
-            )
-        )
-            return;
+        showAlert(
+            "Restore Endpoints",
+            "This will overwrite your current local endpoints. Continue?",
+            "confirm",
+            async () => {
+                let token = $authStore.accessToken;
 
-        let token = $authStore.accessToken;
+                // If not logged in or no token, try login first
+                if (!token) {
+                    try {
+                        const result = await loginWithGoogle();
+                        token = result.token;
+                    } catch (error) {
+                        showAlert("Sync Error", "Google Login failed.");
+                        return;
+                    }
+                }
 
-        // If not logged in or no token, try login first
-        if (!token) {
-            try {
-                const result = await loginWithGoogle();
-                token = result.token;
-            } catch (error) {
-                alert("Google Login failed.");
-                return;
-            }
-        }
+                if (!token) return;
 
-        if (!token) return;
-
-        try {
-            isSyncing = true;
-            const data = await driveService.loadEndpoints(token);
-            if (data) {
-                // Save to local storage via service
-                endpointService.importEndpoints(data);
-                endpoints = endpointService.getEndpoints(); // Refresh view
-                alert("Restore successful!");
-            } else {
-                alert("No backup found in Google Drive.");
-            }
-        } catch (error: any) {
-            console.error(error);
-            alert(`Restore failed: ${error.message}`);
-        } finally {
-            isSyncing = false;
-        }
+                try {
+                    isSyncing = true;
+                    const data = await driveService.loadEndpoints(token);
+                    if (data) {
+                        // Save to local storage via service
+                        endpointService.importEndpoints(data);
+                        endpoints = endpointService.getEndpoints(); // Refresh view
+                        showAlert("Success", "Restore successful!");
+                    } else {
+                        showAlert("Info", "No backup found in Google Drive.");
+                    }
+                } catch (error: any) {
+                    console.error(error);
+                    if (error.message.includes("401")) {
+                        showAlert(
+                            "Authentication Expired",
+                            "Authentication expired. Do you want to login again and retry?",
+                            "confirm",
+                            async () => {
+                                try {
+                                    const result = await loginWithGoogle();
+                                    if (result.token) {
+                                        isSyncing = true;
+                                        const data =
+                                            await driveService.loadEndpoints(
+                                                result.token,
+                                            );
+                                        if (data) {
+                                            endpointService.importEndpoints(
+                                                data,
+                                            );
+                                            endpoints =
+                                                endpointService.getEndpoints();
+                                            showAlert(
+                                                "Success",
+                                                "Restore successful!",
+                                            );
+                                        } else {
+                                            showAlert(
+                                                "Info",
+                                                "No backup found in Google Drive.",
+                                            );
+                                        }
+                                    }
+                                } catch (retryError) {
+                                    console.error("Retry failed:", retryError);
+                                    showAlert(
+                                        "Error",
+                                        "Retry failed. Please try again later.",
+                                    );
+                                } finally {
+                                    isSyncing = false;
+                                }
+                            },
+                        );
+                        return;
+                    }
+                    showAlert("Error", `Restore failed: ${error.message}`);
+                } finally {
+                    isSyncing = false;
+                }
+            },
+        );
     }
 </script>
+
+<AlertModal
+    bind:isOpen={isAlertOpen}
+    title={alertTitle}
+    message={alertMessage}
+    type={alertType}
+    onConfirm={onAlertConfirm}
+    onCancel={onAlertCancel}
+/>
 
 <div class="max-w-6xl mx-auto py-8 px-4">
     <Breadcrumbs

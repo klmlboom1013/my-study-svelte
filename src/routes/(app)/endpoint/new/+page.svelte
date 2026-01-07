@@ -148,15 +148,15 @@
         console.log("Saved Endpoint:", newEndpoint);
 
         alert("Endpoint Saved!");
-        goto("/");
+        goto(`/endpoint/${newEndpoint.id}`);
     }
 
     function handleCancel() {
-        goto("/");
+        goto("/endpoint");
     }
 </script>
 
-<div class="max-w-4xl mx-auto py-8 px-4">
+<div class="w-full max-w-6xl mx-auto py-8 px-4">
     <Breadcrumbs
         items={[
             { label: "Home", href: "/" },

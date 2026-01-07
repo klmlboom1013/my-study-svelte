@@ -1,104 +1,55 @@
-{
-  [
-    {
-      "name": "mid",
-      "type": "string",
-      "required": true,
-      "encrypt": false,
-      "encoded": false,
-      "description": "이니시스 가맹점 ID",
-      "length": 10,
-      "signingOrder": 1
-    },
-    {
-      "name": "userId",
-      "type": "string",
-      "required": false,
-      "encrypt": true,
-      "encoded": false,
-      "description": "가맹점 유저 ID or 유저 NO unique 값",
-      "length": 20,
-      "signingOrder": 2
-    },
-    {
-      "name": "wpayUserKey",
-      "type": "string",
-      "required": true,
-      "encrypt": true,
-      "encoded": false,
-      "description": "이니시스에서 발행한 wpayUserKey",
-      "length": 100,
-      "signingOrder": 3
-    },
-    {
-      "name": "ci",
-      "type": "string",
-      "required": false,
-      "encrypt": false,
-      "encoded": false,
-      "description": "고객의 CI",
-      "length": 100,
-      "signingOrder": 4
-    },
-    {
-      "name": "signature",
-      "type": "string",
-      "required": true,
-      "encrypt": false,
-      "encoded": false,
-      "description": "Hash Value",
-      "length": 100,
-      "signingOrder": ""
-    }
-  ]
-}
+결제정보등록–오픈뱅킹 계좌 연동전문 규격을 아래 규칙을 적용해서 JSON Array 포멧으로 구성해줘.
 
-
-{
-  "responseData": [
+1. Request Data Format을 JSON Array로 구성한다.
+[
     {
-      "name": "resultCode",
-      "type": "string",
-      "encrypt": false,
-      "decoded": false,
-      "description": "결과코드",
-      "length": 6,
-      "signingOrder": 1
-    },
-    {
-      "name": "resultMsg",
-      "type": "string",
-      "encrypt": false,
-      "decoded": true,
-      "description": "결과메시지",
-      "length": 150,
-      "signingOrder": 2
-    },
-    {
-      "name": "wtid",
-      "type": "string",
-      "encrypt": false,
-      "decoded": false,
-      "description": "WPAY 트랜잭션 ID (이니시스에서 생성)",
-      "length": 40,
-      "signingOrder": 3
-    },
-    {
-      "name": "userId",
-      "type": "string",
-      "encrypt": true,
-      "decoded": false,
-      "description": "가맹점 유저 ID (Request userId 필드 데이터)",
-      "length": 20,
-      "signingOrder": 4
-    },
-    {
-      "name": "wpayUserKey",
-      "type": "string",
-      "encrypt": true,
-      "decoded": false,
-      "description": "이니시스에서 발행한 wpayUserKey",
-      "length": 100,
-      "signingOrder": 5
+      "name": {요청 필드명},
+      "type": {데이터 타입 (string, number, boolean)},
+      "required": {필수 여부 (true, false)},
+      "encrypt": {데이터 암호화 여부 (true, false), signature 필드는 무조건 false},
+      "encoded": {데이터 URL인코딩 여부 (true, false)},
+      "description": {필드 설명},
+      "length": {필드 길이 (number type 으로)},
+      "signingOrder": {signature 생성 순서 (number type 으로 1부터 시작)}
     }
-  ]
+]
+
+2. Response Data Format을 JSON Array로 구성한다.
+[
+  {
+    "name": {응답 필드명},
+    "type": {데이터 타입 (string, number, boolean)},,
+    "encrypt": {데이터 암호화 여부 (true, false), signature 필드는 무조건 false},
+    "decoded": {데이터 URL디코딩 여부 (true, false)},
+    "description": {필드 설명},
+    "length": {필드 길이 (number type 으로)},
+
+    /* Server to Server API 통신 Response는 signature 가 없으므로 PASS */
+    "signingOrder": {signature 생성 순서 (number type 으로 1부터 시작)}
+  }
+]
+
+3. Request의 encoded, Response의 decoded 값 세팅
+- 연동전문의 Note 컬럼에 "UTF-8 URLEncoding" 가 있는지 여부로 확인 한다.
+
+4. signingOrder 필드 제거 규칙.
+- Json Array 생성 결과에서 signingOrder가 0이면 Json Member에서 signingOrder 필드를 제거 한다.
+
+5. description 작성 방법.
+- () 안의 설명은 무시 하고 description에 작성 하지 않는다.
+- wpayUserKey는 "WPAY 고객 고유 식별 값" 으로 작성 한다.
+- ci는 "본인인증기관으로부터 받은 고유식별 값" 으로 작성 한다.
+- mid는 "Merchant ID" 로 작성 한다.
+- signature는 "데이터 무결성 검증을 위한 SHA256 해시값" 으로 작성 한다.
+- returnUrl은 "WPAY 처리 결과를 전달 받을 callback URL" 으로 작성 한다.
+- wpayToken은 "결제토큰" 으로 작성 한다.
+- cardPdName은 "카드상품명" 으로 작성 한다.
+- cardPdNum는 "카드상품번호" 으로 작성 한다.
+- bankCardNo는 "마스킹된 카드번호" 으로 작성 한다.
+- cardIsscoCode는 "발급사 코드 (사용카드사: KB, BC, 하나)" 으로 작성 한다.
+- checkFlg는 "카드유형 (0:신용, 1:체크, 2:선불)" 으로 작성 한다.
+- cardTypeFlg는 "개인/법인 구분 (0:개인, 1:법인)" 으로 작성 한다.
+
+6. Json 필드 정렬
+- signingOrder를 기준으로 오름차순 정렬 한다.
+- signature 필드 위치는 signingOrder가 가장 큰 필드 다음에 위치 한다.
