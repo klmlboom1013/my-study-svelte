@@ -1,0 +1,104 @@
+{
+  [
+    {
+      "name": "mid",
+      "type": "string",
+      "required": true,
+      "encrypt": false,
+      "encoded": false,
+      "description": "이니시스 가맹점 ID",
+      "length": 10,
+      "signingOrder": 1
+    },
+    {
+      "name": "userId",
+      "type": "string",
+      "required": false,
+      "encrypt": true,
+      "encoded": false,
+      "description": "가맹점 유저 ID or 유저 NO unique 값",
+      "length": 20,
+      "signingOrder": 2
+    },
+    {
+      "name": "wpayUserKey",
+      "type": "string",
+      "required": true,
+      "encrypt": true,
+      "encoded": false,
+      "description": "이니시스에서 발행한 wpayUserKey",
+      "length": 100,
+      "signingOrder": 3
+    },
+    {
+      "name": "ci",
+      "type": "string",
+      "required": false,
+      "encrypt": false,
+      "encoded": false,
+      "description": "고객의 CI",
+      "length": 100,
+      "signingOrder": 4
+    },
+    {
+      "name": "signature",
+      "type": "string",
+      "required": true,
+      "encrypt": false,
+      "encoded": false,
+      "description": "Hash Value",
+      "length": 100,
+      "signingOrder": ""
+    }
+  ]
+}
+
+
+{
+  "responseData": [
+    {
+      "name": "resultCode",
+      "type": "string",
+      "encrypt": false,
+      "decoded": false,
+      "description": "결과코드",
+      "length": 6,
+      "signingOrder": 1
+    },
+    {
+      "name": "resultMsg",
+      "type": "string",
+      "encrypt": false,
+      "decoded": true,
+      "description": "결과메시지",
+      "length": 150,
+      "signingOrder": 2
+    },
+    {
+      "name": "wtid",
+      "type": "string",
+      "encrypt": false,
+      "decoded": false,
+      "description": "WPAY 트랜잭션 ID (이니시스에서 생성)",
+      "length": 40,
+      "signingOrder": 3
+    },
+    {
+      "name": "userId",
+      "type": "string",
+      "encrypt": true,
+      "decoded": false,
+      "description": "가맹점 유저 ID (Request userId 필드 데이터)",
+      "length": 20,
+      "signingOrder": 4
+    },
+    {
+      "name": "wpayUserKey",
+      "type": "string",
+      "encrypt": true,
+      "decoded": false,
+      "description": "이니시스에서 발행한 wpayUserKey",
+      "length": 100,
+      "signingOrder": 5
+    }
+  ]

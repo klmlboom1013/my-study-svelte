@@ -9,17 +9,29 @@
     import { auth } from "$lib/firebase/firebase";
     import { onAuthStateChanged } from "firebase/auth";
     import { profileStore } from "$lib/stores/profileStore";
-    import { authStore } from "$lib/services/authService";
+    import { authStore, loginWithGoogle } from "$lib/services/authService";
     import { driveService } from "$lib/services/driveService";
     import { get } from "svelte/store";
+    import { getCookie } from "$lib/utils/cookie";
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
 
     let { children } = $props();
 
     let isDrawerOpen = $state(false);
 
+    // Alert Modal State
+    let isAlertOpen = $state(false);
+    let alertTitle = $state("");
+    let alertMessage = $state("");
+    let alertType = $state<"alert" | "confirm">("alert");
+    let onAlertConfirm = $state<(() => void) | undefined>(undefined);
+    let onAlertCancel = $state<(() => void) | undefined>(undefined);
+
     // Auto-close drawer on navigation
     afterNavigate(() => {
         isDrawerOpen = false;
+        // Check for Auto-Restore Opportunity (Google Connect Prompt) on every navigation
+        checkAndPromptGoogleConnect();
     });
 
     // User Profile Data
@@ -123,7 +135,72 @@
             profileUnsub();
         };
     });
+
+    function checkAndPromptGoogleConnect() {
+        // 1. Check if user is logged in to App (WPAY)
+        const appToken = getCookie("accessToken");
+        if (!appToken) return; // Not logged in, nothing to do
+
+        // 2. Check if Google Token is missing (which it is on refresh)
+        const googleToken = get(authStore).accessToken;
+        if (googleToken) return; // Already connected
+
+        // 3. Check if user already declined in this session
+        const hasDeclined = sessionStorage.getItem("hasDeclinedGoogleConnect");
+        if (hasDeclined) return;
+
+        // Prompt
+        showAlert(
+            "Google 계정 연결",
+            "프로필 백업을 자동 복구하려면 Google 계정 연결이 필요합니다.\n지금 연결하시겠습니까?",
+            "confirm",
+            () => {
+                // Confirm: Connect
+                handleGoogleConnect();
+            },
+            () => {
+                // Cancel: Suppress
+                sessionStorage.setItem("hasDeclinedGoogleConnect", "true");
+            },
+        );
+    }
+
+    async function handleGoogleConnect() {
+        try {
+            await loginWithGoogle();
+            // Successful login will update authStore, triggering the subscription logic for Auto-Restore
+        } catch (e) {
+            console.error("Google Connect Failed", e);
+            showAlert("연결 실패", "Google 계정 연결에 실패했습니다.");
+        }
+    }
+
+    function showAlert(
+        title: string,
+        message: string,
+        type: "alert" | "confirm" = "alert",
+        onConfirm?: () => void,
+        onCancel?: () => void,
+    ) {
+        alertTitle = title;
+        alertMessage = message;
+        alertType = type;
+        onAlertConfirm = onConfirm;
+        onAlertCancel = onCancel;
+        isAlertOpen = true;
+    }
 </script>
+
+<AlertModal
+    bind:isOpen={isAlertOpen}
+    title={alertTitle}
+    message={alertMessage}
+    type={alertType}
+    onConfirm={onAlertConfirm}
+    onCancel={onAlertCancel}
+    confirmText="연결"
+    cancelText="취소"
+/>
 
 <div
     class="flex flex-col h-screen bg-slate-50 dark:bg-background-dark transition-colors duration-300"

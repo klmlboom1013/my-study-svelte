@@ -173,6 +173,13 @@
         </div>
         <div class="flex items-center gap-2">
             <button
+                onclick={() => goto("/endpoint/new")}
+                class="hidden md:flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all"
+            >
+                <span class="material-symbols-outlined text-[20px]">add</span>
+                <span>New Endpoint</span>
+            </button>
+            <button
                 onclick={handleDriveBackup}
                 disabled={isSyncing}
                 class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-card-dark dark:text-slate-300 dark:border-border-dark dark:hover:bg-background-dark disabled:opacity-50"

@@ -133,24 +133,6 @@
                 </div>
             </div>
 
-            <!-- Profile Settings -->
-            <div
-                class="p-1 border-b border-slate-100 dark:border-border-dark/50"
-            >
-                <button
-                    onclick={() => {
-                        isOpen = false;
-                        goto("/profile");
-                    }}
-                    class="w-full text-left px-3 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2"
-                >
-                    <span class="material-symbols-outlined text-[16px]"
-                        >person</span
-                    >
-                    Profile
-                </button>
-            </div>
-
             <!-- Google Account Section -->
             <div
                 class="p-2 border-b border-slate-100 dark:border-border-dark/50"
@@ -234,6 +216,24 @@
                         Sync your endpoints across devices.
                     </p>
                 {/if}
+            </div>
+
+            <!-- Profile Settings -->
+            <div
+                class="p-1 border-b border-slate-100 dark:border-border-dark/50"
+            >
+                <button
+                    onclick={() => {
+                        isOpen = false;
+                        goto("/profile");
+                    }}
+                    class="w-full text-left px-3 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2"
+                >
+                    <span class="material-symbols-outlined text-[16px]"
+                        >person</span
+                    >
+                    Profile
+                </button>
             </div>
 
             <!-- App Sign Out -->
