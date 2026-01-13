@@ -1,0 +1,79 @@
+{
+    "request": [
+        {
+            "name": "mid",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": true,
+            "description": "가맹점 ID",
+            "length": 10,
+            "signingOrder": 1
+        },
+        {
+            "name": "wpayUserKey",
+            "type": "String",
+            "required": true,
+            "encrypt": true,
+            "encoded": true,
+            "description": "이니시스에서 발행한 WPAY 사용자 KEY",
+            "length": 100,
+            "signingOrder": 2
+        },
+        {
+            "name": "ci",
+            "type": "String",
+            "required": false,
+            "encrypt": true,
+            "encoded": true,
+            "description": "본인인증 기관 사용자 고유 식별 값",
+            "length": 100,
+            "signingOrder": 3
+        },
+        {
+            "name": "wtid",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": true,
+            "description": "자동결제 신청 후 발급된 WPAY 트랜잭션 ID",
+            "length": 40,
+            "signingOrder": 4
+        },
+        {
+            "name": "signature",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": true,
+            "description": "데이터 위변조 검증 값",
+            "length": 100
+        }
+    ],
+    "response": [
+        {
+            "name": "resultCode",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "결과코드 (000000 시 성공)",
+            "length": 6
+        },
+        {
+            "name": "resultMsg",
+            "type": "String",
+            "encrypt": false,
+            "decoded": true,
+            "description": "결과메시지",
+            "length": 150
+        },
+        {
+            "name": "wtid",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "WPAY 트랜잭션 ID",
+            "length": 40
+        }
+    ]
+}

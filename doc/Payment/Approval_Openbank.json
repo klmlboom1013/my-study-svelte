@@ -1,0 +1,273 @@
+{
+    "request": [
+        {
+            "name": "mid",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "가맹점 ID",
+            "length": 10,
+            "signingOrder": 1
+        },
+        {
+            "name": "wpayUserKey",
+            "type": "String",
+            "required": true,
+            "encrypt": true,
+            "encoded": false,
+            "description": "WPAY 사용자 KEY",
+            "length": 100,
+            "signingOrder": 2
+        },
+        {
+            "name": "ci",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": false,
+            "description": "본인인증 기관 고유 식별 값",
+            "length": 100,
+            "signingOrder": 3
+        },
+        {
+            "name": "wtid",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "인증 시 발급된 WPAY 트랜잭션 ID",
+            "length": 40,
+            "signingOrder": 4
+        },
+        {
+            "name": "signature",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "데이터 위변조 검증 값",
+            "length": 100
+        },
+        {
+            "name": "tax",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": false,
+            "description": "과세금액",
+            "length": 12
+        },
+        {
+            "name": "taxFree",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": false,
+            "description": "비과세금액",
+            "length": 12
+        }
+    ],
+    "response": [
+        {
+            "name": "resultCode",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "결과코드",
+            "length": 6
+        },
+        {
+            "name": "resultMsg",
+            "type": "String",
+            "encrypt": false,
+            "decoded": true,
+            "description": "결과메시지",
+            "length": 150
+        },
+        {
+            "name": "mid",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "가맹점 ID",
+            "length": 10
+        },
+        {
+            "name": "wtid",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "WPAY 트랜잭션 ID",
+            "length": 40
+        },
+        {
+            "name": "wpayUserKey",
+            "type": "String",
+            "encrypt": true,
+            "decoded": false,
+            "description": "WPAY 사용자 KEY",
+            "length": 100
+        },
+        {
+            "name": "wpayToken",
+            "type": "String",
+            "encrypt": true,
+            "decoded": false,
+            "description": "결제수단 WPAY Token",
+            "length": 100
+        },
+        {
+            "name": "payMethod",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "결제수단 코드 [16:계좌]",
+            "length": 2
+        },
+        {
+            "name": "bankCardCode",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "은행 코드",
+            "length": 4
+        },
+        {
+            "name": "bankCardNo",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "마스킹 계좌번호",
+            "length": 40
+        },
+        {
+            "name": "oid",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "주문번호",
+            "length": 40
+        },
+        {
+            "name": "goodsName",
+            "type": "String",
+            "encrypt": false,
+            "decoded": true,
+            "description": "상품명",
+            "length": 100
+        },
+        {
+            "name": "buyerName",
+            "type": "String",
+            "encrypt": false,
+            "decoded": true,
+            "description": "구매자명",
+            "length": 100
+        },
+        {
+            "name": "buyerTel",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "구매자연락처",
+            "length": 100
+        },
+        {
+            "name": "buyerEmail",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "구매자이메일",
+            "length": 100
+        },
+        {
+            "name": "tid",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "이니시스 결제 트랜잭션 ID",
+            "length": 40
+        },
+        {
+            "name": "applDate",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "승인일시",
+            "length": 16
+        },
+        {
+            "name": "applPrice",
+            "type": "Number",
+            "encrypt": false,
+            "decoded": false,
+            "description": "승인금액",
+            "length": 10
+        },
+        {
+            "name": "cshrApplNum",
+            "type": "Number",
+            "encrypt": false,
+            "decoded": false,
+            "description": "현금영수증 발행 승인 번호",
+            "length": 9
+        },
+        {
+            "name": "cshrResultCode",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "현금영수증 결과코드",
+            "length": 10
+        },
+        {
+            "name": "cshrResultMsg",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "현금영수증 결과메시지",
+            "length": 10
+        },
+        {
+            "name": "cshrApplPrice",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "현금영수증 총금액",
+            "length": 9
+        },
+        {
+            "name": "cshrSupplyPrice",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "현금영수증 공급가액",
+            "length": 9
+        },
+        {
+            "name": "cshrTax",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "현금영수증 세금",
+            "length": 9
+        },
+        {
+            "name": "cshrServicePrice",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "현금영수증 봉사료",
+            "length": 9
+        },
+        {
+            "name": "cshrType",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "현금영수증 발행 구분",
+            "length": 1
+        }
+    ]
+}

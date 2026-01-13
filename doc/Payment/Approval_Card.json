@@ -1,0 +1,322 @@
+{
+    "request": [
+        {
+            "name": "mid",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "가맹점 ID",
+            "length": 10,
+            "signingOrder": 1
+        },
+        {
+            "name": "wpayUserKey",
+            "type": "String",
+            "required": true,
+            "encrypt": true,
+            "encoded": false,
+            "description": "WPAY 사용자 KEY",
+            "length": 100,
+            "signingOrder": 2
+        },
+        {
+            "name": "ci",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": false,
+            "description": "본인인증 기관 고유 식별 값",
+            "length": 100,
+            "signingOrder": 3
+        },
+        {
+            "name": "wtid",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "결제인증 Response wtid",
+            "length": 40,
+            "signingOrder": 4
+        },
+        {
+            "name": "signature",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "데이터 위변조 검증 값",
+            "length": 100
+        },
+        {
+            "name": "tax",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": false,
+            "description": "과세금액",
+            "length": 10
+        },
+        {
+            "name": "taxFree",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": false,
+            "description": "비과세금액",
+            "length": 10
+        },
+        {
+            "name": "cupDeposit",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": false,
+            "description": "컵보증금 금액",
+            "length": 10
+        }
+    ],
+    "response": [
+        {
+            "name": "resultCode",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "결과코드",
+            "length": 6
+        },
+        {
+            "name": "resultMsg",
+            "type": "String",
+            "encrypt": false,
+            "decoded": true,
+            "description": "결과메시지",
+            "length": 150
+        },
+        {
+            "name": "mid",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "가맹점 ID",
+            "length": 10
+        },
+        {
+            "name": "wtid",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "WPAY 트랜잭션 ID",
+            "length": 40
+        },
+        {
+            "name": "wpayUserKey",
+            "type": "String",
+            "encrypt": true,
+            "decoded": false,
+            "description": "WPAY 사용자 KEY",
+            "length": 100
+        },
+        {
+            "name": "wpayToken",
+            "type": "String",
+            "encrypt": true,
+            "decoded": false,
+            "description": "결제수단 WPAY Token",
+            "length": 100
+        },
+        {
+            "name": "payMethod",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "결제수단 코드 [01:신용카드]",
+            "length": 2
+        },
+        {
+            "name": "bankCardCode",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "카드사 코드",
+            "length": 4
+        },
+        {
+            "name": "cardIsscoCode",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "발급사 코드 [BC, KB, 하나]",
+            "length": 2
+        },
+        {
+            "name": "bankCardNo",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "마스킹 카드번호",
+            "length": 40
+        },
+        {
+            "name": "oid",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "주문번호",
+            "length": 40
+        },
+        {
+            "name": "goodsName",
+            "type": "String",
+            "encrypt": false,
+            "decoded": true,
+            "description": "상품명",
+            "length": 100
+        },
+        {
+            "name": "buyerName",
+            "type": "String",
+            "encrypt": false,
+            "decoded": true,
+            "description": "구매자명",
+            "length": 100
+        },
+        {
+            "name": "buyerTel",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "구매자연락처",
+            "length": 100
+        },
+        {
+            "name": "buyerEmail",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "구매자이메일",
+            "length": 100
+        },
+        {
+            "name": "cardQuota",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "할부개월수(00:일시불)",
+            "length": 2
+        },
+        {
+            "name": "cardInterest",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "무이자여부(Y/N)",
+            "length": 1
+        },
+        {
+            "name": "tid",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "이니시스 결제 TID",
+            "length": 40
+        },
+        {
+            "name": "applDate",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "승인일시",
+            "length": 16
+        },
+        {
+            "name": "applNum",
+            "type": "Number",
+            "encrypt": false,
+            "decoded": false,
+            "description": "승인번호",
+            "length": 10
+        },
+        {
+            "name": "applPrice",
+            "type": "Number",
+            "encrypt": false,
+            "decoded": false,
+            "description": "승인금액",
+            "length": 10
+        },
+        {
+            "name": "memberNum",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "승인가맹점번호",
+            "length": 20
+        },
+        {
+            "name": "applCardNum",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "승인카드번호",
+            "length": 18
+        },
+        {
+            "name": "cardCheckFlag",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "카드구분[0:신용, 1:체크, 2:선불]",
+            "length": 1
+        },
+        {
+            "name": "partCancelCode",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "부분취소 가능 여부",
+            "length": 1
+        },
+        {
+            "name": "couponFlag",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "즉시할인 적용 여부",
+            "length": 1
+        },
+        {
+            "name": "couponDiscount",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "즉시할인 금액",
+            "length": 10
+        },
+        {
+            "name": "goodsCnt",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "장바구니 상품 건수",
+            "length": 2
+        },
+        {
+            "name": "goodsDetail",
+            "type": "String",
+            "encrypt": false,
+            "decoded": true,
+            "description": "장바구니 상품 상세정보",
+            "length": 4000
+        },
+        {
+            "name": "cupDeposit",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "컵보증금",
+            "length": 10
+        }
+    ]
+}

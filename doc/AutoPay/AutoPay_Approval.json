@@ -1,0 +1,325 @@
+{
+    "request": [
+        {
+            "name": "mid",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "가맹점 ID [자동결제용 mid]",
+            "length": 10,
+            "signingOrder": 1
+        },
+        {
+            "name": "wpayUserKey",
+            "type": "String",
+            "required": true,
+            "encrypt": true,
+            "encoded": false,
+            "description": "WPAY 사용자 KEY [CI 1:1 매칭]",
+            "length": 100,
+            "signingOrder": 2
+        },
+        {
+            "name": "ci",
+            "type": "String",
+            "required": false,
+            "encrypt": true,
+            "encoded": false,
+            "description": "본인인증 기관 사용자 고유 식별 값",
+            "length": 100,
+            "signingOrder": 3
+        },
+        {
+            "name": "wtid",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "자동결제 신청 Response의 wtid",
+            "length": 40,
+            "signingOrder": 4
+        },
+        {
+            "name": "wpayToken",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "자동결제 신청 Response의 wpayToken",
+            "length": 100,
+            "signingOrder": 5
+        },
+        {
+            "name": "oid",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "주문번호",
+            "length": 100,
+            "signingOrder": 6
+        },
+        {
+            "name": "goodsName",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": true,
+            "description": "상품명 [100byte 미만]",
+            "length": 255,
+            "signingOrder": 7
+        },
+        {
+            "name": "goodsPrice",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "결제금액",
+            "length": 10,
+            "signingOrder": 8
+        },
+        {
+            "name": "buyerName",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": true,
+            "description": "구매자명",
+            "length": 100,
+            "signingOrder": 9
+        },
+        {
+            "name": "buyerTel",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "구매자연락처",
+            "length": 100,
+            "signingOrder": 10
+        },
+        {
+            "name": "buyerEmail",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": false,
+            "description": "구매자이메일",
+            "length": 100,
+            "signingOrder": 11
+        },
+        {
+            "name": "signature",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "데이터 위변조 검증 값",
+            "length": 100
+        }
+    ],
+    "response": [
+        {
+            "name": "resultCode",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "결과코드",
+            "length": 6
+        },
+        {
+            "name": "resultMsg",
+            "type": "String",
+            "encrypt": false,
+            "decoded": true,
+            "description": "결과메시지",
+            "length": 150
+        },
+        {
+            "name": "wtid",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "인증요청 시 발급된 WPAY 트랜잭션 ID",
+            "length": 40
+        },
+        {
+            "name": "wpayUserKey",
+            "type": "String",
+            "encrypt": true,
+            "decoded": false,
+            "description": "WPAY 사용자 KEY [CI 1:1 매칭]",
+            "length": 100
+        },
+        {
+            "name": "wpayToken",
+            "type": "String",
+            "encrypt": true,
+            "decoded": false,
+            "description": "결제수단 WPAY Token",
+            "length": 100
+        },
+        {
+            "name": "payMethod",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "결제수단 코드 [01:신용카드]",
+            "length": 2
+        },
+        {
+            "name": "bankCardCode",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "카드사 코드",
+            "length": 4
+        },
+        {
+            "name": "cardIsscoCode",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "발급사 코드 [BC, KB, 하나 등]",
+            "length": 2
+        },
+        {
+            "name": "bankCardNo",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "마스킹 카드번호",
+            "length": 40
+        },
+        {
+            "name": "oid",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "주문번호",
+            "length": 100
+        },
+        {
+            "name": "goodsName",
+            "type": "String",
+            "encrypt": false,
+            "decoded": true,
+            "description": "상품명",
+            "length": 100
+        },
+        {
+            "name": "buyerName",
+            "type": "String",
+            "encrypt": false,
+            "decoded": true,
+            "description": "구매자명",
+            "length": 100
+        },
+        {
+            "name": "buyerTel",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "구매자연락처",
+            "length": 100
+        },
+        {
+            "name": "buyerEmail",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "구매자이메일",
+            "length": 100
+        },
+        {
+            "name": "cardQuota",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "할부개월수 (00:일시불)",
+            "length": 2
+        },
+        {
+            "name": "cardInterest",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "무이자여부 (Y/N)",
+            "length": 1
+        },
+        {
+            "name": "tid",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "이니시스 결제 트랜잭션 ID(TID)",
+            "length": 40
+        },
+        {
+            "name": "applDate",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "승인일시 [YYYYMMDDHH24MISS]",
+            "length": 16
+        },
+        {
+            "name": "applNum",
+            "type": "Number",
+            "encrypt": false,
+            "decoded": false,
+            "description": "승인번호",
+            "length": 0
+        },
+        {
+            "name": "applPrice",
+            "type": "Number",
+            "encrypt": false,
+            "decoded": false,
+            "description": "승인금액",
+            "length": 0
+        },
+        {
+            "name": "applCardNum",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "승인카드번호 (등록 시와 다를 수 있음)",
+            "length": 18
+        },
+        {
+            "name": "cardCheckFlag",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "카드구분 [0:신용, 1:체크, 2:선불]",
+            "length": 1
+        },
+        {
+            "name": "partCancelCode",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "부분취소 가능 여부 [0:불능, 1:가능]",
+            "length": 1
+        },
+        {
+            "name": "couponFlag",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "즉시할인 적용 여부",
+            "length": 1
+        },
+        {
+            "name": "couponDiscount",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "즉시할인 할인 금액",
+            "length": 10
+        }
+    ]
+}

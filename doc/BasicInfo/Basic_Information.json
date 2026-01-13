@@ -1,0 +1,303 @@
+{
+    "request": [
+        {
+            "name": "mid",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "가맹점 ID",
+            "length": 10,
+            "signingOrder": 1
+        },
+        {
+            "name": "signature",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "데이터 위변조 검증 값",
+            "length": 100
+        },
+        {
+            "name": "options",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": false,
+            "description": "기준정보 조회 옵션 (빈값: All) [MQ:CP:CE:NI:PK:UC:BI]",
+            "length": 20
+        }
+    ],
+    "response": [
+        {
+            "name": "resultCode",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "결과코드",
+            "length": 6
+        },
+        {
+            "name": "resultMsg",
+            "type": "String",
+            "encrypt": false,
+            "decoded": true,
+            "description": "결과메시지",
+            "length": 150
+        },
+        {
+            "name": "mid",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "가맹점 ID",
+            "length": 10
+        },
+        {
+            "name": "wtid",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "WPAY 트랜잭션 ID",
+            "length": 40
+        },
+        {
+            "name": "basicInfos",
+            "type": "List",
+            "encrypt": false,
+            "decoded": false,
+            "description": "기준정보 리스트",
+            "subFields": [
+                {
+                    "name": "cardList",
+                    "type": "List",
+                    "encrypt": false,
+                    "decoded": false,
+                    "description": "가맹점 사용 가능 카드사 정보",
+                    "subFields": [
+                        {
+                            "name": "bankCardCode",
+                            "type": "String",
+                            "encrypt": false,
+                            "decoded": false,
+                            "description": "카드사 코드"
+                        },
+                        {
+                            "name": "cardName",
+                            "type": "String",
+                            "encrypt": false,
+                            "decoded": false,
+                            "description": "카드사 명"
+                        }
+                    ]
+                },
+                {
+                    "name": "pointList",
+                    "type": "List",
+                    "encrypt": false,
+                    "decoded": false,
+                    "description": "카드사 포인트 정보",
+                    "subFields": [
+                        {
+                            "name": "bankCardCode",
+                            "type": "String",
+                            "encrypt": false,
+                            "decoded": false,
+                            "description": "카드사 코드"
+                        },
+                        {
+                            "name": "price",
+                            "type": "String",
+                            "encrypt": false,
+                            "decoded": false,
+                            "description": "포인트 (price=0: 제한 없음, int)"
+                        }
+                    ]
+                },
+                {
+                    "name": "paymethodList",
+                    "type": "List",
+                    "encrypt": false,
+                    "decoded": false,
+                    "description": "결제수단 정보 리스트",
+                    "subFields": [
+                        {
+                            "name": "Code",
+                            "type": "String",
+                            "encrypt": false,
+                            "decoded": false,
+                            "description": "결제수단 코드"
+                        },
+                        {
+                            "name": "name",
+                            "type": "String",
+                            "encrypt": false,
+                            "decoded": false,
+                            "description": "결제수단 명"
+                        }
+                    ]
+                },
+                {
+                    "name": "nointInfoList",
+                    "type": "List",
+                    "encrypt": false,
+                    "decoded": false,
+                    "description": "무이자할부 정보",
+                    "subFields": [
+                        {
+                            "name": "bankCardCode",
+                            "type": "String",
+                            "encrypt": false,
+                            "decoded": false,
+                            "description": "카드사 코드"
+                        },
+                        {
+                            "name": "cardName",
+                            "type": "String",
+                            "encrypt": false,
+                            "decoded": false,
+                            "description": "카드사 명"
+                        },
+                        {
+                            "name": "nointInfos",
+                            "type": "List",
+                            "encrypt": false,
+                            "decoded": false,
+                            "description": "무이자 상세 정보",
+                            "subFields": [
+                                {
+                                    "name": "amount",
+                                    "type": "String",
+                                    "encrypt": false,
+                                    "decoded": false,
+                                    "description": "무이자할부 적용 가능 금액 (단위: 만원)",
+                                    "length": 3
+                                },
+                                {
+                                    "name": "month",
+                                    "type": "String",
+                                    "encrypt": false,
+                                    "decoded": false,
+                                    "description": "무이자할부 개월 리스트",
+                                    "length": 2
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "maxQuotaList",
+                    "type": "List",
+                    "encrypt": false,
+                    "decoded": false,
+                    "description": "유/무이자 최대 할부 개월 수",
+                    "subFields": [
+                        {
+                            "name": "bankCardCode",
+                            "type": "String",
+                            "encrypt": false,
+                            "decoded": false,
+                            "description": "카드사 코드"
+                        },
+                        {
+                            "name": "geIntMaxQuota",
+                            "type": "String",
+                            "encrypt": false,
+                            "decoded": false,
+                            "description": "유이자 최대 할부 개월"
+                        },
+                        {
+                            "name": "noIntMaxQuota",
+                            "type": "String",
+                            "encrypt": false,
+                            "decoded": false,
+                            "description": "무이자 최대 할부 개월"
+                        }
+                    ]
+                },
+                {
+                    "name": "discList",
+                    "type": "List",
+                    "encrypt": false,
+                    "decoded": false,
+                    "description": "즉시할인 정보",
+                    "subFields": [
+                        {
+                            "name": "bankCardCode",
+                            "type": "String",
+                            "encrypt": false,
+                            "decoded": false,
+                            "description": "카드사 코드"
+                        },
+                        {
+                            "name": "discInfos",
+                            "type": "List",
+                            "encrypt": false,
+                            "decoded": false,
+                            "description": "즉시할인 상세 정보",
+                            "subFields": [
+                                {
+                                    "name": "discAmt",
+                                    "type": "String",
+                                    "encrypt": false,
+                                    "decoded": false,
+                                    "description": "즉시할인 금액",
+                                    "length": 10
+                                },
+                                {
+                                    "name": "minAmt",
+                                    "type": "String",
+                                    "encrypt": false,
+                                    "decoded": false,
+                                    "description": "즉시할인 적용 최소금액",
+                                    "length": 10
+                                },
+                                {
+                                    "name": "maxAmt",
+                                    "type": "String",
+                                    "encrypt": false,
+                                    "decoded": false,
+                                    "description": "즉시할인 적용 최대금액",
+                                    "length": 10
+                                },
+                                {
+                                    "name": "couponCode",
+                                    "type": "String",
+                                    "encrypt": false,
+                                    "decoded": false,
+                                    "description": "즉시할인 쿠폰코드",
+                                    "length": 20
+                                },
+                                {
+                                    "name": "applYn",
+                                    "type": "String",
+                                    "encrypt": false,
+                                    "decoded": false,
+                                    "description": "즉시할인 사용가능 여부 (Y/N)",
+                                    "length": 1
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "bcissrcdList",
+                    "type": "List",
+                    "encrypt": false,
+                    "decoded": false,
+                    "description": "BC카드 즉시할인 대상 발급사 정보",
+                    "subFields": [
+                        {
+                            "name": "cardIssrCd",
+                            "type": "String",
+                            "encrypt": false,
+                            "decoded": false,
+                            "description": "카드 발급사 코드"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

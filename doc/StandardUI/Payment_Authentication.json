@@ -1,0 +1,277 @@
+{
+    "request": [
+        {
+            "name": "mid",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "가맹점 ID",
+            "length": 10,
+            "signingOrder": 1
+        },
+        {
+            "name": "wpayUserKey",
+            "type": "String",
+            "required": true,
+            "encrypt": true,
+            "encoded": false,
+            "description": "WPAY 사용자 KEY [CI 1:1 매칭]",
+            "length": 100,
+            "signingOrder": 2
+        },
+        {
+            "name": "ci",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": false,
+            "description": "본인인증 기관 사용자 고유 식별 값",
+            "length": 100,
+            "signingOrder": 3
+        },
+        {
+            "name": "oid",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "주문번호",
+            "length": 100,
+            "signingOrder": 4
+        },
+        {
+            "name": "goodsName",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": true,
+            "description": "상품명 [100byte 미만]",
+            "length": 255,
+            "signingOrder": 5
+        },
+        {
+            "name": "goodsPrice",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "결제금액",
+            "length": 10,
+            "signingOrder": 6
+        },
+        {
+            "name": "hppType",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "현물컨텐츠구분코드 [1:컨텐츠, 2:현물]",
+            "length": 1,
+            "signingOrder": 7
+        },
+        {
+            "name": "buyerName",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": true,
+            "description": "구매자명 [최대 30byte]",
+            "length": 100,
+            "signingOrder": 8
+        },
+        {
+            "name": "buyerTel",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "구매자연락처 [숫자와 “-“만 허용]",
+            "length": 15,
+            "signingOrder": 9
+        },
+        {
+            "name": "buyerEmail",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": false,
+            "description": "구매자이메일 [특수문자 제한]",
+            "length": 60,
+            "signingOrder": 10
+        },
+        {
+            "name": "flagPin",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": false,
+            "description": "핀인증 생략 [Y:핀인증, N:생략]",
+            "length": 1,
+            "signingOrder": 11
+        },
+        {
+            "name": "returnUrl",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": true,
+            "description": "인증응답 결과 전달 URL",
+            "length": 256,
+            "signingOrder": 12
+        },
+        {
+            "name": "signature",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "데이터 위변조 검증 값",
+            "length": 100
+        },
+        {
+            "name": "arsVersion",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": false,
+            "description": "ARS인증방법 [1:생년월일 6자리, 2:난수]",
+            "length": 1
+        },
+        {
+            "name": "authNoLength",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": false,
+            "description": "arsVersion=2 난수 길이 [2 or 3 or 4]",
+            "length": 1
+        },
+        {
+            "name": "resetCssUrl",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": true,
+            "description": "custom css 작성한 URL",
+            "length": 160
+        },
+        {
+            "name": "resetTextUrl",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": true,
+            "description": "custom text css 작성한 URL",
+            "length": 160
+        },
+        {
+            "name": "customTitle",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": true,
+            "description": "브라우저 상단 바 타이틀",
+            "length": 256
+        },
+        {
+            "name": "customShortcutUrl",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": true,
+            "description": "브라우저 상단 바 favicon 이미지 URL",
+            "length": 256
+        }
+    ],
+    "response": [
+        {
+            "name": "resultCode",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "결과코드",
+            "length": 6,
+            "signingOrder": 1
+        },
+        {
+            "name": "resultMsg",
+            "type": "String",
+            "encrypt": false,
+            "decoded": true,
+            "description": "결과메시지",
+            "length": 150,
+            "signingOrder": 2
+        },
+        {
+            "name": "mid",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "가맹점 ID",
+            "length": 10,
+            "signingOrder": 3
+        },
+        {
+            "name": "wtid",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "WPAY 트랜잭션 ID",
+            "length": 40,
+            "signingOrder": 4
+        },
+        {
+            "name": "oid",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "주문번호",
+            "length": 100,
+            "signingOrder": 5
+        },
+        {
+            "name": "wpayUserKey",
+            "type": "String",
+            "encrypt": true,
+            "decoded": false,
+            "description": "WPAY 사용자 KEY",
+            "length": 100,
+            "signingOrder": 6
+        },
+        {
+            "name": "wpayToken",
+            "type": "String",
+            "encrypt": true,
+            "decoded": false,
+            "description": "결제수단 WPAY Token",
+            "length": 100,
+            "signingOrder": 7
+        },
+        {
+            "name": "wpayDomain",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "결제승인 혹은 망취소 요청 시 사용",
+            "length": 20,
+            "signingOrder": 8
+        },
+        {
+            "name": "signature",
+            "type": "String",
+            "encrypt": true,
+            "decoded": false,
+            "description": "데이터 위변조 검증 값",
+            "length": 100
+        },
+        {
+            "name": "payMethod",
+            "type": "String",
+            "encrypt": false,
+            "decoded": false,
+            "description": "결제수단 코드 [01:신용카드, 16:계좌]",
+            "length": 2
+        }
+    ]
+}
