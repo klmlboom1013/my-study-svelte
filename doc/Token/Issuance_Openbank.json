@@ -2,7 +2,7 @@
     "request": [
         {
             "name": "mid",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -12,7 +12,7 @@
         },
         {
             "name": "wpayUserKey",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": true,
             "encoded": false,
@@ -22,7 +22,7 @@
         },
         {
             "name": "ci",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": false,
@@ -32,7 +32,7 @@
         },
         {
             "name": "returnUrl",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": true,
@@ -42,7 +42,7 @@
         },
         {
             "name": "signature",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -51,7 +51,7 @@
         },
         {
             "name": "arsVersion",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": false,
@@ -60,7 +60,7 @@
         },
         {
             "name": "authNoLength",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": false,
@@ -69,7 +69,7 @@
         },
         {
             "name": "resetCssUrl",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": true,
@@ -78,7 +78,7 @@
         },
         {
             "name": "resetTextUrl",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": true,
@@ -87,7 +87,7 @@
         },
         {
             "name": "customTitle",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": true,
@@ -96,7 +96,7 @@
         },
         {
             "name": "customShortcutUrl",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": true,
@@ -107,7 +107,7 @@
     "response": [
         {
             "name": "resultCode",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "결과코드",
@@ -116,7 +116,7 @@
         },
         {
             "name": "resultMsg",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": true,
             "description": "결과메시지",
@@ -125,7 +125,7 @@
         },
         {
             "name": "mid",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "가맹점 ID",
@@ -134,7 +134,7 @@
         },
         {
             "name": "wtid",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "WPAY 트랜잭션 ID",
@@ -143,7 +143,7 @@
         },
         {
             "name": "wpayUserKey",
-            "type": "String",
+            "type": "string",
             "encrypt": true,
             "decoded": false,
             "description": "WPAY 사용자 KEY [CI 1:1 매칭]",
@@ -152,7 +152,7 @@
         },
         {
             "name": "wpayToken",
-            "type": "String",
+            "type": "string",
             "encrypt": true,
             "decoded": false,
             "description": "결제수단 WPAY Token",
@@ -161,7 +161,7 @@
         },
         {
             "name": "payMethod",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "결제수단 코드 [16:계좌]",
@@ -170,7 +170,7 @@
         },
         {
             "name": "bankCardCode",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "은행 코드",
@@ -179,7 +179,7 @@
         },
         {
             "name": "bankCardNo",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "마스킹 계좌번호",
@@ -188,7 +188,7 @@
         },
         {
             "name": "cardName",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": true,
             "description": "계좌 은행 명",
@@ -197,7 +197,7 @@
         },
         {
             "name": "wpayTokenNcnm",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": true,
             "description": "결제수단 wpayToken 별칭",
@@ -206,7 +206,7 @@
         },
         {
             "name": "signature",
-            "type": "String",
+            "type": "string",
             "encrypt": true,
             "decoded": false,
             "description": "데이터 위변조 검증 값",

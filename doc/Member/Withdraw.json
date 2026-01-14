@@ -2,7 +2,7 @@
     "request": [
         {
             "name": "mid",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -12,7 +12,7 @@
         },
         {
             "name": "userId",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": true,
             "encoded": false,
@@ -22,7 +22,7 @@
         },
         {
             "name": "wpayUserKey",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": true,
             "encoded": false,
@@ -32,7 +32,7 @@
         },
         {
             "name": "ci",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": false,
@@ -42,7 +42,7 @@
         },
         {
             "name": "signature",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -53,7 +53,7 @@
     "response": [
         {
             "name": "resultCode",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "결과코드",
@@ -62,7 +62,7 @@
         },
         {
             "name": "resultMsg",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": true,
             "description": "결과메시지",
@@ -71,7 +71,7 @@
         },
         {
             "name": "mid",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "가맹점 ID",
@@ -80,7 +80,7 @@
         },
         {
             "name": "wtid",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "WPAY 트랜잭션 ID",
@@ -89,7 +89,7 @@
         },
         {
             "name": "userId",
-            "type": "String",
+            "type": "string",
             "encrypt": true,
             "decoded": false,
             "description": "가맹점 사용자 ID",
@@ -98,7 +98,7 @@
         },
         {
             "name": "wpayUserKey",
-            "type": "String",
+            "type": "string",
             "encrypt": true,
             "decoded": false,
             "description": "WPAY 사용자 KEY [CI 1:1 매칭]",
@@ -107,7 +107,7 @@
         },
         {
             "name": "ci",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "본인인증 기관 사용자 고유 식별 값",
@@ -116,7 +116,7 @@
         },
         {
             "name": "signature",
-            "type": "String",
+            "type": "string",
             "encrypt": true,
             "decoded": false,
             "description": "데이터 위변조 검증값",

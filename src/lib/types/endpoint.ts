@@ -3,23 +3,25 @@ export type RequestType = "REST" | "FORM";
 
 export interface RequestDataField {
     name: string;
-    type: "string" | "number" | "boolean";
+    type: "string" | "number" | "boolean" | "List";
     length?: number;
     required: boolean;
     encrypt: boolean;
     encoded: boolean;
     signingOrder?: number;
     description?: string;
+    subFields?: RequestDataField[];
 }
 
 export interface ResponseDataField {
     name: string;
-    type: "string" | "number" | "boolean";
+    type: "string" | "number" | "boolean" | "List";
     length?: number;
     encrypt: boolean;
     decoded: boolean;
     signingOrder?: number;
     description?: string;
+    subFields?: ResponseDataField[];
 }
 
 export interface Endpoint {

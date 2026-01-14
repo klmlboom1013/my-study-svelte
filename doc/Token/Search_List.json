@@ -2,7 +2,7 @@
     "request": [
         {
             "name": "mid",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -12,7 +12,7 @@
         },
         {
             "name": "wpayUserKey",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": true,
             "encoded": false,
@@ -22,7 +22,7 @@
         },
         {
             "name": "ci",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": false,
@@ -32,7 +32,7 @@
         },
         {
             "name": "payMethod",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": false,
@@ -42,7 +42,7 @@
         },
         {
             "name": "bankCardCode",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": false,
@@ -52,7 +52,7 @@
         },
         {
             "name": "signature",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -63,15 +63,51 @@
     "response": [
         {
             "name": "resultCode",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "결과코드",
             "length": 6
         },
         {
+            "name": "resultMsg",
+            "type": "string",
+            "encrypt": false,
+            "decoded": true,
+            "description": "결과메시지",
+            "length": 150,
+            "signingOrder": 2
+        },
+        {
+            "name": "mid",
+            "type": "string",
+            "encrypt": false,
+            "decoded": false,
+            "description": "가맹점 ID",
+            "length": 10,
+            "signingOrder": 3
+        },
+        {
+            "name": "wtid",
+            "type": "string",
+            "encrypt": false,
+            "decoded": false,
+            "description": "WPAY 트랜잭션 ID",
+            "length": 40,
+            "signingOrder": 4
+        },
+        {
+            "name": "wpayUserKey",
+            "type": "string",
+            "encrypt": true,
+            "decoded": false,
+            "description": "WPAY 사용자 KEY [CI 1:1 매칭]",
+            "length": 100,
+            "signingOrder": 5
+        },
+        {
             "name": "payListCnt",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "결제정보 리스트 개수",
@@ -82,47 +118,57 @@
             "type": "List",
             "encrypt": false,
             "decoded": false,
-            "description": "결제정보 상세 리스트 (아래 필드 포함)"
-        },
-        {
-            "name": "wpayToken",
-            "type": "String",
-            "encrypt": true,
-            "decoded": false,
-            "description": "결제수단 WPAY Token",
-            "length": 100
-        },
-        {
-            "name": "bankCardNo",
-            "type": "String",
-            "encrypt": false,
-            "decoded": false,
-            "description": "마스킹 카드/계좌 번호",
-            "length": 40
-        },
-        {
-            "name": "cardName",
-            "type": "String",
-            "encrypt": false,
-            "decoded": true,
-            "description": "카드 브랜드 / 은행 명",
-            "length": 100
-        },
-        {
-            "name": "majYn",
-            "type": "String",
-            "encrypt": false,
-            "decoded": false,
-            "description": "주 결제수단 여부 [Y/N]",
-            "length": 1
-        },
-        {
-            "name": "cardExpFlag",
-            "type": "String",
-            "encrypt": false,
-            "decoded": false,
-            "description": "유효기간 만료 여부",
-            "length": 1
+            "description": "결제정보 상세 리스트 (아래 필드 포함)",
+            "subFields": [
+                {
+                    "name": "wpayToken",
+                    "type": "string",
+                    "encrypt": true,
+                    "decoded": false,
+                    "description": "결제수단 WPAY Token",
+                    "length": 100
+                },
+                {
+                    "name": "bankCardNo",
+                    "type": "string",
+                    "encrypt": false,
+                    "decoded": false,
+                    "description": "마스킹 카드/계좌 번호",
+                    "length": 40
+                },
+                {
+                    "name": "cardName",
+                    "type": "string",
+                    "encrypt": false,
+                    "decoded": true,
+                    "description": "카드 브랜드명 또는 계좌 은행명",
+                    "length": 100
+                },
+                {
+                    "name": "majYn",
+                    "type": "string",
+                    "encrypt": false,
+                    "decoded": false,
+                    "description": "주 결제수단 여부 [Y/N]",
+                    "length": 1
+                },
+                {
+                    "name": "checkFlg",
+                    "type": "string",
+                    "encrypt": false,
+                    "decoded": false,
+                    "description": "카드구분 [0:신용, 1:체크, 2:선불]",
+                    "length": 1
+                },
+                {
+                    "name": "cardExpFlag",
+                    "type": "string",
+                    "encrypt": false,
+                    "decoded": false,
+                    "description": "유효기간 만료 여부 (Y:가능, N:불가, M:확인불가)",
+                    "length": 1
+                }
+            ]
         }
     ]
 }

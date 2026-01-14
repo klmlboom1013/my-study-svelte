@@ -23,6 +23,7 @@
     import RequestDataJsonModal from "$lib/components/endpoint/RequestDataJsonModal.svelte";
     import ResponseDataJsonModal from "$lib/components/endpoint/ResponseDataJsonModal.svelte";
     import TypeSelector from "$lib/components/endpoint/TypeSelector.svelte";
+    import DataDefinitionTable from "$lib/components/endpoint/DataDefinitionTable.svelte";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import { profileStore } from "$lib/stores/profileStore";
     import DropdownInput from "$lib/components/ui/DropdownInput.svelte";
@@ -58,45 +59,12 @@
     let selectedService = $state<ServiceType>(SERVICE_OPTIONS[0]);
     let selectedSite = $state<string>("");
 
+    let prevRequestType = $state<RequestType>("REST");
+
     let requestData = $state<RequestDataField[]>([]);
     let responseData = $state<ResponseDataField[]>([]);
     let isJsonModalOpen = $state(false);
     let isResponseJsonModalOpen = $state(false);
-
-    function addRequestDataField() {
-        requestData = [
-            ...requestData,
-            {
-                name: "",
-                type: "string",
-                required: false,
-                encrypt: false,
-                encoded: false,
-                description: "",
-            },
-        ];
-    }
-
-    function removeRequestDataField(index: number) {
-        requestData = requestData.filter((_, i) => i !== index);
-    }
-
-    function addResponseDataField() {
-        responseData = [
-            ...responseData,
-            {
-                name: "",
-                type: "string",
-                encrypt: false,
-                decoded: false,
-                description: "",
-            },
-        ];
-    }
-
-    function removeResponseDataField(index: number) {
-        responseData = responseData.filter((_, i) => i !== index);
-    }
 
     let contentType = $state("application/json");
     let charset = $state("UTF-8");
@@ -139,6 +107,7 @@
             method = endpoint.method;
             uri = endpoint.uri;
             requestType = endpoint.requestType;
+            prevRequestType = endpoint.requestType;
             selectedService =
                 (endpoint.scope?.service as ServiceType) || SERVICE_OPTIONS[0];
             selectedSite = endpoint.scope?.site || "";
@@ -149,7 +118,6 @@
             ];
             requestData = endpoint.requestData || [];
             responseData = endpoint.responseData || [];
-            createdAt = endpoint.createdAt;
             createdAt = endpoint.createdAt;
         } else {
             alert("Endpoint not found");
@@ -178,21 +146,18 @@
         }
     });
 
+    // Removed: let prevRequestType = $state(requestType);
+
     // Similar logic for Content-Type, we don't want to overwrite if user has custom setting loaded
     $effect(() => {
         // Only apply default if we are sure it's a user change or we want to enforce it.
-        // For now, let's keep it simple: if requestType changes, we update contentType IF it matches the 'other' default
-        // OR just enforce it like creation page for now.
-        if (
-            requestType === "REST" &&
-            contentType === "application/x-www-form-urlencoded"
-        ) {
-            contentType = "application/json";
-        } else if (
-            requestType === "FORM" &&
-            contentType === "application/json"
-        ) {
-            contentType = "application/x-www-form-urlencoded";
+        if (requestType !== prevRequestType) {
+            if (requestType === "REST") {
+                contentType = "application/json";
+            } else if (requestType === "FORM") {
+                contentType = "application/x-www-form-urlencoded";
+            }
+            prevRequestType = requestType;
         }
     });
 
@@ -554,171 +519,22 @@
                     <div
                         class="flex flex-col gap-4 animate-in fade-in slide-in-from-top-2 duration-200"
                     >
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr
-                                        class="text-xs text-slate-500 uppercase tracking-wider border-b border-slate-200 dark:border-border-dark"
-                                    >
-                                        <th class="p-2 font-medium w-48"
-                                            >Name <span class="text-red-500"
-                                                >*</span
-                                            ></th
-                                        >
-                                        <th class="p-2 font-medium w-16"
-                                            >Type <span class="text-red-500"
-                                                >*</span
-                                            ></th
-                                        >
-                                        <th class="p-2 font-medium w-14"
-                                            >Length</th
-                                        >
-                                        <th
-                                            class="p-2 font-medium text-center w-16"
-                                            >Req</th
-                                        >
-                                        <th
-                                            class="p-2 font-medium text-center w-16"
-                                            >Enc</th
-                                        >
-                                        <th
-                                            class="p-2 font-medium text-center w-16"
-                                            >UrlEnc</th
-                                        >
-                                        <th
-                                            class="p-2 font-medium text-center w-12"
-                                            >Sign Order</th
-                                        >
-                                        <th class="p-2 font-medium"
-                                            >Description</th
-                                        >
-                                        <th class="p-2 font-medium w-10"></th>
-                                    </tr>
-                                </thead>
-                                <tbody class="text-sm">
-                                    {#each requestData as field, i}
-                                        <tr
-                                            class="border-b border-slate-100 dark:border-border-dark/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                                        >
-                                            <td class="p-2">
-                                                <input
-                                                    type="text"
-                                                    name="requestKey_{i}"
-                                                    bind:value={field.name}
-                                                    placeholder="Field Name"
-                                                    class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none"
-                                                />
-                                            </td>
-                                            <td class="p-2">
-                                                <div class="w-full">
-                                                    <TypeSelector
-                                                        bind:value={field.type}
-                                                    />
-                                                </div>
-                                            </td>
-                                            <td class="p-2">
-                                                <input
-                                                    type="number"
-                                                    name="requestLen_{i}"
-                                                    bind:value={field.length}
-                                                    disabled={field.type !==
-                                                        "string"}
-                                                    placeholder={field.type ===
-                                                    "string"
-                                                        ? "Len"
-                                                        : "-"}
-                                                    class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-900/50 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                />
-                                            </td>
-                                            <td class="p-2 text-center">
-                                                <input
-                                                    type="checkbox"
-                                                    name="requestReq_{i}"
-                                                    bind:checked={
-                                                        field.required
-                                                    }
-                                                    class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/50"
-                                                />
-                                            </td>
-                                            <td class="p-2 text-center">
-                                                <input
-                                                    type="checkbox"
-                                                    name="requestEnc_{i}"
-                                                    bind:checked={field.encrypt}
-                                                    class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/50"
-                                                />
-                                            </td>
-                                            <td class="p-2 text-center">
-                                                <input
-                                                    type="checkbox"
-                                                    name="requestUrl_{i}"
-                                                    bind:checked={field.encoded}
-                                                    class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/50"
-                                                />
-                                            </td>
-                                            <td class="p-2">
-                                                <input
-                                                    type="number"
-                                                    name="requestSign_{i}"
-                                                    bind:value={
-                                                        field.signingOrder
-                                                    }
-                                                    placeholder="No"
-                                                    class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                />
-                                            </td>
-                                            <td class="p-2">
-                                                <input
-                                                    type="text"
-                                                    name="requestDesc_{i}"
-                                                    bind:value={
-                                                        field.description
-                                                    }
-                                                    placeholder="Desc"
-                                                    class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none"
-                                                />
-                                            </td>
-                                            <td class="p-2 text-center">
-                                                <button
-                                                    onclick={() =>
-                                                        removeRequestDataField(
-                                                            i,
-                                                        )}
-                                                    class="text-slate-400 hover:text-red-500 transition-colors"
-                                                    title="Remove Field"
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-[20px]"
-                                                        >delete</span
-                                                    >
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    {/each}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="flex gap-2">
-                            <button
-                                onclick={addRequestDataField}
-                                class="px-3 py-2 text-sm font-bold text-primary hover:text-primary/80 hover:bg-primary/5 rounded-lg transition-colors flex items-center gap-1"
-                            >
-                                <span
-                                    class="material-symbols-outlined text-[18px]"
-                                    >add</span
-                                > Add Field
-                            </button>
-                            <button
-                                onclick={() => (isJsonModalOpen = true)}
-                                class="px-3 py-2 text-sm font-bold text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-500 dark:hover:text-green-400 dark:hover:bg-green-900/20 rounded-lg transition-colors flex items-center gap-1"
-                            >
-                                <span
-                                    class="material-symbols-outlined text-[18px]"
-                                    >data_object</span
-                                > JSON
-                            </button>
-                        </div>
+                        <DataDefinitionTable
+                            bind:data={requestData}
+                            dataType="Request"
+                        >
+                            {#snippet extraActions()}
+                                <button
+                                    onclick={() => (isJsonModalOpen = true)}
+                                    class="px-3 py-1.5 text-xs font-bold text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-500 dark:hover:text-green-400 dark:hover:bg-green-900/20 rounded-lg transition-colors flex items-center gap-1"
+                                >
+                                    <span
+                                        class="material-symbols-outlined text-[16px]"
+                                        >data_object</span
+                                    > JSON
+                                </button>
+                            {/snippet}
+                        </DataDefinitionTable>
                     </div>
                 {/if}
             </section>
@@ -752,163 +568,23 @@
                     <div
                         class="flex flex-col gap-4 animate-in fade-in slide-in-from-top-2 duration-200"
                     >
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr
-                                        class="text-xs text-slate-500 uppercase tracking-wider border-b border-slate-200 dark:border-border-dark"
-                                    >
-                                        <th class="p-2 font-medium w-48"
-                                            >Name <span class="text-red-500"
-                                                >*</span
-                                            ></th
-                                        >
-                                        <th class="p-2 font-medium w-16"
-                                            >Type <span class="text-red-500"
-                                                >*</span
-                                            ></th
-                                        >
-                                        <th
-                                            class="p-2 font-medium w-14 text-center"
-                                            >Length</th
-                                        >
-                                        <th
-                                            class="p-2 font-medium text-center w-16"
-                                            >Enc</th
-                                        >
-                                        <th
-                                            class="p-2 font-medium text-center w-16"
-                                            >UrlDec</th
-                                        >
-                                        <th
-                                            class="p-2 font-medium w-12 text-center"
-                                            >Sign Order</th
-                                        >
-                                        <th class="p-2 font-medium"
-                                            >Description</th
-                                        >
-                                        <th class="p-2 font-medium w-10"></th>
-                                    </tr>
-                                </thead>
-                                <tbody class="text-sm">
-                                    {#each responseData as field, i}
-                                        <tr
-                                            class="border-b border-slate-100 dark:border-border-dark/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                                        >
-                                            <td class="p-2">
-                                                <input
-                                                    type="text"
-                                                    name="responseKey_{i}"
-                                                    bind:value={field.name}
-                                                    placeholder="Field Name"
-                                                    class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none"
-                                                />
-                                            </td>
-                                            <td class="p-2">
-                                                <div class="w-full">
-                                                    <TypeSelector
-                                                        bind:value={field.type}
-                                                    />
-                                                </div>
-                                            </td>
-                                            <td class="p-2">
-                                                <input
-                                                    type="number"
-                                                    name="responseLen_{i}"
-                                                    bind:value={field.length}
-                                                    disabled={field.type !==
-                                                        "string"}
-                                                    placeholder={field.type ===
-                                                    "string"
-                                                        ? "Len"
-                                                        : "-"}
-                                                    class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-900/50 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                />
-                                            </td>
-                                            <td class="p-2 text-center">
-                                                <input
-                                                    type="checkbox"
-                                                    name="responseEnc_{i}"
-                                                    bind:checked={field.encrypt}
-                                                    class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/50"
-                                                />
-                                            </td>
-                                            <td class="p-2 text-center">
-                                                <input
-                                                    type="checkbox"
-                                                    name="responseDec_{i}"
-                                                    bind:checked={field.decoded}
-                                                    class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/50"
-                                                />
-                                            </td>
-                                            <td class="p-2 text-center">
-                                                <input
-                                                    type="number"
-                                                    name="responseSign_{i}"
-                                                    bind:value={
-                                                        field.signingOrder
-                                                    }
-                                                    disabled={requestType !==
-                                                        "FORM"}
-                                                    placeholder={requestType ===
-                                                    "FORM"
-                                                        ? "No"
-                                                        : "-"}
-                                                    class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
-                                                />
-                                            </td>
-                                            <td class="p-2">
-                                                <input
-                                                    type="text"
-                                                    name="responseDesc_{i}"
-                                                    bind:value={
-                                                        field.description
-                                                    }
-                                                    placeholder="Desc"
-                                                    class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none"
-                                                />
-                                            </td>
-                                            <td class="p-2 text-center">
-                                                <button
-                                                    onclick={() =>
-                                                        removeResponseDataField(
-                                                            i,
-                                                        )}
-                                                    class="text-slate-400 hover:text-red-500 transition-colors"
-                                                    title="Remove Field"
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-[20px]"
-                                                        >delete</span
-                                                    >
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    {/each}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="flex gap-2">
-                            <button
-                                onclick={addResponseDataField}
-                                class="px-3 py-2 text-sm font-bold text-primary hover:text-primary/80 hover:bg-primary/5 rounded-lg transition-colors flex items-center gap-1"
-                            >
-                                <span
-                                    class="material-symbols-outlined text-[18px]"
-                                    >add</span
-                                > Add Field
-                            </button>
-                            <button
-                                onclick={() => (isResponseJsonModalOpen = true)}
-                                class="px-3 py-2 text-sm font-bold text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-500 dark:hover:text-green-400 dark:hover:bg-green-900/20 rounded-lg transition-colors flex items-center gap-1"
-                            >
-                                <span
-                                    class="material-symbols-outlined text-[18px]"
-                                    >data_object</span
-                                > JSON
-                            </button>
-                        </div>
+                        <DataDefinitionTable
+                            bind:data={responseData}
+                            dataType="Response"
+                        >
+                            {#snippet extraActions()}
+                                <button
+                                    onclick={() =>
+                                        (isResponseJsonModalOpen = true)}
+                                    class="px-3 py-1.5 text-xs font-bold text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-500 dark:hover:text-green-400 dark:hover:bg-green-900/20 rounded-lg transition-colors flex items-center gap-1"
+                                >
+                                    <span
+                                        class="material-symbols-outlined text-[16px]"
+                                        >data_object</span
+                                    > JSON
+                                </button>
+                            {/snippet}
+                        </DataDefinitionTable>
                     </div>
                 {/if}
             </section>

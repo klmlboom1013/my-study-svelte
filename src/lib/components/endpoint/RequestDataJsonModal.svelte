@@ -38,11 +38,43 @@
                 }
                 if (
                     !item.type ||
-                    !["string", "number", "boolean"].includes(item.type)
+                    !["string", "number", "boolean", "List"].includes(item.type)
                 ) {
                     throw new Error(
-                        `Item at index ${i} has invalid type. Must be string, number, or boolean.`,
+                        `Item at index ${i} has invalid type. Must be string, number, boolean, or List.`,
                     );
+                }
+
+                // Recursive validation for List type
+                if (item.type === "List" && item.subFields) {
+                    if (!Array.isArray(item.subFields)) {
+                        throw new Error(
+                            `Item at index ${i} 'subFields' must be an array.`,
+                        );
+                    }
+                    // We can reuse the same validation logic if we extract it,
+                    // but for now let's just do a basic check or extract the validation function.
+                    // Let's rely on user being careful or do a simple check.
+                    // For robustness, let's extract validation logic if possible,
+                    // but constrained by replace_file_content, let's add inline check.
+                    for (let j = 0; j < item.subFields.length; j++) {
+                        const subItem = item.subFields[j];
+                        if (!subItem.name || typeof subItem.name !== "string") {
+                            throw new Error(
+                                `SubField at index ${j} in item ${i} is missing name.`,
+                            );
+                        }
+                        if (
+                            !subItem.type ||
+                            !["string", "number", "boolean", "List"].includes(
+                                subItem.type,
+                            )
+                        ) {
+                            throw new Error(
+                                `SubField at index ${j} in item ${i} has invalid type.`,
+                            );
+                        }
+                    }
                 }
                 // Check boolean fields
                 if (
@@ -95,7 +127,10 @@
                 <p>Edit the array directly. Each object represents a field.</p>
                 <p>
                     Required keys: <code>name</code>, <code>type</code> ("string"
-                    | "number" | "boolean").
+                    | "number" | "boolean" | "List").
+                </p>
+                <p>
+                    For "List" type, you can add <code>subFields</code> array.
                 </p>
             </div>
         </div>

@@ -38,11 +38,38 @@
                 }
                 if (
                     !item.type ||
-                    !["string", "number", "boolean"].includes(item.type)
+                    !["string", "number", "boolean", "List"].includes(item.type)
                 ) {
                     throw new Error(
-                        `Item at index ${i} has invalid type. Must be string, number, or boolean.`,
+                        `Item at index ${i} has invalid type. Must be string, number, boolean, or List.`,
                     );
+                }
+
+                // Recursive validation for List type
+                if (item.type === "List" && item.subFields) {
+                    if (!Array.isArray(item.subFields)) {
+                        throw new Error(
+                            `Item at index ${i} 'subFields' must be an array.`,
+                        );
+                    }
+                    for (let j = 0; j < item.subFields.length; j++) {
+                        const subItem = item.subFields[j];
+                        if (!subItem.name || typeof subItem.name !== "string") {
+                            throw new Error(
+                                `SubField at index ${j} in item ${i} is missing name.`,
+                            );
+                        }
+                        if (
+                            !subItem.type ||
+                            !["string", "number", "boolean", "List"].includes(
+                                subItem.type,
+                            )
+                        ) {
+                            throw new Error(
+                                `SubField at index ${j} in item ${i} has invalid type.`,
+                            );
+                        }
+                    }
                 }
 
                 // Response Data specific boolean checks
@@ -85,7 +112,10 @@
                 <p>Edit the array directly. Each object represents a field.</p>
                 <p>
                     Required keys: <code>name</code>, <code>type</code> ("string"
-                    | "number" | "boolean").
+                    | "number" | "boolean" | "List").
+                </p>
+                <p>
+                    For "List" type, you can add <code>subFields</code> array.
                 </p>
             </div>
         </div>
