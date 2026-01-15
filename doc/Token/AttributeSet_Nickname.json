@@ -2,7 +2,7 @@
     "request": [
         {
             "name": "mid",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -12,7 +12,7 @@
         },
         {
             "name": "wpayUserKey",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": true,
             "encoded": false,
@@ -22,7 +22,7 @@
         },
         {
             "name": "wpayToken",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": true,
             "encoded": false,
@@ -32,7 +32,7 @@
         },
         {
             "name": "ci",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": false,
@@ -42,7 +42,7 @@
         },
         {
             "name": "wpayTokenNcnm",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": true,
@@ -52,7 +52,7 @@
         },
         {
             "name": "signature",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -63,7 +63,7 @@
     "response": [
         {
             "name": "resultCode",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "결과코드 (000000 시 성공)",
@@ -71,7 +71,7 @@
         },
         {
             "name": "resultMsg",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": true,
             "description": "결과메시지",
@@ -79,7 +79,7 @@
         },
         {
             "name": "wtid",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "WPAY 트랜잭션 ID",
@@ -87,7 +87,7 @@
         },
         {
             "name": "wpayUserKey",
-            "type": "String",
+            "type": "string",
             "encrypt": true,
             "decoded": false,
             "description": "WPAY 사용자 KEY [CI 1:1 매칭]",
@@ -95,7 +95,7 @@
         },
         {
             "name": "wpayToken",
-            "type": "String",
+            "type": "string",
             "encrypt": true,
             "decoded": false,
             "description": "해당 결제수단 WPAY Token",
@@ -103,7 +103,7 @@
         },
         {
             "name": "wpayTokenNcnm",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": true,
             "description": "설정된 결제정보 별칭",

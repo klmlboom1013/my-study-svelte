@@ -353,16 +353,30 @@
 
                     {#if !isReadOnly}
                         <td class="px-3 py-3 text-center">
-                            <button
-                                onclick={() => removeField(i)}
-                                class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                                title="Remove Field"
-                            >
-                                <span
-                                    class="material-symbols-outlined text-[20px]"
-                                    >delete</span
+                            <div class="flex items-center justify-center gap-1">
+                                {#if field.type === "List"}
+                                    <button
+                                        onclick={() => openSubfields(field, i)}
+                                        class="p-1.5 text-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+                                        title="Edit Subfields"
+                                    >
+                                        <span
+                                            class="material-symbols-outlined text-[20px]"
+                                            >list_alt</span
+                                        >
+                                    </button>
+                                {/if}
+                                <button
+                                    onclick={() => removeField(i)}
+                                    class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                    title="Remove Field"
                                 >
-                            </button>
+                                    <span
+                                        class="material-symbols-outlined text-[20px]"
+                                        >delete</span
+                                    >
+                                </button>
+                            </div>
                         </td>
                     {/if}
                 </tr>

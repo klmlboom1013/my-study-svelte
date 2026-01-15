@@ -19,6 +19,37 @@
         }
     });
 
+    function validateField(item: any, path: string) {
+        if (!item.name || typeof item.name !== "string") {
+            throw new Error(`${path} is missing name or name is not a string.`);
+        }
+        if (
+            !item.type ||
+            !["string", "number", "boolean", "List"].includes(item.type)
+        ) {
+            throw new Error(
+                `${path} has invalid type. Must be string, number, boolean, or List.`,
+            );
+        }
+
+        if (item.type === "List" && item.subFields) {
+            if (!Array.isArray(item.subFields)) {
+                throw new Error(`${path} 'subFields' must be an array.`);
+            }
+            for (let i = 0; i < item.subFields.length; i++) {
+                validateField(item.subFields[i], `${path}.subFields[${i}]`);
+            }
+        }
+
+        // Response Data specific boolean checks
+        if (item.encrypt !== undefined && typeof item.encrypt !== "boolean") {
+            throw new Error(`${path} 'encrypt' must be boolean.`);
+        }
+        if (item.decoded !== undefined && typeof item.decoded !== "boolean") {
+            throw new Error(`${path} 'decoded' must be boolean.`);
+        }
+    }
+
     function handleSave() {
         try {
             const parsed = JSON.parse(jsonString);
@@ -28,67 +59,9 @@
                 throw new Error("JSON must be an array of fields.");
             }
 
-            // Basic validation for each item
+            // Validation for each item using recursive function
             for (let i = 0; i < parsed.length; i++) {
-                const item = parsed[i];
-                if (!item.name || typeof item.name !== "string") {
-                    throw new Error(
-                        `Item at index ${i} is missing name or name is not a string.`,
-                    );
-                }
-                if (
-                    !item.type ||
-                    !["string", "number", "boolean", "List"].includes(item.type)
-                ) {
-                    throw new Error(
-                        `Item at index ${i} has invalid type. Must be string, number, boolean, or List.`,
-                    );
-                }
-
-                // Recursive validation for List type
-                if (item.type === "List" && item.subFields) {
-                    if (!Array.isArray(item.subFields)) {
-                        throw new Error(
-                            `Item at index ${i} 'subFields' must be an array.`,
-                        );
-                    }
-                    for (let j = 0; j < item.subFields.length; j++) {
-                        const subItem = item.subFields[j];
-                        if (!subItem.name || typeof subItem.name !== "string") {
-                            throw new Error(
-                                `SubField at index ${j} in item ${i} is missing name.`,
-                            );
-                        }
-                        if (
-                            !subItem.type ||
-                            !["string", "number", "boolean", "List"].includes(
-                                subItem.type,
-                            )
-                        ) {
-                            throw new Error(
-                                `SubField at index ${j} in item ${i} has invalid type.`,
-                            );
-                        }
-                    }
-                }
-
-                // Response Data specific boolean checks
-                if (
-                    item.encrypt !== undefined &&
-                    typeof item.encrypt !== "boolean"
-                ) {
-                    throw new Error(
-                        `Item at index ${i} 'encrypt' must be boolean.`,
-                    );
-                }
-                if (
-                    item.decoded !== undefined &&
-                    typeof item.decoded !== "boolean"
-                ) {
-                    throw new Error(
-                        `Item at index ${i} 'decoded' must be boolean.`,
-                    );
-                }
+                validateField(parsed[i], `Item[${i}]`);
             }
 
             responseData = parsed as ResponseDataField[];

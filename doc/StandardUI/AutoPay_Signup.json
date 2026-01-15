@@ -2,7 +2,7 @@
     "request": [
         {
             "name": "mid",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -12,7 +12,7 @@
         },
         {
             "name": "nMid",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -22,7 +22,7 @@
         },
         {
             "name": "wpayUserKey",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": true,
             "encoded": false,
@@ -32,7 +32,7 @@
         },
         {
             "name": "ci",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": false,
@@ -42,7 +42,7 @@
         },
         {
             "name": "oid",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -52,7 +52,7 @@
         },
         {
             "name": "goodsName",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": true,
@@ -62,7 +62,7 @@
         },
         {
             "name": "goodsPrice",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -72,7 +72,7 @@
         },
         {
             "name": "returnUrl",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": true,
@@ -82,7 +82,7 @@
         },
         {
             "name": "billkeyAppFlag",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -92,7 +92,7 @@
         },
         {
             "name": "signature",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -101,7 +101,7 @@
         },
         {
             "name": "emailUseFlag",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": false,
@@ -110,7 +110,7 @@
         },
         {
             "name": "buyerEmail",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": false,
@@ -119,7 +119,7 @@
         },
         {
             "name": "cardExpDate",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": false,
@@ -128,7 +128,7 @@
         },
         {
             "name": "resetCssUrl",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": true,
@@ -137,7 +137,7 @@
         },
         {
             "name": "resetTextUrl",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": true,
@@ -146,7 +146,7 @@
         },
         {
             "name": "customTitle",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": true,
@@ -155,7 +155,7 @@
         },
         {
             "name": "customShortcutUrl",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": true,
@@ -166,7 +166,7 @@
     "response": [
         {
             "name": "resultCode",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "결과코드",
@@ -175,7 +175,7 @@
         },
         {
             "name": "resultMsg",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": true,
             "description": "결과메시지",
@@ -184,7 +184,7 @@
         },
         {
             "name": "mid",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "가맹점 ID [일반]",
@@ -193,7 +193,7 @@
         },
         {
             "name": "wtid",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "WPAY 트랜잭션 ID",
@@ -202,7 +202,7 @@
         },
         {
             "name": "oid",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "주문번호",
@@ -211,7 +211,7 @@
         },
         {
             "name": "wpayUserKey",
-            "type": "String",
+            "type": "string",
             "encrypt": true,
             "decoded": false,
             "description": "WPAY 사용자 KEY [CI 1:1 매칭]",
@@ -220,7 +220,7 @@
         },
         {
             "name": "wpayToken",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "자동결제용 암호화된 wpayToken [복호화 불가]",
@@ -229,7 +229,7 @@
         },
         {
             "name": "wpayDomain",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": true,
             "description": "자동결제 승인 연동 시 사용 도메인",
@@ -238,7 +238,7 @@
         },
         {
             "name": "bankCardCode",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "카드사 코드",
@@ -247,7 +247,7 @@
         },
         {
             "name": "bankCardNo",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "마스킹 카드번호",
@@ -256,7 +256,7 @@
         },
         {
             "name": "signature",
-            "type": "String",
+            "type": "string",
             "encrypt": true,
             "decoded": false,
             "description": "데이터 위변조 검증 값",
@@ -264,7 +264,7 @@
         },
         {
             "name": "buyerEmail",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": true,
             "description": "구매자 이메일",
