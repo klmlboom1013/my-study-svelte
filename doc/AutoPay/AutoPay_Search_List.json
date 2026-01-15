@@ -2,7 +2,7 @@
     "request": [
         {
             "name": "mid",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -12,7 +12,7 @@
         },
         {
             "name": "wpayUserKey",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": true,
             "encoded": false,
@@ -22,7 +22,7 @@
         },
         {
             "name": "status",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": false,
@@ -31,7 +31,7 @@
         },
         {
             "name": "wtid",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": false,
@@ -40,7 +40,7 @@
         },
         {
             "name": "wpayToken",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": true,
             "encoded": false,
@@ -49,7 +49,7 @@
         },
         {
             "name": "signature",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -60,7 +60,7 @@
     "response": [
         {
             "name": "resultCode",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "결과코드 (000000: 성공)",
@@ -68,7 +68,7 @@
         },
         {
             "name": "resultMsg",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": true,
             "description": "결과메시지",
@@ -76,7 +76,7 @@
         },
         {
             "name": "mid",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "가맹점 ID",
@@ -84,7 +84,7 @@
         },
         {
             "name": "wtid",
-            "type": "String",
+            "type": "string",
             "encrypt": false,
             "decoded": false,
             "description": "WPAY 트랜잭션 ID",
@@ -92,7 +92,7 @@
         },
         {
             "name": "wpayUserKey",
-            "type": "String",
+            "type": "string",
             "encrypt": true,
             "decoded": false,
             "description": "WPAY 사용자 KEY [CI 1:1 매칭]",
@@ -108,56 +108,56 @@
             "subFields": [
                 {
                     "name": "wtid",
-                    "type": "String",
+                    "type": "string",
                     "description": "자동결제 신청 시 발급된 wtid",
                     "length": 40
                 },
                 {
                     "name": "mid",
-                    "type": "String",
+                    "type": "string",
                     "description": "자동결제 신청 시의 가맹점 ID",
                     "length": 20
                 },
                 {
                     "name": "payMethod",
-                    "type": "String",
+                    "type": "string",
                     "description": "결제수단 코드 [01:신용카드]",
                     "length": 2
                 },
                 {
                     "name": "bankCardCode",
-                    "type": "String",
+                    "type": "string",
                     "description": "카드사 코드",
                     "length": 3
                 },
                 {
                     "name": "wpayToken",
-                    "type": "String",
+                    "type": "string",
                     "encrypt": true,
                     "description": "자동결제용 wpayToken (암호화됨)",
                     "length": 100
                 },
                 {
                     "name": "oid",
-                    "type": "String",
+                    "type": "string",
                     "description": "자동결제 신청 시 주문번호",
                     "length": 100
                 },
                 {
                     "name": "goodsName",
-                    "type": "String",
+                    "type": "string",
                     "description": "자동결제 신청 상품명",
                     "length": 100
                 },
                 {
                     "name": "goodsPrice",
-                    "type": "String",
+                    "type": "string",
                     "description": "자동결제 신청 금액",
                     "length": 10
                 },
                 {
                     "name": "status",
-                    "type": "String",
+                    "type": "string",
                     "description": "자동결제 진행 상태 [00:진행중, 02:해지]",
                     "length": 4
                 }
