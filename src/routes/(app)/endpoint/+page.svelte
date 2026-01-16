@@ -96,6 +96,40 @@
         }),
     );
 
+    let groupedEndpoints = $derived.by(() => {
+        // Case-insensitive check for wpay
+        if (filterApp.toLowerCase() !== "wpay") return null;
+
+        const groups: Record<string, Endpoint[]> = {};
+        filteredEndpoints.forEach((endpoint) => {
+            const service = endpoint.scope?.service || "Other";
+            if (!groups[service]) {
+                groups[service] = [];
+            }
+            groups[service].push(endpoint);
+        });
+
+        // Optional: specific order or alphabetical sort for keys
+        return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+    });
+
+    // Collapse/Expand State
+    let collapsedServices = $state(new Set<string>());
+
+    function toggleGroup(service: string) {
+        // Create a new Set to trigger reactivity (Svelte 5 best practice for Sets/Maps in state if not using deep reactivity for them specifically,
+        // though $state with Set usually requires reassignment or using specific methods if wrapped.
+        // Reassignment is safest for simple Set usage in derived/effects if needed, but here it's direct rendering.)
+        // Actually, for $state proxies, Set methods mutate nicely. But to be safe and explicit:
+        const newSet = new Set(collapsedServices);
+        if (newSet.has(service)) {
+            newSet.delete(service);
+        } else {
+            newSet.add(service);
+        }
+        collapsedServices = newSet;
+    }
+
     function handleDelete(id: string) {
         showAlert(
             "Delete Endpoint",
@@ -396,6 +430,133 @@
                     Create new endpoint
                 </button>
             {/if}
+        </div>
+    {:else if groupedEndpoints}
+        <div class="space-y-12">
+            {#each groupedEndpoints as [service, groupEndpoints]}
+                <section>
+                    <button
+                        onclick={() => toggleGroup(service)}
+                        class="w-full flex items-center gap-3 mb-4 group focus:outline-none"
+                    >
+                        <div
+                            class="h-px bg-slate-200 dark:bg-border-dark flex-1 transition-colors group-hover:bg-slate-300 dark:group-hover:bg-slate-600"
+                        ></div>
+                        <h2
+                            class="text-lg font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide flex items-center gap-2"
+                        >
+                            {service}
+                            <span
+                                class="material-symbols-outlined text-[20px] text-slate-400 transition-transform duration-200 {collapsedServices.has(
+                                    service,
+                                )
+                                    ? '-rotate-90'
+                                    : 'rotate-0'}"
+                            >
+                                expand_more
+                            </span>
+                        </h2>
+                        <span
+                            class="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-background-dark text-xs font-semibold text-slate-500"
+                        >
+                            {groupEndpoints.length}
+                        </span>
+                        <div
+                            class="h-px bg-slate-200 dark:bg-border-dark flex-1 transition-colors group-hover:bg-slate-300 dark:group-hover:bg-slate-600"
+                        ></div>
+                    </button>
+
+                    {#if !collapsedServices.has(service)}
+                        <div
+                            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                        >
+                            {#each groupEndpoints as endpoint}
+                                <div
+                                    class="group bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-border-dark p-5 hover:shadow-md transition-shadow relative"
+                                >
+                                    <div
+                                        class="flex items-start justify-between mb-3"
+                                    >
+                                        <div class="flex items-center gap-2">
+                                            <span
+                                                class="px-2 py-1 rounded text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                                            >
+                                                {endpoint.application}
+                                            </span>
+                                            <span
+                                                class="px-2 py-1 rounded text-xs font-bold bg-slate-100 dark:bg-background-dark text-slate-700 dark:text-slate-300"
+                                            >
+                                                {endpoint.method}
+                                            </span>
+                                            <span
+                                                class="text-xs text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-border-dark px-2 py-0.5 rounded-full"
+                                            >
+                                                {endpoint.requestType}
+                                            </span>
+                                        </div>
+                                        <div
+                                            class="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1"
+                                        >
+                                            <button
+                                                onclick={() =>
+                                                    handleDelete(endpoint.id)}
+                                                class="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-[18px]"
+                                                    >delete</span
+                                                >
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <a
+                                        href={`/endpoint/${endpoint.id}`}
+                                        class="block focus:outline-none"
+                                    >
+                                        <h3
+                                            class="text-lg font-semibold text-slate-900 dark:text-white mb-1 group-hover:text-primary transition-colors truncate"
+                                        >
+                                            {endpoint.name}
+                                        </h3>
+                                    </a>
+
+                                    <div
+                                        class="font-mono text-xs text-slate-500 dark:text-slate-400 mb-4 truncate bg-slate-50 dark:bg-background-dark px-2 py-1 rounded"
+                                    >
+                                        {endpoint.uri}
+                                    </div>
+
+                                    <div
+                                        class="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400 pt-3 border-t border-slate-100 dark:border-border-dark/50"
+                                    >
+                                        <div class="flex flex-col">
+                                            <span
+                                                class="text-[10px] uppercase tracking-wider text-slate-400"
+                                                >Service</span
+                                            >
+                                            <span
+                                                class="font-medium text-slate-700 dark:text-slate-300"
+                                                >{endpoint.scope?.service}</span
+                                            >
+                                        </div>
+                                        <div class="flex flex-col">
+                                            <span
+                                                class="text-[10px] uppercase tracking-wider text-slate-400"
+                                                >Site</span
+                                            >
+                                            <span
+                                                class="font-medium text-slate-700 dark:text-slate-300"
+                                                >{endpoint.scope?.site}</span
+                                            >
+                                        </div>
+                                    </div>
+                                </div>
+                            {/each}
+                        </div>
+                    {/if}
+                </section>
+            {/each}
         </div>
     {:else}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
