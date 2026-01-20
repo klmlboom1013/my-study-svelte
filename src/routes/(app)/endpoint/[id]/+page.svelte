@@ -31,6 +31,14 @@
             goto("/endpoint");
         }
     }
+
+    function getSignatureMethodLabel(method?: string) {
+        if (method === "HMAC_SHA256_KV")
+            return "toHexString( SHA256( key=value&...&key=value&hash={hash key} ) )";
+        if (method === "HMAC_SHA256_V")
+            return "toHexString( SHA256( value&...&value&{hash key} ) )";
+        return "-";
+    }
 </script>
 
 <div class="w-full max-w-6xl mx-auto py-8 px-0 md:px-4">
@@ -194,6 +202,30 @@
                     {/if}
                 </div>
             </div>
+
+            <!-- Data Integrity Verification -->
+            {#if endpoint.signatureMethod}
+                <div
+                    class="p-6 border-b border-slate-100 dark:border-border-dark/50 bg-white dark:bg-card-dark"
+                >
+                    <h2
+                        class="text-lg font-semibold text-slate-900 dark:text-white mb-4"
+                    >
+                        Data Integrity Verification
+                    </h2>
+                    <div>
+                        <span
+                            class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1"
+                            >Verification Method</span
+                        >
+                        <code
+                            class="text-sm font-mono text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-background-dark px-2 py-1 rounded"
+                        >
+                            {getSignatureMethodLabel(endpoint.signatureMethod)}
+                        </code>
+                    </div>
+                </div>
+            {/if}
 
             <!-- Request Data -->
             <div class="p-0">

@@ -41,6 +41,7 @@ export interface Endpoint {
         charset?: string;
         customHeaders?: { key: string; value: string }[];
     };
+    signatureMethod?: string;
     requestData: RequestDataField[];
     responseData: ResponseDataField[];
     createdAt: number;

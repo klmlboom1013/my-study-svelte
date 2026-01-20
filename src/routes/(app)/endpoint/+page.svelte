@@ -8,6 +8,7 @@
     import { authStore, loginWithGoogle } from "$lib/services/authService";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
+    import EndpointExecutionModal from "$lib/components/endpoint/EndpointExecutionModal.svelte";
     import { get } from "svelte/store";
 
     let endpoints = $state<Endpoint[]>([]);
@@ -21,6 +22,15 @@
     let alertType = $state<"alert" | "confirm">("alert");
     let onAlertConfirm = $state<(() => void) | undefined>(undefined);
     let onAlertCancel = $state<(() => void) | undefined>(undefined);
+
+    // Execution Modal State
+    let isExecutionModalOpen = $state(false);
+    let selectedEndpoint = $state<Endpoint | null>(null);
+
+    function openExecutionModal(endpoint: Endpoint) {
+        selectedEndpoint = endpoint;
+        isExecutionModalOpen = true;
+    }
 
     function showAlert(
         title: string,
@@ -311,6 +321,11 @@
     onCancel={onAlertCancel}
 />
 
+<EndpointExecutionModal
+    bind:isOpen={isExecutionModalOpen}
+    bind:endpoint={selectedEndpoint}
+/>
+
 <div class="max-w-6xl mx-auto py-8 px-4">
     <Breadcrumbs
         items={[{ label: "Home", href: "/" }, { label: "Test Endpoint" }]}
@@ -498,6 +513,21 @@
                                             class="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1"
                                         >
                                             <button
+                                                onclick={(e) => {
+                                                    e.stopPropagation();
+                                                    openExecutionModal(
+                                                        endpoint,
+                                                    );
+                                                }}
+                                                class="p-1 text-slate-400 hover:text-green-500 transition-colors"
+                                                title="Execute API"
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-[18px]"
+                                                    >play_arrow</span
+                                                >
+                                            </button>
+                                            <button
                                                 onclick={() =>
                                                     handleDelete(endpoint.id)}
                                                 class="p-1 text-slate-400 hover:text-red-500 transition-colors"
@@ -585,6 +615,19 @@
                         <div
                             class="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1"
                         >
+                            <button
+                                onclick={(e) => {
+                                    e.stopPropagation();
+                                    openExecutionModal(endpoint);
+                                }}
+                                class="p-1 text-slate-400 hover:text-green-500 transition-colors"
+                                title="Execute API"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-[18px]"
+                                    >play_arrow</span
+                                >
+                            </button>
                             <!--
                             <button
                                 onclick={() => goto(`/endpoint/${endpoint.id}`)}
