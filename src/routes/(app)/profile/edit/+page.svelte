@@ -279,7 +279,7 @@
     };
 </script>
 
-<div class="max-w-6xl mx-auto py-8 px-4">
+<div class="max-w-screen-2xl mx-auto py-8 px-4">
     <Breadcrumbs
         items={[
             { label: "Home", href: "/" },

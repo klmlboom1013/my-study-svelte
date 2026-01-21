@@ -21,6 +21,7 @@
     }: Props = $props();
 
     import { goto } from "$app/navigation";
+    import { settingsStore } from "$lib/stores/settingsStore";
 
     // Primary Navigation Data (Top Level)
     let primaryNav = [
@@ -103,25 +104,41 @@
 
         {#if showCollections}
             {#each primaryNav as item}
-                <button
-                    onclick={() => item.path && goto(item.path)}
-                    class="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-border-dark text-left group transition-colors"
-                >
-                    <div
-                        class="size-8 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:text-primary transition-colors shrink-0"
+                {@const showItem =
+                    (item.path === "/report" &&
+                        $settingsStore.interface?.sidebar?.showReport) ||
+                    (item.path === "/issue" &&
+                        $settingsStore.interface?.sidebar?.showIssue) ||
+                    (item.path === "/test-suite" &&
+                        $settingsStore.interface?.sidebar?.showTestSuite) ||
+                    (item.path === "/endpoint" &&
+                        $settingsStore.interface?.sidebar?.showEndpoint) ||
+                    (item.path === "/collections" &&
+                        $settingsStore.interface?.sidebar?.showCollections) ||
+                    (item.path === "/categories" &&
+                        $settingsStore.interface?.sidebar?.showCategories) ||
+                    item.path === "/settings"}
+                {#if showItem}
+                    <button
+                        onclick={() => item.path && goto(item.path)}
+                        class="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-border-dark text-left group transition-colors"
                     >
-                        <span class="material-symbols-outlined text-[20px]"
-                            >{item.icon}</span
+                        <div
+                            class="size-8 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:text-primary transition-colors shrink-0"
                         >
-                    </div>
-                    <span
-                        class="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors {allowTextWrap
-                            ? 'whitespace-normal break-words'
-                            : 'truncate'}"
-                    >
-                        {item.name}
-                    </span>
-                </button>
+                            <span class="material-symbols-outlined text-[20px]"
+                                >{item.icon}</span
+                            >
+                        </div>
+                        <span
+                            class="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors {allowTextWrap
+                                ? 'whitespace-normal break-words'
+                                : 'truncate'}"
+                        >
+                            {item.name}
+                        </span>
+                    </button>
+                {/if}
             {/each}
         {/if}
     </div>

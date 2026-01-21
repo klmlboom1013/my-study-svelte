@@ -230,8 +230,96 @@
         showProdModal = false;
     }
 
+    // BroadcastChannel & LocalStorage for robust communication
+    let authChannel: BroadcastChannel;
+
+    onMount(() => {
+        // 1. BroadcastChannel Listener
+        authChannel = new BroadcastChannel("wpay_auth_channel");
+        authChannel.onmessage = (event) => {
+            console.log("BroadcastChannel received:", event.data);
+            handleWpayMessage({ data: event.data } as MessageEvent);
+        };
+
+        // 2. LocalStorage Listener (Backup for BroadcastChannel)
+        const storageHandler = (event: StorageEvent) => {
+            if (event.key === "wpay_auth_result" && event.newValue) {
+                console.log("LocalStorage event received:", event.newValue);
+                try {
+                    const data = JSON.parse(event.newValue);
+                    handleWpayMessage({ data } as MessageEvent);
+                    // Clear immediately to allow future events
+                    localStorage.removeItem("wpay_auth_result");
+                } catch (e) {
+                    console.error("Failed to parse localStorage data", e);
+                }
+            }
+        };
+        window.addEventListener("storage", storageHandler);
+
+        // 3. Polling (Ultimate Fallback: Storage & Cookies)
+        const pollInterval = setInterval(() => {
+            // A. Check LocalStorage
+            const stored = localStorage.getItem("wpay_auth_result");
+            if (stored) {
+                console.log("Polling found localStorage data:", stored);
+                try {
+                    const data = JSON.parse(stored);
+                    handleWpayMessage({ data } as MessageEvent);
+                    localStorage.removeItem("wpay_auth_result");
+                } catch (e) {
+                    console.error("Polling parse error", e);
+                }
+            }
+
+            // B. Check Cookies (Cross-Window on same domain)
+            const cookies = document.cookie.split(";");
+            const bridgeCookie = cookies.find((c) =>
+                c.trim().startsWith("wpay_bridge_data="),
+            );
+            if (bridgeCookie) {
+                const cookieVal = bridgeCookie.split("=")[1];
+                if (cookieVal) {
+                    try {
+                        const jsonStr = decodeURIComponent(cookieVal);
+                        console.log("Polling found cookie data:", jsonStr);
+                        const data = JSON.parse(jsonStr);
+                        handleWpayMessage({ data } as MessageEvent);
+                        // Delete cookie
+                        document.cookie =
+                            "wpay_bridge_data=; path=/; max-age=0; samesite=lax";
+                    } catch (e) {
+                        console.error("Cookie parse error", e);
+                    }
+                }
+            }
+        }, 500);
+
+        return () => {
+            if (authChannel) authChannel.close();
+            window.removeEventListener("message", handleWpayMessage);
+            window.removeEventListener("storage", storageHandler);
+            clearInterval(pollInterval);
+        };
+    });
+
+    // Handle WPAY Message (PostMessage, BroadcastChannel, or LocalStorage)
     async function handleWpayMessage(event: MessageEvent) {
-        if (!event.data || !event.data.resultCode) return;
+        // Filter out React DevTools noise
+        if (
+            event.data &&
+            typeof event.data === "object" &&
+            event.data.source &&
+            event.data.source.includes("react-devtools")
+        ) {
+            return;
+        }
+
+        console.log("handleWpayMessage received:", event.data);
+        if (!event.data || !event.data.resultCode) {
+            console.log("handleWpayMessage ignored: invalid data");
+            return;
+        }
 
         const resData = event.data;
         const keys = MERCHANT_KEYS[mid];
@@ -261,12 +349,17 @@
             );
 
             if (calculatedSignature !== resData.signature) {
+                console.error("Signature verification failed", {
+                    calculated: calculatedSignature,
+                    received: resData.signature,
+                });
                 alert("WPAY Response Signature Verification Failed!");
                 if (wpayPopup) wpayPopup.close();
                 window.removeEventListener("message", handleWpayMessage);
                 return;
             }
         }
+        console.log("Signature verified or skipped");
 
         const decrypt = (val: string) =>
             val ? decryptSeed(val, keys.seedKey, keys.seedIV) : "";
@@ -297,7 +390,11 @@
             if (isWpaySuccess) {
                 validationError = "";
                 cleanup();
-                handleAccessTokenCreation();
+                handleAccessTokenCreation({
+                    wpayUserKey,
+                    wtid,
+                    userId,
+                });
                 return;
             }
 
@@ -382,7 +479,11 @@
                 } catch (e) {}
 
                 cleanup();
-                handleAccessTokenCreation();
+                handleAccessTokenCreation({
+                    wpayUserKey,
+                    wtid,
+                    userId,
+                });
                 return;
             }
 
@@ -453,16 +554,33 @@
         showResultModal = true;
     }
 
-    async function handleAccessTokenCreation() {
-        const wpayUserKeyItem = wpayResultData.find(
-            (d) => d.key === "wpayUserKey",
-        );
-        const wtidItem = wpayResultData.find((d) => d.key === "wtid");
-        const userIdItem = wpayResultData.find((d) => d.key === "userId");
+    async function handleAccessTokenCreation(data?: {
+        wpayUserKey?: string;
+        wtid?: string;
+        userId?: string;
+    }) {
+        let wpayUserKey = data?.wpayUserKey || "";
+        let wtid = data?.wtid || "";
+        let finalUserId = data?.userId || userId || "wpayTestUser01";
 
-        const wpayUserKey = wpayUserKeyItem?.decrypted || "";
-        const wtid = wtidItem?.decrypted || wtidItem?.encrypted || "";
-        const finalUserId = userIdItem?.decrypted || userId || "wpayTestUser01";
+        if (!data) {
+            const wpayUserKeyItem = wpayResultData.find(
+                (d) => d.key === "wpayUserKey",
+            );
+            const wtidItem = wpayResultData.find((d) => d.key === "wtid");
+            const userIdItem = wpayResultData.find((d) => d.key === "userId");
+
+            wpayUserKey = wpayUserKeyItem?.decrypted || "";
+            wtid = wtidItem?.decrypted || wtidItem?.encrypted || "";
+            finalUserId = userIdItem?.decrypted || userId || "wpayTestUser01";
+        }
+
+        console.log("handleAccessTokenCreation data:", {
+            wpayUserKey,
+            wtid,
+            finalUserId,
+            mid,
+        });
 
         try {
             const token = await createAccessToken({
@@ -502,9 +620,12 @@
             }
 
             setCookie("accessToken", token, 1);
+            console.log("Token created and cookie set, navigating...", token);
             if (isModal && onComplete) {
+                console.log("isModal is true, calling onComplete");
                 onComplete();
             } else {
+                console.log("Calling goto('/')");
                 goto("/");
             }
         } catch (e) {

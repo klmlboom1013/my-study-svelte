@@ -22,14 +22,41 @@ export const authStore = writable<AuthUser>({
 // Initialize Auth State Listener
 export const initAuth = () => {
     onAuthStateChanged(auth, (user) => {
-        authStore.update((curr) => ({
-            ...curr,
-            firebaseUser: user,
-            // Note: accessToken is NOT persisted automatically by Firebase Auth on refresh.
-            // It will be null on refresh until re-login or handling via other means if needed.
-            // For this app, we might rely on the token obtained during login.
-        }));
+        authStore.update((curr) => {
+            // Try to restore token from storage if user exists but token is missing
+            let token = curr.accessToken;
+            if (user && !token) {
+                token = loadToken();
+            }
+
+            return {
+                ...curr,
+                firebaseUser: user,
+                accessToken: token,
+            };
+        });
     });
+};
+
+const TOKEN_KEY = "google_access_token";
+
+const saveToken = (token: string) => {
+    if (typeof localStorage !== "undefined") {
+        localStorage.setItem(TOKEN_KEY, token);
+    }
+};
+
+const clearToken = () => {
+    if (typeof localStorage !== "undefined") {
+        localStorage.removeItem(TOKEN_KEY);
+    }
+};
+
+const loadToken = (): string | null => {
+    if (typeof localStorage !== "undefined") {
+        return localStorage.getItem(TOKEN_KEY);
+    }
+    return null;
 };
 
 export const loginWithGoogle = async () => {
@@ -41,6 +68,10 @@ export const loginWithGoogle = async () => {
         const result = await signInWithPopup(auth, provider);
         const credential = GoogleAuthProvider.credentialFromResult(result);
         const token = credential?.accessToken || null;
+
+        if (token) {
+            saveToken(token);
+        }
 
         authStore.update((curr) => ({
             ...curr,
@@ -58,6 +89,7 @@ export const loginWithGoogle = async () => {
 export const logout = async () => {
     try {
         await signOut(auth);
+        clearToken();
         authStore.set({ firebaseUser: null, accessToken: null });
     } catch (error) {
         console.error("Logout failed:", error);

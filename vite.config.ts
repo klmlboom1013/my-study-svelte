@@ -6,6 +6,9 @@ export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
 	server: {
 		port: 5137,
-		strictPort: true
+		strictPort: true,
+		headers: {
+			'Cross-Origin-Opener-Policy': 'same-origin-allow-popups'
+		}
 	}
 });
