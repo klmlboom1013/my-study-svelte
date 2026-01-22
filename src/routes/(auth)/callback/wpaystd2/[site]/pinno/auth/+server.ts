@@ -13,61 +13,40 @@ const generateResponse = (data: any) => {
                 const data = ${JSON.stringify(data)};
                 console.log("WPAY PIN Auth Callback Data:", data);
                 
-                // Send to parent/opener
-                    // 1. PostMessage (Legacy/Standard)
-                    if (window.opener) {
-                        try {
-                            window.opener.postMessage(data, "*");
-                        } catch (e) {
-                            console.error("PostMessage failed:", e);
-                        }
-                    }
-
-                    }
-
-                    // 3. LocalStorage (Safe cross-tab fallback)
+                // 1. PostMessage (Standard)
+                if (window.opener) {
                     try {
-                        localStorage.setItem('wpay_auth_result', JSON.stringify(data));
+                        window.opener.postMessage(data, "*");
                     } catch (e) {
-                         console.error("LocalStorage write failed:", e);
+                        console.error("PostMessage failed:", e);
                     }
-                    
-                    // Close the window
-                    setTimeout(() => {
-                        window.close();
-                    }, 1000);
-                } else {
-                    console.error("No parent window found to send data to.");
-                    
-                    // Try BroadcastChannel & LocalStorage even if no opener
-                    try {
-                        const channel = new BroadcastChannel("wpay_auth_channel");
-                        channel.postMessage(data);
-                        channel.close();
-                    } catch (e) {}
-
-                    } catch (e) {}
-
-                    // 4. Cookie (Oldest & Most compatible fallback)
-                    try {
-                        const jsonStr = JSON.stringify(data);
-                        // Set cookie valid for 1 minute, strict path
-                        document.cookie = "wpay_bridge_data=" + encodeURIComponent(jsonStr) + "; path=/; max-age=60; samesite=lax";
-                    } catch (e) {
-                         console.error("Cookie write failed:", e);
-                    }
-
-                    setTimeout(() => {
-                        window.close();
-                    }, 3000);
                 }
+
+                // 2. LocalStorage (Cross-tab fallback)
+                try {
+                    localStorage.setItem('wpay_auth_result', JSON.stringify(data));
+                } catch (e) {
+                     console.error("LocalStorage write failed:", e);
+                }
+
+                // 3. BroadcastChannel (Modern cross-tab)
+                try {
+                    const channel = new BroadcastChannel("wpay_auth_channel");
+                    channel.postMessage(data);
+                    channel.close();
+                } catch (e) {}
+
+                // 4. Cookie (Legacy fallback)
+                try {
+                    const jsonStr = JSON.stringify(data);
+                    document.cookie = "wpay_bridge_data=" + encodeURIComponent(jsonStr) + "; path=/; max-age=60; samesite=lax";
+                } catch (e) {
+                     console.error("Cookie write failed:", e);
+                }
+
+                // Close immediately
+                window.close();
             </script>
-            </script>
-            <div style="font-family: sans-serif; text-align: center; padding: 40px 20px;">
-                <h2 style="color: #4CAF50;">Authentication Complete</h2>
-                <p style="color: #666; margin: 20px 0;">You can now safely close this window.</p>
-                <button onclick="window.close()" style="padding: 10px 20px; background: #333; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Close Window</button>
-            </div>
         </body>
         </html>
     `;

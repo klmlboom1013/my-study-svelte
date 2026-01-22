@@ -4,6 +4,7 @@ import { browser } from '$app/environment';
 export interface GlobalParameter {
     id: string;
     application: string;
+    service?: string;
     key: string;
     value: string;
 }

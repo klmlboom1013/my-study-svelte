@@ -1,36 +1,205 @@
 <script lang="ts">
     import { settingsStore } from "$lib/stores/settingsStore";
+    import { page } from "$app/stores";
+    import { appStateStore } from "$lib/stores/appStateStore";
     import { profileStore } from "$lib/stores/profileStore";
+    import { authStore, loginWithGoogle } from "$lib/services/authService";
+    import { driveService } from "$lib/services/driveService";
     import { SERVICE_OPTIONS } from "$lib/constants/wpayServerType";
-    import { onMount } from "svelte";
+    import { onMount, tick } from "svelte";
+    import { get } from "svelte/store";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
 
-    let activeCategory = "endpoint"; // 'endpoint', 'interface'
-    let activeSubTab = "global"; // for endpoint: 'global', 'options', 'mid'
+    let activeCategory = $state("endpoint"); // 'endpoint', 'interface'
+    let activeSubTab = $state("global"); // for endpoint: 'global', 'options', 'mid'
 
     // Form states
-    let globalParam = { application: "", key: "", value: "" };
-    let selectedService = "";
-    let paramOption = { name: "", code: "", value: "" };
-    let midContext = { mid: "", encKey: "", encIV: "", hashKey: "" };
+    let globalParam = $state({
+        application: "",
+        service: "",
+        key: "",
+        value: "",
+    });
+
+    // List Filter State
+    let listFilterService = $state("");
+
+    let selectedService = $state(""); // For the ADD form // UI state for service dropdown
+    let paramOption = $state({ name: "", code: "", value: "" });
+    let midContext = $state({ mid: "", encKey: "", encIV: "", hashKey: "" });
 
     // Temporary state for adding options to a new parameter option set
-    let currentOptions: { code: string; value: string }[] = [];
+    let currentOptions = $state<{ code: string; value: string }[]>([]);
+
+    // Alert Modal state
+    let alertModalState = $state({
+        isOpen: false,
+        title: "",
+        message: "",
+        type: "alert" as "alert" | "confirm",
+        onConfirm: undefined as (() => void) | undefined,
+    });
+
+    function showAlert(
+        title: string,
+        message: string,
+        type: "alert" | "confirm" = "alert",
+        onConfirm?: () => void,
+    ) {
+        alertModalState.title = title;
+        alertModalState.message = message;
+        alertModalState.type = type;
+        alertModalState.onConfirm = onConfirm;
+        alertModalState.isOpen = true;
+    }
+
+    async function handleConnectGoogle() {
+        try {
+            await loginWithGoogle();
+            showAlert(
+                "Connection Successful",
+                "Google Account connected. Please try again.",
+            );
+        } catch (e) {
+            console.error(e);
+            showAlert(
+                "Connection Failed",
+                "Failed to connect to Google Account.",
+            );
+        }
+    }
+
+    // Computed: Filtered Global Parameters
+    // Filter by Header Application Selection (via Shared Store) AND Service Filter (if WPAY)
+    let filteredGlobalParams = $derived.by(() => {
+        const headerApp = $appStateStore.selectedApp;
+        // If "All" or nothing selected, show all parameters
+        const isAll = !headerApp || headerApp === "All";
+
+        return $settingsStore.globalParameters.filter((param) => {
+            // 1. Primary Filter: Application
+            if (!isAll && param.application !== headerApp) {
+                return false;
+            }
+
+            // 2. Secondary Filter: Service (Only if App is WPAY)
+            if (
+                headerApp === "WPAY" &&
+                listFilterService &&
+                listFilterService !== "All"
+            ) {
+                // If filter is active, match service.
+                // Note: param.service might be undefined if it's a 'common' WPAY param?
+                // Or maybe we treat 'WPAY' in param.service as 'All'?
+                // For now, strict match.
+                return param.service === listFilterService;
+            }
+
+            return true;
+        });
+    });
 
     function addGlobalParam() {
-        if (globalParam.application && globalParam.key && globalParam.value) {
-            const finalApplication =
-                globalParam.application.toUpperCase() === "WPAY" &&
-                selectedService
-                    ? selectedService
-                    : globalParam.application;
+        if (!globalParam.application || !globalParam.key || !globalParam.value)
+            return;
 
-            settingsStore.addGlobalParameter({
-                ...globalParam,
-                application: finalApplication,
-            });
-            globalParam = { application: "", key: "", value: "" };
-            selectedService = "";
+        // Validation: If WPAY, Service is required (unless 'WPAY'/'All' is valid service choice? User said "Service choice is mandatory")
+        // "Application is Wpay then Service select also mandatory"
+        if (globalParam.application === "WPAY" && !selectedService) return;
+
+        // If selectedService is "WPAY" (All), do we treat it as undefined service or specific "WPAY" service?
+        // Based on UI: <option value="WPAY">All</option>.
+        // Taking "All" usually means applies to all, or no specific service.
+        // But user said "Service select mandatory".
+
+        const newParam = {
+            ...globalParam,
+            service: selectedService === "WPAY" ? undefined : selectedService, // Store undefined if 'All' is selected, or maybe 'WPAY'?
+            // Let's verify requirement: "Application is Wpay then Service information also show".
+            // Let's store actual selected value.
+        };
+
+        if (newParam.application === "WPAY" && selectedService !== "WPAY") {
+            newParam.service = selectedService;
+        }
+
+        settingsStore.addGlobalParameter(newParam);
+
+        // Reset KEY and VALUE only, keep App/Service for continuous entry
+        globalParam.key = "";
+        globalParam.value = "";
+    }
+
+    async function backupSettings() {
+        const token = $authStore.accessToken;
+        if (!token) {
+            showAlert(
+                "Connection Required",
+                "Google Account connection is required for backup.\nDo you want to connect now?",
+                "confirm",
+                handleConnectGoogle,
+            );
+            return;
+        }
+        try {
+            await driveService.saveSettings(token, $settingsStore);
+            showAlert(
+                "Success",
+                "Settings backed up to Google Drive successfully.",
+            );
+        } catch (e: any) {
+            console.error("Backup Error:", e);
+            if (e.message && e.message.includes("401")) {
+                showAlert(
+                    "Token Expired",
+                    "Google Drive access token is expired.\nDo you want to reconnect?",
+                    "confirm",
+                    handleConnectGoogle,
+                );
+            } else {
+                showAlert(
+                    "Backup Failed",
+                    `Failed to backup settings.\nReason: ${e.message || "Unknown error"}`,
+                );
+            }
+        }
+    }
+
+    async function restoreSettings() {
+        const token = $authStore.accessToken;
+        if (!token) {
+            showAlert(
+                "Connection Required",
+                "Google Account connection is required for restore.\nDo you want to connect now?",
+                "confirm",
+                handleConnectGoogle,
+            );
+            return;
+        }
+        try {
+            const data = await driveService.loadSettings(token);
+            if (data) {
+                settingsStore.set(data);
+                showAlert("Success", "Settings restored from Google Drive.");
+            } else {
+                showAlert("Info", "No settings found in Drive.");
+            }
+        } catch (e: any) {
+            console.error("Restore Error:", e);
+            if (e.message && e.message.includes("401")) {
+                showAlert(
+                    "Token Expired",
+                    "Google Drive access token is expired.\nDo you want to reconnect?",
+                    "confirm",
+                    handleConnectGoogle,
+                );
+            } else {
+                showAlert(
+                    "Restore Failed",
+                    `Failed to restore settings.\nReason: ${e.message || "Unknown error"}`,
+                );
+            }
         }
     }
 
@@ -82,7 +251,7 @@
     }
 
     const categories = [
-        { id: "endpoint", label: "Endpoint Config", icon: "tune" },
+        { id: "endpoint", label: "Endpoint Parameters", icon: "tune" },
         { id: "interface", label: "Interface", icon: "web_asset" },
     ];
 </script>
@@ -100,6 +269,26 @@
             <p class="text-slate-500 dark:text-slate-400">
                 Manage global configurations for endpoints and user interface.
             </p>
+        </div>
+        <div class="flex gap-2">
+            <button
+                class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+                onclick={backupSettings}
+            >
+                <span class="material-symbols-outlined text-[18px]"
+                    >cloud_upload</span
+                >
+                Backup
+            </button>
+            <button
+                class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+                onclick={restoreSettings}
+            >
+                <span class="material-symbols-outlined text-[18px]"
+                    >cloud_download</span
+                >
+                Restore
+            </button>
         </div>
     </div>
 
@@ -276,6 +465,12 @@
                                     >
                                         <button
                                             class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto whitespace-nowrap"
+                                            disabled={!globalParam.application ||
+                                                !globalParam.key ||
+                                                !globalParam.value ||
+                                                (globalParam.application ===
+                                                    "WPAY" &&
+                                                    !selectedService)}
                                             onclick={addGlobalParam}>Add</button
                                         >
                                     </div>
@@ -283,67 +478,111 @@
                             </div>
                         </div>
 
+                        <!-- Parameters List -->
                         <div
-                            class="overflow-x-auto rounded-lg border border-slate-200 dark:border-border-dark"
+                            class="bg-white dark:bg-card-dark rounded-lg border border-slate-200 dark:border-border-dark overflow-hidden"
                         >
-                            <table class="w-full text-sm text-left">
-                                <thead
-                                    class="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-background-dark border-b border-slate-200 dark:border-border-dark"
+                            <!-- List Filter Toolbar (Visible only if WPAY is selected in Header) -->
+                            {#if $appStateStore.selectedApp === "WPAY"}
+                                <div
+                                    class="px-6 py-3 border-b border-slate-200 dark:border-border-dark flex justify-end"
                                 >
-                                    <tr>
-                                        <th class="px-6 py-4 font-semibold"
-                                            >Application</th
+                                    <div class="w-48">
+                                        <select
+                                            class="w-full px-3 py-2 bg-white dark:bg-input-dark border border-slate-300 dark:border-border-dark rounded-lg text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all dark:text-white"
+                                            bind:value={listFilterService}
                                         >
-                                        <th class="px-6 py-4 font-semibold"
-                                            >Key</th
-                                        >
-                                        <th class="px-6 py-4 font-semibold"
-                                            >Value</th
-                                        >
-                                        <th
-                                            class="px-6 py-4 font-semibold w-[100px] text-right"
-                                            >Action</th
-                                        >
-                                    </tr>
-                                </thead>
-                                <tbody
-                                    class="divide-y divide-slate-100 dark:divide-slate-800"
-                                >
-                                    {#each $settingsStore.globalParameters as param}
-                                        <tr
-                                            class="hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                                        >
-                                            <td class="px-6 py-4 font-medium"
-                                                ><span
-                                                    class="px-2 py-1 rounded text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                                                    >{param.application}</span
-                                                ></td
+                                            <option value=""
+                                                >All Services</option
                                             >
-                                            <td
-                                                class="px-6 py-4 font-medium text-slate-700 dark:text-slate-300"
-                                                >{param.key}</td
-                                            >
-                                            <td
-                                                class="px-6 py-4 text-slate-600 dark:text-slate-400 font-mono text-xs"
-                                                >{param.value}</td
-                                            >
-                                            <td class="px-6 py-4 text-right">
-                                                <button
-                                                    class="p-1 text-slate-400 hover:text-red-500 transition-colors"
-                                                    onclick={() =>
-                                                        settingsStore.removeGlobalParameter(
-                                                            param.id,
-                                                        )}
-                                                    ><span
-                                                        class="material-symbols-outlined text-[18px]"
-                                                        >delete</span
-                                                    ></button
+                                            {#each SERVICE_OPTIONS as service}
+                                                <option value={service}
+                                                    >{service}</option
                                                 >
-                                            </td>
+                                            {/each}
+                                        </select>
+                                    </div>
+                                </div>
+                            {/if}
+
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm text-left">
+                                    <thead
+                                        class="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-background-dark border-b border-slate-200 dark:border-border-dark"
+                                    >
+                                        <tr>
+                                            <th class="px-6 py-4 font-semibold"
+                                                >Application</th
+                                            >
+                                            <th class="px-6 py-4 font-semibold"
+                                                >Service</th
+                                            >
+                                            <th class="px-6 py-4 font-semibold"
+                                                >Key</th
+                                            >
+                                            <th class="px-6 py-4 font-semibold"
+                                                >Value</th
+                                            >
+                                            <th
+                                                class="px-6 py-4 font-semibold w-[100px] text-right"
+                                                >Action</th
+                                            >
                                         </tr>
-                                    {/each}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody
+                                        class="divide-y divide-slate-100 dark:divide-slate-800"
+                                    >
+                                        {#each filteredGlobalParams as param}
+                                            <tr
+                                                class="hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                                            >
+                                                <td
+                                                    class="px-6 py-4 font-medium"
+                                                    ><span
+                                                        class="px-2 py-1 rounded text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                                                        >{param.application}</span
+                                                    ></td
+                                                >
+                                                <td
+                                                    class="px-6 py-4 font-medium text-slate-500 dark:text-slate-400 text-xs"
+                                                >
+                                                    {#if param.service}
+                                                        <span
+                                                            class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600"
+                                                            >{param.service}</span
+                                                        >
+                                                    {:else}
+                                                        -
+                                                    {/if}
+                                                </td>
+                                                <td
+                                                    class="px-6 py-4 font-medium text-slate-700 dark:text-slate-300"
+                                                    >{param.key}</td
+                                                >
+                                                <td
+                                                    class="px-6 py-4 text-slate-600 dark:text-slate-400 font-mono text-xs"
+                                                    >{param.value}</td
+                                                >
+                                                <td
+                                                    class="px-6 py-4 text-right"
+                                                >
+                                                    <button
+                                                        class="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                                                        onclick={() =>
+                                                            settingsStore.removeGlobalParameter(
+                                                                param.id,
+                                                            )}
+                                                        ><span
+                                                            class="material-symbols-outlined text-[18px]"
+                                                            >delete</span
+                                                        ></button
+                                                    >
+                                                </td>
+                                            </tr>
+                                        {/each}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     {:else if activeSubTab === "options"}
                         <!-- Parameter Options Content -->
@@ -722,3 +961,11 @@
         </main>
     </div>
 </div>
+
+<AlertModal
+    bind:isOpen={alertModalState.isOpen}
+    title={alertModalState.title}
+    message={alertModalState.message}
+    type={alertModalState.type}
+    onConfirm={alertModalState.onConfirm}
+/>

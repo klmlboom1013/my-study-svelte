@@ -95,3 +95,11 @@ export const logout = async () => {
         console.error("Logout failed:", error);
     }
 };
+
+export const disconnectGoogle = () => {
+    clearToken();
+    authStore.update((curr) => ({
+        ...curr,
+        accessToken: null,
+    }));
+};

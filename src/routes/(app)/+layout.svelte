@@ -9,7 +9,7 @@
     import { auth } from "$lib/firebase/firebase";
     import { onAuthStateChanged } from "firebase/auth";
     import { profileStore } from "$lib/stores/profileStore";
-    import { authStore, loginWithGoogle } from "$lib/services/authService";
+    import { authStore, loginWithGoogle, disconnectGoogle } from "$lib/services/authService";
     import { driveService } from "$lib/services/driveService";
     import { get } from "svelte/store";
     import { getCookie } from "$lib/utils/cookie";
@@ -85,11 +85,18 @@
                         profile.restoreDateTime = new Date().toISOString();
                         profileStore.updateProfile(profile);
                         console.log(
-                            "Auto-Restored profile from Drive via Token",
+                        "Auto-Restored profile from Drive via Token",
                         );
                     }
-                } catch (e) {
+                } catch (e: any) {
                     console.error("Auto-Restore failed", e);
+                    // Check for 401 Unauthorized (Expired Token)
+                    if (e.message && e.message.includes("401")) {
+                        console.warn("Token expired. Disconnecting and prompting reconnect.");
+                        disconnectGoogle();
+                        // Trigger the connect prompt again
+                        checkAndPromptGoogleConnect();
+                    }
                 }
             }
         });

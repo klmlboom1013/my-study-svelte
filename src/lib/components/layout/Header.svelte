@@ -12,6 +12,8 @@
 
     import type { MouseEventHandler } from "svelte/elements";
 
+    import { appStateStore } from "$lib/stores/appStateStore";
+
     interface Props {
         showSidebarToggle?: boolean;
         showSearch?: boolean;
@@ -38,7 +40,26 @@
 
     // Global Search Logic
     let headerSearchTerm = $state("");
-    let selectedApp = $state("");
+    // Use Shared Store for Selected App
+    // We can't bind directly to store object property in Svelte 5 easily if we want reactivity?
+    // Let's use auto-subscription $appStateStore
+    // Or simpler: just let SelectBox bind to a local proxy or update store on change?
+    // SelectBox binds to `value`.
+    // Let's create a derived/linked state?
+    // Actually, simple subscription is easiest.
+
+    let selectedApp = $state("All");
+
+    // Sync Store -> Local State
+    $effect(() => {
+        selectedApp = $appStateStore.selectedApp;
+    });
+
+    // Sync Local State -> Store (When user changes dropdown)
+    function onAppChange(newValue: string) {
+        appStateStore.update((s) => ({ ...s, selectedApp: newValue }));
+        selectedApp = newValue;
+    }
 
     // Subscribe to profileStore for applications list
     let applications = $derived.by(() => {
@@ -69,9 +90,11 @@
                 keepFocus: true,
                 noScroll: true,
             });
-        } else {
-            goto(`/endpoint?${params.toString()}`);
         }
+        // Else: Do NOT navigate if safely on Settings
+        // But if user hits Enter on search, they expect redirection?
+        // handleSearchKeydown calls updateUrl.
+        // If changing dropdown, $effect calls... wait.
     }
 
     function handleSearchKeydown(event: KeyboardEvent) {
@@ -80,16 +103,27 @@
         }
     }
 
-    // Watch selectedApp change
+    // Watch selectedApp change (Local State Change)
     $effect(() => {
+        // When selectedApp changes (via Dropdown or other), update Store
+        if ($appStateStore.selectedApp !== selectedApp) {
+            appStateStore.update((s) => ({ ...s, selectedApp: selectedApp }));
+        }
+
         if (selectedApp !== undefined && $page.url.pathname === "/endpoint") {
             // We need to avoid infinite loop if the URL change triggers this.
             // But selectedApp is local state.
 
             // Simple check: if mismatch
             const currentApp = $page.url.searchParams.get("app") || "All";
-            if (selectedApp !== currentApp) {
-                updateUrl();
+            if (
+                selectedApp !== currentApp &&
+                (selectedApp !== "All" || currentApp)
+            ) {
+                // "All" vs null/empty
+                if (!(selectedApp === "All" && !currentApp)) {
+                    updateUrl();
+                }
             }
         }
     });
@@ -104,8 +138,13 @@
         if (q) headerSearchTerm = q;
 
         const app = $page.url.searchParams.get("app");
-        if (app) selectedApp = app;
-        else selectedApp = "All"; // Default
+        if (app) {
+            selectedApp = app;
+            appStateStore.update((s) => ({ ...s, selectedApp: app }));
+        } else {
+            selectedApp = "All"; // Default
+            appStateStore.update((s) => ({ ...s, selectedApp: "All" }));
+        }
     });
 </script>
 

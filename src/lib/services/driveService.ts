@@ -6,6 +6,11 @@ interface DriveFile {
 export const driveService = {
     // List files in the App Data Folder to find a specific file
     async listFiles(accessToken: string, filename: string): Promise<DriveFile[]> {
+        if (!accessToken) {
+            console.warn("Drive API: No access token provided.");
+            return [];
+        }
+
         const query = `name = '${filename}'`;
         const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&spaces=appDataFolder&fields=files(id, name)`;
 
@@ -16,6 +21,10 @@ export const driveService = {
         });
 
         if (!response.ok) {
+            if (response.status === 401) {
+                // Throw specific error for 401 so consumer can trigger re-auth
+                throw new Error("Drive API: Unauthorized (401)");
+            }
             const errorText = await response.text();
             console.error("Drive List Error Details:", response.status, errorText);
             throw new Error(`Drive List Error: ${response.status} ${errorText}`);
@@ -138,6 +147,29 @@ export const driveService = {
     // Helper: Load Profile
     async loadProfile(accessToken: string): Promise<any | null> {
         const filename = "profile.json";
+        const files = await this.listFiles(accessToken, filename);
+
+        if (files.length > 0) {
+            return await this.downloadFile(accessToken, files[0].id);
+        }
+        return null; // Not found
+    },
+
+    // Helper: Save Settings
+    async saveSettings(accessToken: string, data: any): Promise<void> {
+        const filename = "settings.json";
+        const files = await this.listFiles(accessToken, filename);
+
+        if (files.length > 0) {
+            await this.updateFile(accessToken, files[0].id, data);
+        } else {
+            await this.createFile(accessToken, filename, data);
+        }
+    },
+
+    // Helper: Load Settings
+    async loadSettings(accessToken: string): Promise<any | null> {
+        const filename = "settings.json";
         const files = await this.listFiles(accessToken, filename);
 
         if (files.length > 0) {
