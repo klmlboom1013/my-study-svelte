@@ -9,7 +9,11 @@
     import { auth } from "$lib/firebase/firebase";
     import { onAuthStateChanged } from "firebase/auth";
     import { profileStore } from "$lib/stores/profileStore";
-    import { authStore, loginWithGoogle, disconnectGoogle } from "$lib/services/authService";
+    import {
+        authStore,
+        loginWithGoogle,
+        disconnectGoogle,
+    } from "$lib/services/authService";
     import { driveService } from "$lib/services/driveService";
     import { get } from "svelte/store";
     import { getCookie } from "$lib/utils/cookie";
@@ -31,7 +35,7 @@
     afterNavigate(() => {
         isDrawerOpen = false;
         // Check for Auto-Restore Opportunity (Google Connect Prompt) on every navigation
-        checkAndPromptGoogleConnect();
+        // checkAndPromptGoogleConnect();
     });
 
     // User Profile Data
@@ -85,14 +89,16 @@
                         profile.restoreDateTime = new Date().toISOString();
                         profileStore.updateProfile(profile);
                         console.log(
-                        "Auto-Restored profile from Drive via Token",
+                            "Auto-Restored profile from Drive via Token",
                         );
                     }
                 } catch (e: any) {
                     console.error("Auto-Restore failed", e);
                     // Check for 401 Unauthorized (Expired Token)
                     if (e.message && e.message.includes("401")) {
-                        console.warn("Token expired. Disconnecting and prompting reconnect.");
+                        console.warn(
+                            "Token expired. Disconnecting and prompting reconnect.",
+                        );
                         disconnectGoogle();
                         // Trigger the connect prompt again
                         checkAndPromptGoogleConnect();
@@ -230,7 +236,7 @@
                 <SidebarNav
                     isCollapsed={false}
                     {userProfile}
-                    showCollections={false}
+                    showCollections={true}
                 />
             </div>
         </aside>
@@ -289,6 +295,7 @@
                     showNewButton={true}
                     showCollections={true}
                     allowTextWrap={true}
+                    ignoreSettings={true}
                 />
             </div>
         </div>

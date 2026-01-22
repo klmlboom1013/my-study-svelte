@@ -152,10 +152,10 @@
         );
     }
 
-    let isSyncing = $state(false);
+    let syncState = $state<"idle" | "backup" | "restore">("idle");
 
     async function handleDriveBackup() {
-        if (isSyncing) return;
+        if (syncState !== "idle") return;
 
         let token = $authStore.accessToken;
 
@@ -173,7 +173,7 @@
         if (!token) return;
 
         try {
-            isSyncing = true;
+            syncState = "backup";
             // Get latest data directly from service
             const dataToSave = endpointService.getEndpoints();
             await driveService.saveEndpoints(token, dataToSave);
@@ -192,7 +192,7 @@
                         try {
                             const result = await loginWithGoogle();
                             if (result.token) {
-                                isSyncing = true; // Set syncing true again for retry
+                                syncState = "backup"; // Set syncing true again for retry
                                 const dataToSave =
                                     endpointService.getEndpoints();
                                 await driveService.saveEndpoints(
@@ -211,7 +211,7 @@
                                 "Retry failed. Please try again later.",
                             );
                         } finally {
-                            isSyncing = false;
+                            syncState = "idle";
                         }
                     },
                 );
@@ -219,12 +219,12 @@
             }
             showAlert("Error", `Backup failed: ${error.message}`);
         } finally {
-            isSyncing = false;
+            syncState = "idle";
         }
     }
 
     async function handleDriveRestore() {
-        if (isSyncing) return;
+        if (syncState !== "idle") return;
 
         showAlert(
             "Restore Endpoints",
@@ -247,7 +247,7 @@
                 if (!token) return;
 
                 try {
-                    isSyncing = true;
+                    syncState = "restore";
                     const data = await driveService.loadEndpoints(token);
                     if (data) {
                         // Save to local storage via service
@@ -268,7 +268,7 @@
                                 try {
                                     const result = await loginWithGoogle();
                                     if (result.token) {
-                                        isSyncing = true;
+                                        syncState = "restore";
                                         const data =
                                             await driveService.loadEndpoints(
                                                 result.token,
@@ -297,7 +297,7 @@
                                         "Retry failed. Please try again later.",
                                     );
                                 } finally {
-                                    isSyncing = false;
+                                    syncState = "idle";
                                 }
                             },
                         );
@@ -305,7 +305,7 @@
                     }
                     showAlert("Error", `Restore failed: ${error.message}`);
                 } finally {
-                    isSyncing = false;
+                    syncState = "idle";
                 }
             },
         );
@@ -349,37 +349,39 @@
             </button>
             <button
                 onclick={handleDriveBackup}
-                disabled={isSyncing}
-                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-card-dark dark:text-slate-300 dark:border-border-dark dark:hover:bg-background-dark disabled:opacity-50"
+                disabled={syncState !== "idle"}
+                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-card-dark dark:text-slate-300 dark:border-border-dark dark:hover:bg-background-dark disabled:opacity-50 min-w-[100px] justify-center"
             >
-                {#if isSyncing}
+                {#if syncState === "backup"}
                     <span
                         class="material-symbols-outlined text-[20px] animate-spin"
                         >sync</span
                     >
+                    <span>Wait...</span>
                 {:else}
                     <span class="material-symbols-outlined text-[20px]"
                         >cloud_upload</span
                     >
+                    <span class="hidden sm:inline">Backup</span>
                 {/if}
-                <span class="hidden sm:inline">Backup</span>
             </button>
             <button
                 onclick={handleDriveRestore}
-                disabled={isSyncing}
-                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-card-dark dark:text-slate-300 dark:border-border-dark dark:hover:bg-background-dark disabled:opacity-50"
+                disabled={syncState !== "idle"}
+                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-card-dark dark:text-slate-300 dark:border-border-dark dark:hover:bg-background-dark disabled:opacity-50 min-w-[100px] justify-center"
             >
-                {#if isSyncing}
+                {#if syncState === "restore"}
                     <span
                         class="material-symbols-outlined text-[20px] animate-spin"
                         >sync</span
                     >
+                    <span>Wait...</span>
                 {:else}
                     <span class="material-symbols-outlined text-[20px]"
                         >cloud_download</span
                     >
+                    <span class="hidden sm:inline">Restore</span>
                 {/if}
-                <span class="hidden sm:inline">Restore</span>
             </button>
         </div>
     </div>

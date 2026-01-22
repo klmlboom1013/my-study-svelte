@@ -11,6 +11,8 @@ export interface GlobalParameter {
 
 export interface ParameterOption {
     id: string;
+    application: string;
+    service?: string;
     name: string; // Parameter Name
     options: {
         code: string;
@@ -20,6 +22,8 @@ export interface ParameterOption {
 
 export interface MidContext {
     id: string;
+    application: string;
+    service?: string;
     mid: string;
     encKey: string;
     encIV: string;
@@ -141,6 +145,17 @@ const createSettingsStore = () => {
                 return newValue;
             });
         },
+        // Helper to update Parameter Option
+        updateParameterOption: (option: ParameterOption) => {
+            update(current => {
+                const newValue = {
+                    ...current,
+                    parameterOptions: current.parameterOptions.map(p => p.id === option.id ? option : p)
+                };
+                if (browser) localStorage.setItem('endpoint_settings', JSON.stringify(newValue));
+                return newValue;
+            });
+        },
         // Helper to remove Parameter Option
         removeParameterOption: (id: string) => {
             update(current => {
@@ -169,6 +184,17 @@ const createSettingsStore = () => {
                 const newValue = {
                     ...current,
                     midContexts: current.midContexts.filter(p => p.id !== id)
+                };
+                if (browser) localStorage.setItem('endpoint_settings', JSON.stringify(newValue));
+                return newValue;
+            });
+        },
+        // Helper to update Mid Context
+        updateMidContext: (ctx: MidContext) => {
+            update(current => {
+                const newValue = {
+                    ...current,
+                    midContexts: current.midContexts.map(p => p.id === ctx.id ? ctx : p)
                 };
                 if (browser) localStorage.setItem('endpoint_settings', JSON.stringify(newValue));
                 return newValue;

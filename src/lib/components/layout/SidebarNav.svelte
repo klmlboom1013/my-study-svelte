@@ -10,6 +10,7 @@
         showNewButton?: boolean;
         showCollections?: boolean;
         allowTextWrap?: boolean;
+        ignoreSettings?: boolean;
     }
 
     let {
@@ -18,6 +19,7 @@
         showNewButton = true,
         showCollections = false,
         allowTextWrap = false,
+        ignoreSettings = false,
     }: Props = $props();
 
     import { goto } from "$app/navigation";
@@ -105,6 +107,8 @@
         {#if showCollections}
             {#each primaryNav as item}
                 {@const showItem =
+                    ignoreSettings ||
+                    item.path === "/settings" ||
                     (item.path === "/report" &&
                         $settingsStore.interface?.sidebar?.showReport) ||
                     (item.path === "/issue" &&
@@ -116,8 +120,7 @@
                     (item.path === "/collections" &&
                         $settingsStore.interface?.sidebar?.showCollections) ||
                     (item.path === "/categories" &&
-                        $settingsStore.interface?.sidebar?.showCategories) ||
-                    item.path === "/settings"}
+                        $settingsStore.interface?.sidebar?.showCategories)}
                 {#if showItem}
                     <button
                         onclick={() => item.path && goto(item.path)}

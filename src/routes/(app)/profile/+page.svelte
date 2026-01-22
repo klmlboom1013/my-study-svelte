@@ -134,14 +134,15 @@
         goto("/profile/edit");
     };
 
-    let isSyncing = $state(false);
+    let syncState = $state<"idle" | "backup" | "restore">("idle");
 
     async function executeWithRetry(
         operationName: string,
         action: (token: string) => Promise<void>,
+        targetState: "backup" | "restore",
     ) {
-        if (isSyncing) return;
-        isSyncing = true;
+        if (syncState !== "idle") return;
+        syncState = targetState;
 
         let token = $authStore.accessToken;
 
@@ -193,37 +194,41 @@
                 showAlert(`${operationName} Failed`, `Error: ${error.message}`);
             }
         } finally {
-            isSyncing = false;
+            syncState = "idle";
         }
     }
 
     async function handleDriveBackup() {
-        await executeWithRetry("Backup", async (token) => {
-            const storedData = localStorage.getItem("profile");
-            if (!storedData) {
-                throw new Error(
-                    "No profile data to backup. Please edit profile first.",
+        await executeWithRetry(
+            "Backup",
+            async (token) => {
+                const storedData = localStorage.getItem("profile");
+                if (!storedData) {
+                    throw new Error(
+                        "No profile data to backup. Please edit profile first.",
+                    );
+                }
+
+                let data = JSON.parse(storedData);
+
+                // Update Backup Timestamp
+                const now = new Date().toISOString();
+                data.backupDateTime = now;
+                backupDateTime = now; // Update Local State
+
+                // Save to Drive
+                await driveService.saveProfile(token, data);
+
+                // Update Local Store with new timestamp
+                profileStore.updateProfile(data);
+
+                showAlert(
+                    "Backup Successful",
+                    "Your profile has been saved to Google Drive (App Data).",
                 );
-            }
-
-            let data = JSON.parse(storedData);
-
-            // Update Backup Timestamp
-            const now = new Date().toISOString();
-            data.backupDateTime = now;
-            backupDateTime = now; // Update Local State
-
-            // Save to Drive
-            await driveService.saveProfile(token, data);
-
-            // Update Local Store with new timestamp
-            profileStore.updateProfile(data);
-
-            showAlert(
-                "Backup Successful",
-                "Your profile has been saved to Google Drive (App Data).",
-            );
-        });
+            },
+            "backup",
+        );
     }
 
     async function handleDriveRestore() {
@@ -235,28 +240,32 @@
 
         if (!confirmed) return;
 
-        await executeWithRetry("Restore", async (token) => {
-            const data = await driveService.loadProfile(token);
-            if (data) {
-                // Update Restore Timestamp
-                const now = new Date().toISOString();
-                data.restoreDateTime = now;
+        await executeWithRetry(
+            "Restore",
+            async (token) => {
+                const data = await driveService.loadProfile(token);
+                if (data) {
+                    // Update Restore Timestamp
+                    const now = new Date().toISOString();
+                    data.restoreDateTime = now;
 
-                // Save to local storage via store
-                profileStore.updateProfile(data);
+                    // Save to local storage via store
+                    profileStore.updateProfile(data);
 
-                showAlert(
-                    "Restore Successful",
-                    "Your profile has been restored from Google Drive.",
-                );
+                    showAlert(
+                        "Restore Successful",
+                        "Your profile has been restored from Google Drive.",
+                    );
 
-                onAlertConfirm = () => {
-                    location.reload();
-                };
-            } else {
-                throw new Error("No profile backup found in Google Drive.");
-            }
-        });
+                    onAlertConfirm = () => {
+                        location.reload();
+                    };
+                } else {
+                    throw new Error("No profile backup found in Google Drive.");
+                }
+            },
+            "restore",
+        );
     }
 </script>
 
@@ -317,36 +326,40 @@
                 <div class="flex items-center gap-2">
                     <button
                         onclick={handleDriveBackup}
-                        disabled={isSyncing}
-                        class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-card-dark dark:text-slate-300 dark:border-border-dark dark:hover:bg-background-dark disabled:opacity-50 shadow-sm"
+                        disabled={syncState !== "idle"}
+                        class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-card-dark dark:text-slate-300 dark:border-border-dark dark:hover:bg-background-dark disabled:opacity-50 shadow-sm min-w-[100px] justify-center"
                         title="Backup Profile to Google Drive"
                     >
-                        {#if isSyncing}
+                        {#if syncState === "backup"}
                             <span
                                 class="material-symbols-outlined text-[20px] animate-spin"
                                 >sync</span
                             >
+                            <span>Wait...</span>
                         {:else}
                             <span class="material-symbols-outlined text-[20px]"
                                 >cloud_upload</span
                             >
+                            <span>Backup</span>
                         {/if}
                     </button>
                     <button
                         onclick={handleDriveRestore}
-                        disabled={isSyncing}
-                        class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-card-dark dark:text-slate-300 dark:border-border-dark dark:hover:bg-background-dark disabled:opacity-50 shadow-sm"
+                        disabled={syncState !== "idle"}
+                        class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-card-dark dark:text-slate-300 dark:border-border-dark dark:hover:bg-background-dark disabled:opacity-50 shadow-sm min-w-[100px] justify-center"
                         title="Restore Profile from Google Drive"
                     >
-                        {#if isSyncing}
+                        {#if syncState === "restore"}
                             <span
                                 class="material-symbols-outlined text-[20px] animate-spin"
                                 >sync</span
                             >
+                            <span>Wait...</span>
                         {:else}
                             <span class="material-symbols-outlined text-[20px]"
                                 >cloud_download</span
                             >
+                            <span>Restore</span>
                         {/if}
                     </button>
                     <button

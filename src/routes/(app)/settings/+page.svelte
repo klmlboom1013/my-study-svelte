@@ -24,13 +24,33 @@
 
     // List Filter State
     let listFilterService = $state("");
+    let listFilterServiceOptions = $state("");
 
-    let selectedService = $state(""); // For the ADD form // UI state for service dropdown
-    let paramOption = $state({ name: "", code: "", value: "" });
-    let midContext = $state({ mid: "", encKey: "", encIV: "", hashKey: "" });
+    let selectedService = $state(""); // For Global Params ADD form
+    let selectedOptionService = $state(""); // For Param Options ADD form
+    let paramOption = $state({
+        application: "",
+        service: "",
+        name: "",
+        code: "",
+        value: "",
+    });
+    let midContext = $state({
+        application: "",
+        service: "",
+        mid: "",
+        encKey: "",
+        encIV: "",
+        hashKey: "",
+    });
+    let selectedMidService = $state("");
+    let listFilterMidServiceOptions = $state("");
 
     // Temporary state for adding options to a new parameter option set
     let currentOptions = $state<{ code: string; value: string }[]>([]);
+    let editingOptionIndex = $state<number | null>(null); // Track index of option being edited
+    let editingId = $state<string | null>(null);
+    let editingMidId = $state<string | null>(null);
 
     // Alert Modal state
     let alertModalState = $state({
@@ -40,6 +60,10 @@
         type: "alert" as "alert" | "confirm",
         onConfirm: undefined as (() => void) | undefined,
     });
+
+    // Loading States
+    let isBackupLoading = $state(false);
+    let isRestoreLoading = $state(false);
 
     function showAlert(
         title: string,
@@ -74,26 +98,62 @@
     // Filter by Header Application Selection (via Shared Store) AND Service Filter (if WPAY)
     let filteredGlobalParams = $derived.by(() => {
         const headerApp = $appStateStore.selectedApp;
-        // If "All" or nothing selected, show all parameters
         const isAll = !headerApp || headerApp === "All";
 
         return $settingsStore.globalParameters.filter((param) => {
+            if (!isAll && param.application !== headerApp) return false;
+            // Strict match for service filter if WPAY
+            if (
+                headerApp === "WPAY" &&
+                listFilterService &&
+                listFilterService !== "All"
+            ) {
+                return param.service === listFilterService;
+            }
+            return true;
+        });
+    });
+
+    let filteredParameterOptions = $derived.by(() => {
+        const headerApp = $appStateStore.selectedApp;
+        const isAll = !headerApp || headerApp === "All";
+
+        return $settingsStore.parameterOptions.filter((opt) => {
             // 1. Primary Filter: Application
-            if (!isAll && param.application !== headerApp) {
+            if (!isAll && opt.application !== headerApp) {
                 return false;
             }
 
             // 2. Secondary Filter: Service (Only if App is WPAY)
             if (
                 headerApp === "WPAY" &&
-                listFilterService &&
-                listFilterService !== "All"
+                listFilterServiceOptions &&
+                listFilterServiceOptions !== "All"
             ) {
-                // If filter is active, match service.
-                // Note: param.service might be undefined if it's a 'common' WPAY param?
-                // Or maybe we treat 'WPAY' in param.service as 'All'?
-                // For now, strict match.
-                return param.service === listFilterService;
+                return opt.service === listFilterServiceOptions;
+            }
+
+            return true;
+        });
+    });
+
+    let filteredMidContexts = $derived.by(() => {
+        const headerApp = $appStateStore.selectedApp;
+        const isAll = !headerApp || headerApp === "All";
+
+        return $settingsStore.midContexts.filter((ctx) => {
+            // 1. Primary Filter: Application
+            if (!isAll && ctx.application !== headerApp) {
+                return false;
+            }
+
+            // 2. Secondary Filter: Service (Only if App is WPAY)
+            if (
+                headerApp === "WPAY" &&
+                listFilterMidServiceOptions &&
+                listFilterMidServiceOptions !== "All"
+            ) {
+                return ctx.service === listFilterMidServiceOptions;
             }
 
             return true;
@@ -142,6 +202,8 @@
             );
             return;
         }
+
+        isBackupLoading = true;
         try {
             await driveService.saveSettings(token, $settingsStore);
             showAlert(
@@ -163,6 +225,8 @@
                     `Failed to backup settings.\nReason: ${e.message || "Unknown error"}`,
                 );
             }
+        } finally {
+            isBackupLoading = false;
         }
     }
 
@@ -177,6 +241,8 @@
             );
             return;
         }
+
+        isRestoreLoading = true;
         try {
             const data = await driveService.loadSettings(token);
             if (data) {
@@ -200,41 +266,181 @@
                     `Failed to restore settings.\nReason: ${e.message || "Unknown error"}`,
                 );
             }
+        } finally {
+            isRestoreLoading = false;
         }
     }
 
     function addOptionToCurrent() {
         if (paramOption.code && paramOption.value) {
-            currentOptions = [
-                ...currentOptions,
-                { code: paramOption.code, value: paramOption.value },
-            ];
+            if (editingOptionIndex !== null) {
+                // Update existing option
+                currentOptions = currentOptions.map((opt, idx) =>
+                    idx === editingOptionIndex
+                        ? { code: paramOption.code, value: paramOption.value }
+                        : opt,
+                );
+                editingOptionIndex = null;
+            } else {
+                // Add new option
+                currentOptions = [
+                    ...currentOptions,
+                    { code: paramOption.code, value: paramOption.value },
+                ];
+            }
             paramOption.code = "";
             paramOption.value = "";
         }
     }
 
+    function editOptionValue(index: number) {
+        const opt = currentOptions[index];
+        paramOption.code = opt.code;
+        paramOption.value = opt.value;
+        editingOptionIndex = index;
+    }
+
+    function cancelOptionValueEdit() {
+        paramOption.code = "";
+        paramOption.value = "";
+        editingOptionIndex = null;
+    }
+
     function saveParameterOption() {
-        if (paramOption.name && currentOptions.length > 0) {
-            settingsStore.addParameterOption({
-                name: paramOption.name,
+        if (
+            !paramOption.application ||
+            !paramOption.name ||
+            currentOptions.length === 0
+        )
+            return;
+
+        // Validate Service if App is WPAY
+        if (paramOption.application === "WPAY" && !selectedOptionService)
+            return;
+
+        const newOption = {
+            ...paramOption,
+            service:
+                paramOption.application === "WPAY" &&
+                selectedOptionService !== "WPAY"
+                    ? selectedOptionService
+                    : undefined,
+        };
+
+        if (editingId) {
+            settingsStore.updateParameterOption({
+                id: editingId,
+                application: newOption.application,
+                service: newOption.service,
+                name: newOption.name,
                 options: currentOptions,
             });
-            paramOption = { name: "", code: "", value: "" };
-            currentOptions = [];
+            showAlert("Success", "Parameter Option updated successfully.");
+        } else {
+            settingsStore.addParameterOption({
+                application: newOption.application,
+                service: newOption.service,
+                name: newOption.name,
+                options: currentOptions,
+            });
+        }
+
+        cancelEdit();
+    }
+
+    function editParameterOption(opt: any) {
+        editingId = opt.id;
+        paramOption = {
+            application: opt.application,
+            service: opt.service || "",
+            name: opt.name,
+            code: "",
+            value: "",
+        };
+        selectedOptionService = opt.service || "";
+        currentOptions = [...opt.options];
+
+        // Ensure service dropdown is shown if editing WPAY app
+        if (opt.application === "WPAY" && !selectedOptionService) {
+            // If service was undefined but app is WPAY (e.g. All), set it to empty or WPAY?
+            // Based on logic: (paramOption.application === "WPAY" && selectedOptionService !== "WPAY") ? selectedOptionService : undefined
+            // If stored as undefined, it means 'All' (value="WPAY")
+            selectedOptionService = "WPAY";
         }
     }
 
+    function cancelEdit() {
+        editingId = null;
+        paramOption = {
+            application: "",
+            service: "",
+            name: "",
+            code: "",
+            value: "",
+        };
+        selectedOptionService = "";
+        currentOptions = [];
+        editingOptionIndex = null;
+    }
+
     function addMidContext() {
-        if (
-            midContext.mid &&
-            midContext.encKey &&
-            midContext.encIV &&
-            midContext.hashKey
-        ) {
-            settingsStore.addMidContext(midContext);
-            midContext = { mid: "", encKey: "", encIV: "", hashKey: "" };
+        if (!midContext.mid || !midContext.application) return;
+
+        // Validate Service if App is WPAY
+        if (midContext.application === "WPAY" && !selectedMidService) return;
+
+        const newContext = {
+            ...midContext,
+            service:
+                midContext.application === "WPAY" &&
+                selectedMidService !== "WPAY"
+                    ? selectedMidService
+                    : undefined,
+        };
+
+        if (editingMidId) {
+            settingsStore.updateMidContext({
+                ...newContext,
+                id: editingMidId,
+            });
+            showAlert("Success", "MID Context updated successfully.");
+        } else {
+            settingsStore.addMidContext(newContext);
+            showAlert("Success", "MID Context added successfully.");
         }
+
+        cancelMidEdit();
+    }
+
+    function editMidContext(ctx: any) {
+        editingMidId = ctx.id;
+        midContext = {
+            application: ctx.application,
+            service: ctx.service,
+            mid: ctx.mid,
+            encKey: ctx.encKey,
+            encIV: ctx.encIV,
+            hashKey: ctx.hashKey,
+        };
+        selectedMidService = ctx.service || "";
+
+        // Ensure service dropdown is shown/set if editing WPAY app
+        if (ctx.application === "WPAY" && !selectedMidService) {
+            selectedMidService = "WPAY";
+        }
+    }
+
+    function cancelMidEdit() {
+        editingMidId = null;
+        midContext = {
+            application: "",
+            service: "",
+            mid: "",
+            encKey: "",
+            encIV: "",
+            hashKey: "",
+        };
+        selectedMidService = "";
     }
 
     function updateInterface(
@@ -272,22 +478,40 @@
         </div>
         <div class="flex gap-2">
             <button
-                class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+                class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
                 onclick={backupSettings}
+                disabled={isBackupLoading || isRestoreLoading}
             >
-                <span class="material-symbols-outlined text-[18px]"
-                    >cloud_upload</span
-                >
-                Backup
+                {#if isBackupLoading}
+                    <span
+                        class="material-symbols-outlined text-[18px] animate-spin"
+                        >sync</span
+                    >
+                    Wait...
+                {:else}
+                    <span class="material-symbols-outlined text-[18px]"
+                        >cloud_upload</span
+                    >
+                    Backup
+                {/if}
             </button>
             <button
-                class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+                class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
                 onclick={restoreSettings}
+                disabled={isBackupLoading || isRestoreLoading}
             >
-                <span class="material-symbols-outlined text-[18px]"
-                    >cloud_download</span
-                >
-                Restore
+                {#if isRestoreLoading}
+                    <span
+                        class="material-symbols-outlined text-[18px] animate-spin"
+                        >sync</span
+                    >
+                    Wait...
+                {:else}
+                    <span class="material-symbols-outlined text-[18px]"
+                        >cloud_download</span
+                    >
+                    Restore
+                {/if}
             </button>
         </div>
     </div>
@@ -489,7 +713,7 @@
                                 >
                                     <div class="w-48">
                                         <select
-                                            class="w-full px-3 py-2 bg-white dark:bg-input-dark border border-slate-300 dark:border-border-dark rounded-lg text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all dark:text-white"
+                                            class="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-border-dark rounded-lg text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all dark:text-white"
                                             bind:value={listFilterService}
                                         >
                                             <option value=""
@@ -592,9 +816,72 @@
                             <h3
                                 class="text-base font-bold text-slate-800 dark:text-white mb-4"
                             >
-                                Create Option Set
+                                {editingId
+                                    ? "Edit Option Set"
+                                    : "Create Option Set"}
                             </h3>
                             <div class="flex flex-col gap-4">
+                                <div
+                                    class="flex flex-col md:flex-row gap-4 items-end"
+                                >
+                                    <label
+                                        class="flex flex-col gap-1 w-full md:w-1/3"
+                                    >
+                                        <span
+                                            class="text-xs font-semibold text-slate-500 uppercase"
+                                            >Application</span
+                                        >
+                                        <select
+                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all w-full"
+                                            bind:value={paramOption.application}
+                                            onchange={() =>
+                                                (selectedOptionService = "")}
+                                        >
+                                            <option value="" disabled selected
+                                                >Select Application</option
+                                            >
+                                            {#each $profileStore.myApplications as app}
+                                                <option value={app.appName}
+                                                    >{app.appName}</option
+                                                >
+                                            {/each}
+                                        </select>
+                                    </label>
+                                    {#if paramOption.application?.toUpperCase() === "WPAY"}
+                                        <div class="w-full md:w-1/3">
+                                            <label
+                                                class="flex flex-col gap-1 w-full"
+                                            >
+                                                <span
+                                                    class="text-xs font-semibold text-slate-500 uppercase"
+                                                    >Service</span
+                                                >
+                                                <select
+                                                    class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all w-full"
+                                                    bind:value={
+                                                        selectedOptionService
+                                                    }
+                                                >
+                                                    <option
+                                                        value=""
+                                                        disabled
+                                                        selected
+                                                        >Select Service</option
+                                                    >
+                                                    <option value="WPAY"
+                                                        >All</option
+                                                    >
+                                                    {#each SERVICE_OPTIONS as service}
+                                                        <option value={service}
+                                                            >{service}</option
+                                                        >
+                                                    {/each}
+                                                </select>
+                                            </label>
+                                        </div>
+                                    {/if}
+                                </div>
+
                                 <label class="flex flex-col gap-1">
                                     <span
                                         class="text-xs font-semibold text-slate-500 uppercase"
@@ -624,63 +911,170 @@
                                             bind:value={paramOption.value}
                                         />
                                         <button
-                                            class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-200 dark:border-slate-600"
+                                            class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-200 dark:border-slate-600 min-w-[100px]"
                                             onclick={addOptionToCurrent}
-                                            >Add Value</button
                                         >
+                                            {editingOptionIndex !== null
+                                                ? "Update"
+                                                : "Add Value"}
+                                        </button>
+                                        {#if editingOptionIndex !== null}
+                                            <button
+                                                class="bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-red-500 dark:text-slate-400 px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-200 dark:border-slate-600"
+                                                onclick={cancelOptionValueEdit}
+                                                title="Cancel Edit"
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-[18px]"
+                                                    >close</span
+                                                >
+                                            </button>
+                                        {/if}
                                     </div>
                                     <div class="flex flex-wrap gap-2">
                                         {#each currentOptions as opt, i}
-                                            <div
-                                                class="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-3 py-1.5 rounded-lg text-xs flex items-center gap-2 border border-blue-100 dark:border-blue-800"
+                                            <button
+                                                class="px-3 py-1.5 rounded-lg text-xs flex items-center gap-2 border transition-colors {editingOptionIndex ===
+                                                i
+                                                    ? 'bg-blue-100 dark:bg-blue-800/40 text-blue-800 dark:text-blue-200 border-blue-300 dark:border-blue-700 ring-2 ring-blue-500/20'
+                                                    : 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-800/30'}"
+                                                onclick={() =>
+                                                    editOptionValue(i)}
+                                                type="button"
                                             >
                                                 <span class="font-bold"
                                                     >{opt.code}</span
                                                 >: {opt.value}
-                                                <button
-                                                    class="ml-1 hover:text-red-500"
-                                                    onclick={() =>
-                                                        (currentOptions =
+                                                <span
+                                                    class="ml-1 hover:text-red-500 p-0.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                                                    onclick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (
+                                                            editingOptionIndex ===
+                                                            i
+                                                        ) {
+                                                            cancelOptionValueEdit();
+                                                        } else if (
+                                                            editingOptionIndex !==
+                                                                null &&
+                                                            i <
+                                                                editingOptionIndex
+                                                        ) {
+                                                            // Adjust index if deleting an item before current edit
+                                                            editingOptionIndex--;
+                                                        }
+                                                        currentOptions =
                                                             currentOptions.filter(
                                                                 (_, idx) =>
                                                                     idx !== i,
-                                                            ))}>×</button
+                                                            );
+                                                    }}>×</span
                                                 >
-                                            </div>
+                                            </button>
                                         {/each}
                                     </div>
                                 </div>
-                                <div class="flex justify-end">
+                                <div class="flex justify-end gap-2">
+                                    {#if editingId}
+                                        <button
+                                            class="px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                            onclick={cancelEdit}
+                                        >
+                                            Cancel
+                                        </button>
+                                    {/if}
                                     <button
                                         class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                        disabled={!paramOption.name ||
-                                            currentOptions.length === 0}
+                                        disabled={!paramOption.application ||
+                                            !paramOption.name ||
+                                            currentOptions.length === 0 ||
+                                            (paramOption.application ===
+                                                "WPAY" &&
+                                                !selectedOptionService)}
                                         onclick={saveParameterOption}
-                                        >Save Option Set</button
+                                        >{editingId
+                                            ? "Update Option Set"
+                                            : "Save Option Set"}</button
                                     >
                                 </div>
                             </div>
                         </div>
+
+                        <!-- List Filter Toolbar (Visible only if WPAY is selected in Header) -->
+                        {#if $appStateStore.selectedApp === "WPAY"}
+                            <div class="mb-4 flex justify-end">
+                                <div class="w-48">
+                                    <select
+                                        class="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-border-dark rounded-lg text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all dark:text-white"
+                                        bind:value={listFilterServiceOptions}
+                                    >
+                                        <option value="">All Services</option>
+                                        {#each SERVICE_OPTIONS as service}
+                                            <option value={service}
+                                                >{service}</option
+                                            >
+                                        {/each}
+                                    </select>
+                                </div>
+                            </div>
+                        {/if}
+
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {#each $settingsStore.parameterOptions as opt}
+                            {#each filteredParameterOptions as opt}
                                 <div
                                     class="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-border-dark p-5 hover:shadow-md transition-shadow group relative"
                                 >
                                     <div
-                                        class="flex justify-between items-center mb-3"
+                                        class="flex justify-between items-start mb-3"
                                     >
-                                        <h4 class="font-bold">{opt.name}</h4>
-                                        <button
-                                            class="p-1 text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                                            onclick={() =>
-                                                settingsStore.removeParameterOption(
-                                                    opt.id,
-                                                )}
-                                            ><span
-                                                class="material-symbols-outlined text-[18px]"
-                                                >delete</span
-                                            ></button
+                                        <div class="flex flex-col gap-1">
+                                            <div
+                                                class="flex gap-2 items-center"
+                                            >
+                                                <span
+                                                    class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                                                    >{opt.application}</span
+                                                >
+                                                {#if opt.service}
+                                                    <span
+                                                        class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-[10px] text-slate-500 dark:text-slate-400"
+                                                        >{opt.service}</span
+                                                    >
+                                                {/if}
+                                            </div>
+                                            <h4
+                                                class="font-bold flex-1 text-slate-900 dark:text-white"
+                                            >
+                                                {opt.name}
+                                            </h4>
+                                        </div>
+                                        <div
+                                            class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
                                         >
+                                            <button
+                                                class="p-1 text-slate-400 hover:text-blue-500 transition-colors"
+                                                onclick={() =>
+                                                    editParameterOption(opt)}
+                                                title="Edit"
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-[18px]"
+                                                    >edit</span
+                                                >
+                                            </button>
+                                            <button
+                                                class="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                                                onclick={() =>
+                                                    settingsStore.removeParameterOption(
+                                                        opt.id,
+                                                    )}
+                                                title="Delete"
+                                                ><span
+                                                    class="material-symbols-outlined text-[18px]"
+                                                    >delete</span
+                                                ></button
+                                            >
+                                        </div>
                                     </div>
                                     <div class="space-y-1">
                                         {#each opt.options as val}
@@ -707,9 +1101,71 @@
                             <h3
                                 class="text-base font-bold text-slate-800 dark:text-white mb-4"
                             >
-                                Add MID Context
+                                {editingMidId
+                                    ? "Edit MID Context"
+                                    : "Add MID Context"}
                             </h3>
                             <div class="grid grid-cols-1 gap-4">
+                                <div
+                                    class="flex flex-col md:flex-row gap-4 items-end"
+                                >
+                                    <label
+                                        class="flex flex-col gap-1 w-full md:w-1/3"
+                                    >
+                                        <span
+                                            class="text-xs font-semibold text-slate-500 uppercase"
+                                            >Application</span
+                                        >
+                                        <select
+                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all w-full"
+                                            bind:value={midContext.application}
+                                            onchange={() =>
+                                                (selectedMidService = "")}
+                                        >
+                                            <option value="" disabled selected
+                                                >Select Application</option
+                                            >
+                                            {#each $profileStore.myApplications as app}
+                                                <option value={app.appName}
+                                                    >{app.appName}</option
+                                                >
+                                            {/each}
+                                        </select>
+                                    </label>
+                                    {#if midContext.application?.toUpperCase() === "WPAY"}
+                                        <div class="w-full md:w-1/3">
+                                            <label
+                                                class="flex flex-col gap-1 w-full"
+                                            >
+                                                <span
+                                                    class="text-xs font-semibold text-slate-500 uppercase"
+                                                    >Service</span
+                                                >
+                                                <select
+                                                    class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all w-full"
+                                                    bind:value={
+                                                        selectedMidService
+                                                    }
+                                                >
+                                                    <option
+                                                        value=""
+                                                        disabled
+                                                        selected
+                                                        >Select Service</option
+                                                    >
+                                                    <option value="WPAY"
+                                                        >All</option
+                                                    >
+                                                    {#each SERVICE_OPTIONS as service}
+                                                        <option value={service}
+                                                            >{service}</option
+                                                        >
+                                                    {/each}
+                                                </select>
+                                            </label>
+                                        </div>
+                                    {/if}
+                                </div>
                                 <div
                                     class="grid grid-cols-1 md:grid-cols-2 gap-4"
                                 >
@@ -758,15 +1214,50 @@
                                         />
                                     </label>
                                 </div>
-                                <div class="flex justify-end">
+                                <div class="flex justify-end gap-2">
+                                    {#if editingMidId}
+                                        <button
+                                            class="px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                            onclick={cancelMidEdit}
+                                        >
+                                            Cancel
+                                        </button>
+                                    {/if}
                                     <button
                                         class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                         onclick={addMidContext}
-                                        >Add Context</button
+                                        disabled={!midContext.application ||
+                                            !midContext.mid ||
+                                            (midContext.application ===
+                                                "WPAY" &&
+                                                !selectedMidService)}
+                                        >{editingMidId
+                                            ? "Update Context"
+                                            : "Add Context"}</button
                                     >
                                 </div>
                             </div>
                         </div>
+
+                        <!-- List Filter Toolbar (Visible only if WPAY is selected in Header) -->
+                        {#if $appStateStore.selectedApp === "WPAY"}
+                            <div class="mb-4 flex justify-end">
+                                <div class="w-48">
+                                    <select
+                                        class="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-border-dark rounded-lg text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all dark:text-white"
+                                        bind:value={listFilterMidServiceOptions}
+                                    >
+                                        <option value="">All Services</option>
+                                        {#each SERVICE_OPTIONS as service}
+                                            <option value={service}
+                                                >{service}</option
+                                            >
+                                        {/each}
+                                    </select>
+                                </div>
+                            </div>
+                        {/if}
+
                         <div
                             class="overflow-x-auto rounded-lg border border-slate-200 dark:border-border-dark"
                         >
@@ -785,14 +1276,37 @@
                                 <tbody
                                     class="divide-y divide-slate-100 dark:divide-slate-800"
                                 >
-                                    {#each $settingsStore.midContexts as ctx}
+                                    {#each filteredMidContexts as ctx}
                                         <tr
                                             class="hover:bg-slate-50 dark:hover:bg-slate-800/50"
                                         >
                                             <td
                                                 class="px-6 py-4 font-mono font-medium"
-                                                >{ctx.mid}</td
                                             >
+                                                <div
+                                                    class="flex flex-col gap-1"
+                                                >
+                                                    <div
+                                                        class="flex gap-2 items-center mb-1"
+                                                    >
+                                                        <span
+                                                            class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                                                            >{ctx.application}</span
+                                                        >
+                                                        {#if ctx.service}
+                                                            <span
+                                                                class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-[10px] text-slate-500 dark:text-slate-400"
+                                                                >{ctx.service}</span
+                                                            >
+                                                        {/if}
+                                                    </div>
+                                                    <span
+                                                        class="text-slate-900 dark:text-white"
+                                                    >
+                                                        {ctx.mid}
+                                                    </span>
+                                                </div>
+                                            </td>
                                             <td class="px-6 py-4">
                                                 <div
                                                     class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs"
@@ -804,26 +1318,53 @@
                                                         >{ctx.hashKey}</span
                                                     >
                                                     <span class="text-slate-500"
-                                                        >Enc:</span
-                                                    ><span
+                                                        >EncKey:</span
+                                                    >
+                                                    <span
                                                         class="font-mono text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-1.5 py-0.5 rounded"
                                                         >{ctx.encKey}</span
                                                     >
+                                                    {#if ctx.encIV}
+                                                        <span
+                                                            class="text-slate-500"
+                                                            >EncIV:</span
+                                                        >
+                                                        <span
+                                                            class="font-mono text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-1.5 py-0.5 rounded"
+                                                            >{ctx.encIV}</span
+                                                        >
+                                                    {/if}
                                                 </div>
                                             </td>
-                                            <td class="px-6 py-4 text-right"
-                                                ><button
-                                                    class="p-1 text-slate-400 hover:text-red-500 transition-colors"
-                                                    onclick={() =>
-                                                        settingsStore.removeMidContext(
-                                                            ctx.id,
-                                                        )}
-                                                    ><span
-                                                        class="material-symbols-outlined text-[18px]"
-                                                        >delete</span
-                                                    ></button
-                                                ></td
-                                            >
+                                            <td class="px-6 py-4 text-right">
+                                                <div
+                                                    class="flex justify-end gap-1"
+                                                >
+                                                    <button
+                                                        class="p-1 text-slate-400 hover:text-blue-500 transition-colors"
+                                                        onclick={() =>
+                                                            editMidContext(ctx)}
+                                                        title="Edit"
+                                                    >
+                                                        <span
+                                                            class="material-symbols-outlined text-[18px]"
+                                                            >edit</span
+                                                        >
+                                                    </button>
+                                                    <button
+                                                        class="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                                                        onclick={() =>
+                                                            settingsStore.removeMidContext(
+                                                                ctx.id,
+                                                            )}
+                                                    >
+                                                        <span
+                                                            class="material-symbols-outlined text-[18px]"
+                                                            >delete</span
+                                                        >
+                                                    </button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     {/each}
                                 </tbody>
