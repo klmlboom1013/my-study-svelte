@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
+    import { settingsStore } from "$lib/stores/settingsStore";
     import { profileStore } from "$lib/stores/profileStore";
 
     let userId = $state("");
@@ -40,25 +41,37 @@
     ];
     let nickname = $state("");
 
-    // Applications
-    const APP_OPTIONS = [
-        { name: "WPAY", description: "Simple Payment Service" },
-        { name: "Express", description: "Create Payment Button" },
-        { name: "Smart", description: "SMS Payment Link" },
-        { name: "sbuckwpay", description: "Starbucks Simple Payment" },
-    ];
-
+    // Applications - Dynamic from Settings Store
     let applications = $state<
-        { id: string; appName: string; description: string }[]
+        {
+            id: string;
+            appName: string;
+            description: string;
+            useServiceDistinction: boolean;
+            domains: {
+                dev: string;
+                stg: string;
+                pGlb: string;
+                pKs: string;
+                pFc: string;
+            };
+            services?: {
+                id: string;
+                name: string;
+                domains: {
+                    dev?: string;
+                    stg?: string;
+                    pGlb?: string;
+                    pKs?: string;
+                    pFc?: string;
+                };
+            }[];
+        }[]
     >([]);
 
     onMount(() => {
         try {
             const stored = localStorage.getItem("profile");
-
-            // Check if we need to fall back to legacy 'sign-in-page' if profile is completely missing
-            // But normally profileStore init handles this.
-            // We just read what's there.
 
             if (stored) {
                 const parsed = JSON.parse(stored);
@@ -110,6 +123,16 @@
                                 id: app.id || crypto.randomUUID(),
                                 appName: app.appName || "",
                                 description: app.description || "",
+                                useServiceDistinction:
+                                    app.useServiceDistinction ?? false,
+                                domains: {
+                                    dev: app.domains?.dev || "",
+                                    stg: app.domains?.stg || "",
+                                    pGlb: app.domains?.pGlb || "",
+                                    pKs: app.domains?.pKs || "",
+                                    pFc: app.domains?.pFc || "",
+                                },
+                                services: app.services || [],
                             }),
                         );
                     }
@@ -143,6 +166,14 @@
                             id: app.id || crypto.randomUUID(),
                             appName: app.name || "", // Note 'name' vs 'appName'
                             description: app.description || "",
+                            useServiceDistinction: false,
+                            domains: {
+                                dev: "",
+                                stg: "",
+                                pGlb: "",
+                                pKs: "",
+                                pFc: "",
+                            },
                         }));
                     }
                 }
@@ -167,7 +198,20 @@
     const addApplication = () => {
         applications = [
             ...applications,
-            { id: crypto.randomUUID(), appName: "", description: "" },
+            {
+                id: crypto.randomUUID(),
+                appName: "",
+                description: "",
+                useServiceDistinction: false,
+                domains: {
+                    dev: "",
+                    stg: "",
+                    pGlb: "",
+                    pKs: "",
+                    pFc: "",
+                },
+                services: [],
+            },
         ];
     };
 
@@ -184,11 +228,52 @@
             if (app.id !== id) return app;
 
             if (field === "appName") {
-                const option = APP_OPTIONS.find((o) => o.name === value);
+                const configApp = $settingsStore.applications.find(
+                    (a) => a.appName === value,
+                );
                 return {
                     ...app,
                     appName: value,
-                    description: option ? option.description : app.description,
+                    description: configApp
+                        ? configApp.description
+                        : app.description,
+                    useServiceDistinction: configApp
+                        ? configApp.useServiceDistinction || false
+                        : false,
+                    // If distinction is ON, should we load the services directly from settings?
+                    // Or let the user customize them?
+                    // Since this is "My Profile", I should probably inherit the configuration from settings.
+                    // But if local modifications are allowed, maybe copy?
+                    // Typically "My Application" means "Use this app configuration".
+                    // So we should copy valid domains/services from the master config to ensure they are up to date.
+                    domains: configApp?.domains
+                        ? {
+                              dev: configApp.domains.dev || "",
+                              stg: configApp.domains.stg || "",
+                              pGlb: configApp.domains.pGlb || "",
+                              pKs: configApp.domains.pKs || "",
+                              pFc: configApp.domains.pFc || "",
+                          }
+                        : {
+                              dev: "",
+                              stg: "",
+                              pGlb: "",
+                              pKs: "",
+                              pFc: "",
+                          },
+                    services: configApp?.services
+                        ? configApp.services.map((s) => ({
+                              id: s.id,
+                              name: s.name,
+                              domains: {
+                                  dev: s.domains?.dev || "",
+                                  stg: s.domains?.stg || "",
+                                  pGlb: s.domains?.pGlb || "",
+                                  pKs: s.domains?.pKs || "",
+                                  pFc: s.domains?.pFc || "",
+                              },
+                          }))
+                        : [],
                 };
             }
 
@@ -236,6 +321,9 @@
                         id: app.id,
                         appName: app.appName,
                         description: app.description,
+                        useServiceDistinction: app.useServiceDistinction,
+                        domains: app.domains,
+                        services: app.services,
                     })),
             };
 
@@ -568,9 +656,9 @@
                                             <option value="" disabled
                                                 >Select Application</option
                                             >
-                                            {#each APP_OPTIONS as option}
-                                                <option value={option.name}
-                                                    >{option.name}</option
+                                            {#each $settingsStore.applications as option}
+                                                <option value={option.appName}
+                                                    >{option.appName}</option
                                                 >
                                             {/each}
                                         </select>

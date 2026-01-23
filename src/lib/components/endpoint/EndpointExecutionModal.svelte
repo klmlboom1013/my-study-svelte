@@ -1,7 +1,22 @@
 <script lang="ts">
     import Modal from "$lib/components/ui/Modal.svelte";
-    import { Code, Play, Plus, Trash2 } from "lucide-svelte";
+    import {
+        Code,
+        Play,
+        Plus,
+        Trash2,
+        ChevronDown,
+        Check,
+    } from "lucide-svelte";
+    import { settingsStore } from "$lib/stores/settingsStore";
+    import {
+        generateSignature,
+        encryptData,
+        urlEncodeData,
+        type SecurityContext,
+    } from "$lib/utils/security";
     import type { Endpoint, RequestDataField } from "$lib/types/endpoint";
+    import { fade, slide } from "svelte/transition";
 
     let {
         isOpen = $bindable(false),
@@ -10,6 +25,8 @@
 
     let requestValues = $state<Record<string, any>>({});
     let jsonResult = $state("");
+    let signatureRawString = $state("");
+    let activeDropdownPath = $state<string | null>(null);
 
     // Reset values when endpoint changes or modal opens
     $effect(() => {
@@ -18,6 +35,15 @@
             requestValues = initializeValues(endpoint.requestData);
         }
     });
+
+    function handleOutsideClick(event: MouseEvent) {
+        if (activeDropdownPath) {
+            const target = event.target as HTMLElement;
+            if (!target.closest(".param-dropdown-container")) {
+                activeDropdownPath = null;
+            }
+        }
+    }
 
     function initializeValues(fields: RequestDataField[] = []) {
         const values: Record<string, any> = {};
@@ -33,10 +59,89 @@
         return values;
     }
 
-    function handleExecute() {
-        // Just show the JSON for now as a proof of concept
-        jsonResult = JSON.stringify(requestValues, null, 2);
-        alert(`Executing endpoint: ${endpoint?.name}\n\nData:\n${jsonResult}`);
+    async function handleExecute() {
+        if (!endpoint) return;
+
+        // 1. Find Security Context (HashKey, EncKey, EncIV) based on selected MID
+        let context: SecurityContext = {};
+        const midValue = requestValues["mid"];
+
+        if (midValue) {
+            const midCtx = $settingsStore.midContexts.find(
+                (c) => c.mid === midValue,
+            );
+            if (midCtx) {
+                context = {
+                    hashKey: midCtx.hashKey,
+                    encKey: midCtx.encKey,
+                    encIV: midCtx.encIV,
+                };
+            }
+        }
+
+        // 2. Process based on Method (GET vs POST)
+        // GET: Encrypt -> Sign -> Encode
+        // POST: Encrypt -> Encode -> Sign
+
+        let processedValues = { ...requestValues };
+
+        try {
+            // Step A: Encryption (Common first step)
+            processedValues = encryptData(
+                processedValues,
+                endpoint.requestData,
+                context,
+            );
+
+            const signatureField = endpoint.requestData.find(
+                (f) => f.name === "signature",
+            );
+
+            if (endpoint.method === "GET") {
+                if (endpoint.signatureMethod && signatureField) {
+                    const { signature, rawString } = await generateSignature(
+                        processedValues,
+                        endpoint.requestData,
+                        endpoint.signatureMethod,
+                        context,
+                    );
+                    processedValues[signatureField.name] = signature;
+                    requestValues[signatureField.name] = signature; // Update UI
+                    signatureRawString = rawString;
+                }
+
+                // Step C: URL Encode (Final step for GET)
+                processedValues = urlEncodeData(
+                    processedValues,
+                    endpoint.requestData,
+                );
+            } else {
+                // POST (and others) rules
+
+                // Step B: URL Encode
+                processedValues = urlEncodeData(
+                    processedValues,
+                    endpoint.requestData,
+                );
+
+                // Step C: Generate Signature (on encrypted AND encoded data)
+                if (endpoint.signatureMethod && signatureField) {
+                    const { signature, rawString } = await generateSignature(
+                        processedValues,
+                        endpoint.requestData,
+                        endpoint.signatureMethod,
+                        context,
+                    );
+                    processedValues[signatureField.name] = signature;
+                    requestValues[signatureField.name] = signature; // Update UI
+                    signatureRawString = rawString;
+                }
+            }
+        } catch (e) {
+            console.error("Security processing failed:", e);
+        }
+
+        jsonResult = JSON.stringify(processedValues, null, 2);
     }
 
     function addListItem(fieldName: string, subFields?: RequestDataField[]) {
@@ -51,6 +156,78 @@
         requestValues[fieldName] = requestValues[fieldName].filter(
             (_: any, i: number) => i !== index,
         );
+    }
+
+    function getOptions(field: RequestDataField) {
+        if (!endpoint || !field.name) return [];
+
+        const options: { value: string; label: string; source: string }[] = [];
+        const app = endpoint.application;
+        const service = endpoint.scope.service;
+
+        // 1. Global Parameters check
+        $settingsStore.globalParameters.forEach((param) => {
+            if (param.application === app && param.key === field.name) {
+                // Check service match (empty service means all services in GlobalParam??
+                // Wait, globalParam.service is string[]. If empty, it applies to all?
+                // Or if it includes our service.)
+                const isServiceMatch =
+                    !param.service ||
+                    param.service.length === 0 ||
+                    (service && param.service.includes(service));
+
+                if (isServiceMatch) {
+                    options.push({
+                        value: param.value,
+                        label: `${param.value} (Global)`,
+                        source: "Global",
+                    });
+                }
+            }
+        });
+
+        // 2. Parameter Options check
+        $settingsStore.parameterOptions.forEach((opt) => {
+            if (opt.application === app && opt.name === field.name) {
+                const isServiceMatch =
+                    !opt.service ||
+                    opt.service.length === 0 ||
+                    (service && opt.service.includes(service));
+
+                if (isServiceMatch) {
+                    // This param has a list of values
+                    opt.options.forEach((co) => {
+                        options.push({
+                            value: co.value,
+                            label: `${co.value} (${co.code})`,
+                            source: "Option",
+                        });
+                    });
+                }
+            }
+        });
+
+        // 3. MID Context check (Only for 'mid' field)
+        if (field.name === "mid") {
+            $settingsStore.midContexts.forEach((ctx) => {
+                if (ctx.application === app) {
+                    const isServiceMatch =
+                        !ctx.service ||
+                        ctx.service.length === 0 ||
+                        (service && ctx.service.includes(service));
+
+                    if (isServiceMatch) {
+                        options.push({
+                            value: ctx.mid,
+                            label: `${ctx.mid}`,
+                            source: "MID",
+                        });
+                    }
+                }
+            });
+        }
+
+        return options;
     }
 </script>
 
@@ -161,54 +338,182 @@
                     <option value={false}>false</option>
                 </select>
             {:else}
-                <input
-                    id={path}
-                    type={field.type === "number" ? "number" : "text"}
-                    bind:value={values[field.name]}
-                    placeholder={field.description || `Enter ${field.name}`}
-                    class="w-full px-3 py-2 text-sm font-normal rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-slate-400 placeholder:font-normal"
-                />
+                {@const options = getOptions(field)}
+                {#if options.length > 0}
+                    <div class="relative w-full param-dropdown-container">
+                        <input
+                            id={path}
+                            type={field.type === "number" ? "number" : "text"}
+                            bind:value={values[field.name]}
+                            placeholder={field.description ||
+                                `Enter ${field.name}`}
+                            onfocus={() => (activeDropdownPath = path)}
+                            class="w-full pl-3 pr-10 py-2 text-sm font-normal rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-slate-400 placeholder:font-normal"
+                        />
+                        <button
+                            type="button"
+                            class="absolute right-0 top-0 bottom-0 px-3 text-slate-400 hover:text-primary transition-colors flex items-center"
+                            onclick={() =>
+                                (activeDropdownPath =
+                                    activeDropdownPath === path ? null : path)}
+                        >
+                            <ChevronDown
+                                size={14}
+                                class="transition-transform duration-200 {activeDropdownPath ===
+                                path
+                                    ? 'rotate-180'
+                                    : ''}"
+                            />
+                        </button>
+
+                        {#if activeDropdownPath === path}
+                            <div
+                                transition:slide={{ duration: 200, axis: "y" }}
+                                class="absolute right-0 top-full mt-1 z-50 w-full min-w-[200px] max-h-[200px] overflow-y-auto rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-slate-900 shadow-xl"
+                            >
+                                {#each options as opt}
+                                    <button
+                                        type="button"
+                                        class="w-full px-4 py-2.5 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-between group"
+                                        onclick={() => {
+                                            values[field.name] = opt.value;
+                                            activeDropdownPath = null;
+                                        }}
+                                    >
+                                        <div class="flex flex-col gap-0.5">
+                                            <span
+                                                class="font-medium text-slate-700 dark:text-slate-200 group-hover:text-primary dark:group-hover:text-primary transition-colors"
+                                            >
+                                                {opt.value}
+                                            </span>
+                                            <span
+                                                class="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider"
+                                            >
+                                                {opt.source}
+                                                {opt.source === "Option"
+                                                    ? `• ${opt.label.split("(")[1].replace(")", "")}`
+                                                    : ""}
+                                            </span>
+                                        </div>
+                                        {#if values[field.name] === opt.value}
+                                            <Check
+                                                size={14}
+                                                class="text-primary"
+                                            />
+                                        {/if}
+                                    </button>
+                                {/each}
+                            </div>
+                        {/if}
+                    </div>
+                {:else}
+                    <input
+                        id={path}
+                        type={field.type === "number" ? "number" : "text"}
+                        bind:value={values[field.name]}
+                        placeholder={field.description || `Enter ${field.name}`}
+                        class="w-full px-3 py-2 text-sm font-normal rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-slate-400 placeholder:font-normal"
+                    />
+                {/if}
             {/if}
         </td>
     </tr>
 {/snippet}
 
-<Modal bind:isOpen title="Execute Endpoint" width="max-w-4xl">
+<svelte:window onclick={handleOutsideClick} />
+
+<Modal
+    bind:isOpen
+    title="Execute Endpoint"
+    width="max-w-4xl"
+    bodyClass="grid grid-rows-[auto_1fr] max-h-[70vh] overflow-hidden text-base font-medium"
+>
     {#if endpoint}
-        <div class="flex flex-col gap-6">
-            <!-- Header Info -->
-            <div
-                class="p-4 bg-slate-50 dark:bg-card-dark rounded-lg border border-slate-200 dark:border-border-dark flex flex-col gap-2"
-            >
+        <!-- Fixed Header Info -->
+        <!-- Fixed Header Info -->
+        <div
+            class="p-5 bg-slate-50 dark:bg-card-dark border-b border-slate-200 dark:border-border-dark shadow-sm z-10 flex justify-between items-start gap-4"
+        >
+            <div class="flex flex-col gap-3 flex-1 min-w-0">
+                <!-- Row 1: App & Method -->
                 <div class="flex items-center gap-2">
                     <span
-                        class="px-2 py-1 rounded text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                        class="px-2 py-0.5 rounded text-[11px] font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
                     >
                         {endpoint.application}
                     </span>
                     <span
-                        class="px-2 py-1 rounded text-xs font-bold bg-slate-100 dark:bg-background-dark text-slate-700 dark:text-slate-300"
+                        class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
                     >
                         {endpoint.method}
                     </span>
-                    <h3
-                        class="font-semibold text-lg text-slate-900 dark:text-white"
-                    >
-                        {endpoint.name}
-                    </h3>
                 </div>
-                <code
-                    class="font-mono text-sm text-slate-600 dark:text-slate-400 break-all"
+
+                <!-- Row 2: Name -->
+                <h3
+                    class="font-bold text-xl text-slate-900 dark:text-white leading-tight"
+                >
+                    {endpoint.name}
+                </h3>
+
+                <!-- Row 3: Request Specs -->
+                <div class="flex items-center gap-3 text-sm">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-slate-500 dark:text-slate-400 text-xs"
+                            >Type</span
+                        >
+                        <span
+                            class="px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                        >
+                            {endpoint.requestType}
+                        </span>
+                    </div>
+
+                    {#if endpoint.config.contentType}
+                        <div
+                            class="w-px h-3 bg-slate-300 dark:bg-slate-700 mx-1"
+                        ></div>
+                        <div class="flex items-center gap-1.5">
+                            <span
+                                class="text-slate-500 dark:text-slate-400 text-xs"
+                                >Content-Type</span
+                            >
+                            <span
+                                class="px-1.5 py-0.5 rounded text-xs font-semibold bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+                            >
+                                {endpoint.config.contentType}
+                            </span>
+                        </div>
+                    {/if}
+                </div>
+
+                <!-- Row 4: URI -->
+                <div
+                    class="mt-1 px-3 py-2 bg-white dark:bg-slate-950/50 rounded border border-slate-200 dark:border-slate-800 font-mono text-xs text-slate-600 dark:text-slate-400 break-all w-full"
                 >
                     {endpoint.uri}
-                </code>
+                </div>
             </div>
 
+            <!-- Execute Button -->
+            <button
+                onclick={handleExecute}
+                class="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-lg shadow-sm shadow-green-600/20 transition-all hover:scale-105 active:scale-95 shrink-0"
+            >
+                <Play class="w-4 h-4" fill="currentColor" />
+                Execute
+            </button>
+        </div>
+
+        <!-- Scrollable Body -->
+        <div
+            class="overflow-y-auto min-h-0 p-6 flex flex-col gap-6 bg-white dark:bg-slate-900"
+        >
             <!-- Data Input Form -->
-            <div class="flex flex-col gap-4 max-h-[60vh] overflow-y-auto pr-2">
+            <div class="flex flex-col gap-4">
                 {#if endpoint.requestData && endpoint.requestData.length > 0}
                     <div
-                        class="rounded-lg border border-slate-200 dark:border-border-dark overflow-hidden"
+                        class="rounded-lg border border-slate-200 dark:border-border-dark"
                     >
                         <table
                             class="w-full text-left border-collapse bg-white dark:bg-slate-950/50"
@@ -248,24 +553,38 @@
                 {/if}
             </div>
 
-            <!-- Actions -->
-            <div
-                class="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-border-dark/50"
-            >
-                <button
-                    onclick={() => (isOpen = false)}
-                    class="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+            <!-- Signature Source Display -->
+            {#if signatureRawString}
+                <div
+                    class="rounded-lg border border-slate-200 dark:border-border-dark overflow-hidden shrink-0"
                 >
-                    Cancel
-                </button>
-                <button
-                    onclick={handleExecute}
-                    class="flex items-center gap-2 px-5 py-2 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-lg shadow-sm shadow-green-600/20 transition-all"
+                    <div
+                        class="px-4 py-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-border-dark font-medium text-sm text-slate-700 dark:text-slate-300"
+                    >
+                        Signature Source String
+                    </div>
+                    <div
+                        class="p-4 bg-white dark:bg-slate-950/50 font-mono text-sm text-slate-600 dark:text-slate-400 break-all"
+                    >
+                        {signatureRawString}
+                    </div>
+                </div>
+            {/if}
+
+            <!-- Execution Result -->
+            {#if jsonResult}
+                <div
+                    class="rounded-lg border border-slate-200 dark:border-border-dark overflow-hidden shrink-0"
                 >
-                    <Play class="w-4 h-4" fill="currentColor" />
-                    Execute
-                </button>
-            </div>
+                    <div
+                        class="px-4 py-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-border-dark font-medium text-sm text-slate-700 dark:text-slate-300"
+                    >
+                        Execution Result
+                    </div>
+                    <pre
+                        class="p-4 bg-slate-900 text-slate-50 overflow-x-auto text-sm font-mono scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">{jsonResult}</pre>
+                </div>
+            {/if}
         </div>
     {/if}
 </Modal>

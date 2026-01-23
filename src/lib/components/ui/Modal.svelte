@@ -8,6 +8,7 @@
         children?: import("svelte").Snippet;
         width?: string;
         onClose?: () => void;
+        bodyClass?: string;
     }
 
     let {
@@ -16,6 +17,7 @@
         children,
         width = "max-w-md",
         onClose,
+        bodyClass = "p-6 text-text-message text-base font-medium max-h-[80vh] overflow-y-auto",
     }: Props = $props();
 
     function close() {
@@ -66,9 +68,7 @@
             </div>
 
             <!-- Body -->
-            <div
-                class="p-6 text-text-message text-base font-medium max-h-[80vh] overflow-y-auto"
-            >
+            <div class={bodyClass}>
                 {@render children?.()}
             </div>
         </div>

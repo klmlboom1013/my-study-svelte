@@ -18,9 +18,28 @@ export interface ProfileData {
         role: string;
     };
     myApplications: {
-        id: string; // Internal ID for UI rendering keys, maybe keep it but output structure requires appName/desc
+        id: string; // Internal ID for UI rendering keys
         appName: string;
         description: string;
+        useServiceDistinction?: boolean;
+        domains?: {
+            dev?: string;
+            stg?: string;
+            pGlb?: string;
+            pKs?: string;
+            pFc?: string;
+        };
+        services?: {
+            id: string;
+            name: string; // e.g. wpaystd
+            domains: {
+                dev?: string;
+                stg?: string;
+                pGlb?: string;
+                pKs?: string;
+                pFc?: string;
+            };
+        }[];
     }[];
     [key: string]: any; // Allow legacy properties during migration
 }

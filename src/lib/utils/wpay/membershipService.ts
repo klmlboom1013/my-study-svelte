@@ -25,8 +25,8 @@ export async function searchWpayMember(params: MembershipSearchParams): Promise<
     // Encrypt Data
     // userId: "로그인 페이지에서 입력한 Member ID 또는 ... 빈 값인 경우 wpayTestUser01" (Handled by caller)
     // ci: "빈 값으로 세팅"
-    const encUserId = encryptSeed(userId, keys.seedKey, keys.seedIV);
-    const encHNum = encryptSeed(hNum, keys.seedKey, keys.seedIV);
+    const encUserId = userId ? encryptSeed(userId, keys.seedKey, keys.seedIV) : "";
+    const encHNum = hNum ? encryptSeed(hNum, keys.seedKey, keys.seedIV) : "";
     const encCi = ""; // Empty string encrypted? No, "빈 값으로 세팅" usually means empty string.
     // And guide says "Encrypt: O".
     // If value is empty, do we encrypt it?
