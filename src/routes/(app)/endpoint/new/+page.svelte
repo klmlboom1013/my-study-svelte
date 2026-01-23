@@ -71,7 +71,7 @@
     let contentType = $state("application/json");
     let charset = $state("UTF-8");
 
-    let prevRequestType = $state(requestType);
+    let prevRequestType = $state<RequestType>("REST");
 
     // Default Content-Type logic
     $effect(() => {

@@ -1,10 +1,16 @@
 <script lang="ts">
-    import { settingsStore } from "$lib/stores/settingsStore";
     import { page } from "$app/stores";
     import { appStateStore } from "$lib/stores/appStateStore";
     import { profileStore } from "$lib/stores/profileStore";
     import { authStore, loginWithGoogle } from "$lib/services/authService";
     import { driveService } from "$lib/services/driveService";
+    import {
+        settingsStore,
+        type GlobalParameter,
+        type ParameterOption,
+        type MidContext,
+        type SiteContext,
+    } from "$lib/stores/settingsStore";
     import { SERVICE_OPTIONS } from "$lib/constants/wpayServerType";
     import { onMount, tick } from "svelte";
     import { get } from "svelte/store";
@@ -12,8 +18,9 @@
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
     import MultiSelectBox from "$lib/components/ui/MultiSelectBox.svelte";
 
-    let activeCategory = $state("endpoint"); // 'endpoint', 'interface'
+    let activeCategory = $state("endpoint"); // 'endpoint', 'interface', 'application'
     let activeSubTab = $state("global"); // for endpoint: 'global', 'options', 'mid'
+    let activeAppSubTab = $state("settings"); // for application: 'settings', 'site'
 
     // Form states
     let globalParam = $state({
@@ -46,6 +53,19 @@
     });
     let selectedMidService = $state<string[]>([]);
     let listFilterMidServiceOptions = $state("");
+
+    // --- Site Context State ---
+    let siteContext = $state<{
+        application: string;
+        service: string;
+    }>({
+        application: "WPAY",
+        service: "",
+    });
+
+    let newSiteName = $state("");
+    let addingSiteToContextId = $state<string | null>(null);
+    let editingContextId = $state<string | null>(null);
 
     // Temporary state for adding options to a new parameter option set
     let currentOptions = $state<{ code: string; value: string }[]>([]);
@@ -700,6 +720,57 @@
         { name: "Smart", description: "SMS Payment Link" },
         { name: "sbuckwpay", description: "Starbucks Simple Payment" },
     ];
+    function addSiteContext() {
+        if (!siteContext.service) return;
+
+        settingsStore.addSiteContext({
+            application: "WPAY",
+            service: siteContext.service,
+            sites: [],
+        });
+
+        // Reset
+        siteContext.service = "";
+    }
+
+    function removeSiteContext(id: string) {
+        showAlert(
+            "Delete Site Context",
+            "Are you sure you want to delete this site context?",
+            "confirm",
+            () => {
+                settingsStore.removeSiteContext(id);
+            },
+        );
+    }
+
+    function addSite(contextId: string) {
+        if (!newSiteName) return;
+        settingsStore.addSiteToContext(contextId, newSiteName);
+        newSiteName = "";
+        addingSiteToContextId = null;
+    }
+
+    function removeSite(contextId: string, site: string) {
+        showAlert("Remove Site", `Remove site '${site}'?`, "confirm", () => {
+            settingsStore.removeSiteFromContext(contextId, site);
+        });
+    }
+
+    let filteredSiteContexts = $derived.by(() => {
+        const contexts = $settingsStore.endpoint_parameters.siteContexts || [];
+        // Currently Application is fixed to WPAY for this feature
+        return contexts;
+    });
+
+    // Derived: Services available for selection in Site Context (Filtered by WPAY)
+    let availableServicesForSiteContext = $derived.by(() => {
+        const wpayApp = $settingsStore.applications?.find(
+            (app) => app.appName === "WPAY",
+        );
+        if (!wpayApp || !wpayApp.services) return [];
+        return wpayApp.services.map((s) => s.name);
+    });
 </script>
 
 <div class="max-w-screen-2xl mx-auto py-8 px-4">
@@ -1193,7 +1264,10 @@
                                                     >{opt.code}</span
                                                 >: {opt.value}
                                                 <span
-                                                    class="ml-1 hover:text-red-500 p-0.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                                                    role="button"
+                                                    tabindex="0"
+                                                    aria-label="Remove option"
+                                                    class="ml-1 hover:text-red-500 p-0.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors flex items-center justify-center outline-none focus:ring-2 focus:ring-red-500/50"
                                                     onclick={(e) => {
                                                         e.stopPropagation();
                                                         if (
@@ -1207,7 +1281,6 @@
                                                             i <
                                                                 editingOptionIndex
                                                         ) {
-                                                            // Adjust index if deleting an item before current edit
                                                             editingOptionIndex--;
                                                         }
                                                         currentOptions =
@@ -1215,6 +1288,34 @@
                                                                 (_, idx) =>
                                                                     idx !== i,
                                                             );
+                                                    }}
+                                                    onkeydown={(e) => {
+                                                        if (
+                                                            e.key === "Enter" ||
+                                                            e.key === " "
+                                                        ) {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            if (
+                                                                editingOptionIndex ===
+                                                                i
+                                                            ) {
+                                                                cancelOptionValueEdit();
+                                                            } else if (
+                                                                editingOptionIndex !==
+                                                                    null &&
+                                                                i <
+                                                                    editingOptionIndex
+                                                            ) {
+                                                                editingOptionIndex--;
+                                                            }
+                                                            currentOptions =
+                                                                currentOptions.filter(
+                                                                    (_, idx) =>
+                                                                        idx !==
+                                                                        i,
+                                                                );
+                                                        }
                                                     }}>×</span
                                                 >
                                             </button>
@@ -1752,380 +1853,603 @@
                     </section>
                 </div>
             {:else if activeCategory === "application"}
-                <!-- Application Settings Content -->
-                <div class="p-6">
-                    <h2
-                        class="text-xl font-bold text-slate-900 dark:text-white mb-6"
-                    >
-                        Application Settings
-                    </h2>
-
-                    <!-- Add/Edit Form -->
-                    <div
-                        class="mb-8 bg-slate-50 dark:bg-background-dark p-6 rounded-xl border border-slate-200 dark:border-border-dark"
-                    >
-                        <h3
-                            class="text-base font-bold text-slate-800 dark:text-white mb-4"
+                <div class="border-b border-slate-200 dark:border-border-dark">
+                    <div class="flex overflow-x-auto">
+                        <button
+                            class="px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap {activeAppSubTab ===
+                            'settings'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}"
+                            onclick={() => (activeAppSubTab = "settings")}
                         >
-                            {editingAppId
-                                ? "Edit Application"
-                                : "Add Application"}
-                        </h3>
-                        <div class="flex flex-col gap-4">
+                            Application Settings
+                        </button>
+                        <button
+                            class="px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap {activeAppSubTab ===
+                            'site'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}"
+                            onclick={() => (activeAppSubTab = "site")}
+                        >
+                            Site Context
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Application Settings Content -->
+                {#if activeAppSubTab === "settings"}
+                    <div class="p-6">
+                        <h2
+                            class="text-xl font-bold text-slate-900 dark:text-white mb-6"
+                        >
+                            Application Settings
+                        </h2>
+
+                        <!-- Add/Edit Form -->
+                        <div
+                            class="mb-8 bg-slate-50 dark:bg-background-dark p-6 rounded-xl border border-slate-200 dark:border-border-dark"
+                        >
+                            <h3
+                                class="text-base font-bold text-slate-800 dark:text-white mb-4"
+                            >
+                                {editingAppId
+                                    ? "Edit Application"
+                                    : "Add Application"}
+                            </h3>
+                            <div class="flex flex-col gap-4">
+                                <div
+                                    class="flex flex-col md:flex-row gap-4 items-start"
+                                >
+                                    <label
+                                        class="flex flex-col gap-1 w-full md:w-1/3"
+                                    >
+                                        <span
+                                            class="text-xs font-semibold text-slate-500 uppercase"
+                                            >Application Name</span
+                                        >
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. WPAY"
+                                            list="app-suggestions"
+                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-medium"
+                                            bind:value={appForm.appName}
+                                        />
+                                        <datalist id="app-suggestions">
+                                            {#each APP_OPTIONS as opt}
+                                                <option value={opt.name}
+                                                    >{opt.description}</option
+                                                >
+                                            {/each}
+                                        </datalist>
+                                    </label>
+                                    <label class="flex flex-col gap-1 flex-1">
+                                        <span
+                                            class="text-xs font-semibold text-slate-500 uppercase"
+                                            >Description</span
+                                        >
+                                        <input
+                                            type="text"
+                                            placeholder="Brief description"
+                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
+                                            bind:value={appForm.description}
+                                        />
+                                    </label>
+                                </div>
+
+                                <!-- Service Distinction Toggle -->
+                                <div>
+                                    <label
+                                        class="inline-flex items-center cursor-pointer"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            class="sr-only peer"
+                                            bind:checked={
+                                                appForm.useServiceDistinction
+                                            }
+                                        />
+                                        <div
+                                            class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
+                                        ></div>
+                                        <span
+                                            class="ms-3 text-sm font-medium text-slate-700 dark:text-slate-300"
+                                            >Use Service Distinction (Manage
+                                            Multiple Services)</span
+                                        >
+                                    </label>
+                                </div>
+
+                                {#if appForm.useServiceDistinction}
+                                    <!-- Services Management List -->
+                                    <div class="flex flex-col gap-4">
+                                        <div
+                                            class="flex justify-between items-center"
+                                        >
+                                            <h4
+                                                class="text-sm font-semibold text-slate-700 dark:text-slate-300"
+                                            >
+                                                Services List
+                                            </h4>
+                                            <button
+                                                class="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                                                onclick={addAppService}
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-[16px]"
+                                                    >add_circle</span
+                                                >
+                                                Add Service
+                                            </button>
+                                        </div>
+
+                                        {#if appForm.services.length === 0}
+                                            <div
+                                                class="p-4 rounded-lg bg-orange-50 border border-orange-100 text-sm text-orange-600 dark:bg-orange-900/10 dark:border-orange-900/30 flex gap-2"
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-[20px]"
+                                                    >warning</span
+                                                >
+                                                <span
+                                                    >Please add at least one
+                                                    service.</span
+                                                >
+                                            </div>
+                                        {/if}
+
+                                        {#each appForm.services as service, sIdx}
+                                            <div
+                                                class="bg-white dark:bg-card-dark p-4 rounded-lg border border-slate-200 dark:border-slate-700 relative group"
+                                            >
+                                                <button
+                                                    class="absolute top-2 right-2 text-slate-400 hover:text-red-500 transition-colors"
+                                                    onclick={() =>
+                                                        removeAppService(
+                                                            service.id,
+                                                        )}
+                                                    tabindex="-1"
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined text-[18px]"
+                                                        >close</span
+                                                    >
+                                                </button>
+
+                                                <div class="mb-3 w-1/3">
+                                                    <label
+                                                        for="service-name-{service.id}"
+                                                        class="block text-xs font-semibold text-slate-500 uppercase mb-1"
+                                                        >Service Name</label
+                                                    >
+                                                    <input
+                                                        id="service-name-{service.id}"
+                                                        type="text"
+                                                        placeholder="e.g. wpaystd"
+                                                        class="w-full px-2 py-1.5 text-sm border border-slate-300 dark:border-slate-700 rounded bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:outline-none focus:border-primary"
+                                                        bind:value={
+                                                            service.name
+                                                        }
+                                                    />
+                                                </div>
+
+                                                <div
+                                                    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3"
+                                                >
+                                                    {#each ["dev", "stg", "pGlb", "pKs", "pFc"] as domainKey}
+                                                        <div
+                                                            class="flex flex-col gap-1"
+                                                        >
+                                                            <span
+                                                                class="text-[10px] font-bold text-slate-500 uppercase"
+                                                                >{domainKey}</span
+                                                            >
+                                                            <input
+                                                                type="text"
+                                                                placeholder={`https://${domainKey}...`}
+                                                                class="px-2 py-1.5 text-xs border border-slate-300 dark:border-slate-700 rounded bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:outline-none focus:border-primary"
+                                                                bind:value={
+                                                                    (
+                                                                        service.domains as any
+                                                                    )[domainKey]
+                                                                }
+                                                            />
+                                                        </div>
+                                                    {/each}
+                                                </div>
+                                            </div>
+                                        {/each}
+                                    </div>
+                                {:else}
+                                    <!-- Single App Domains -->
+                                    <div
+                                        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 bg-white dark:bg-card-dark p-4 rounded-lg border border-slate-200 dark:border-slate-700"
+                                    >
+                                        {#each ["dev", "stg", "pGlb", "pKs", "pFc"] as domainKey}
+                                            <div class="flex flex-col gap-1">
+                                                <span
+                                                    class="text-[10px] font-bold text-slate-500 uppercase"
+                                                    >{domainKey}</span
+                                                >
+                                                <input
+                                                    type="text"
+                                                    placeholder={`https://${domainKey}...`}
+                                                    class="px-2 py-1.5 text-xs border border-slate-300 dark:border-slate-700 rounded bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:outline-none focus:border-primary"
+                                                    bind:value={
+                                                        (
+                                                            appForm.domains as any
+                                                        )[domainKey]
+                                                    }
+                                                />
+                                            </div>
+                                        {/each}
+                                    </div>
+                                {/if}
+
+                                <div
+                                    class="flex items-center justify-end gap-2 mt-2"
+                                >
+                                    {#if editingAppId}
+                                        <button
+                                            class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
+                                            onclick={cancelAppEdit}
+                                            >Cancel</button
+                                        >
+                                    {/if}
+                                    <button
+                                        class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                        onclick={saveApplication}
+                                        disabled={!appForm.appName}
+                                    >
+                                        {editingAppId
+                                            ? "Update App"
+                                            : "Add App"}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- App List -->
+                        <div
+                            class="overflow-x-auto rounded-lg border border-slate-200 dark:border-border-dark"
+                        >
+                            <table class="w-full text-sm text-left">
+                                <thead
+                                    class="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-background-dark border-b border-slate-200 dark:border-border-dark"
+                                >
+                                    <tr>
+                                        <th class="px-6 py-4">Application</th>
+                                        <th class="px-6 py-4">Setting</th>
+                                        <th class="px-6 py-4 text-right"
+                                            >Action</th
+                                        >
+                                    </tr>
+                                </thead>
+                                <tbody
+                                    class="divide-y divide-slate-100 dark:divide-slate-800"
+                                >
+                                    {#if $settingsStore.applications && $settingsStore.applications.length > 0}
+                                        {#each $settingsStore.applications as app}
+                                            <tr
+                                                class="hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                                            >
+                                                <td class="px-6 py-4">
+                                                    <div
+                                                        class="flex flex-col gap-0.5"
+                                                    >
+                                                        <span
+                                                            class="font-medium text-slate-900 dark:text-white"
+                                                            >{app.appName}</span
+                                                        >
+                                                        {#if app.description}
+                                                            <span
+                                                                class="text-xs text-slate-500"
+                                                                >{app.description}</span
+                                                            >
+                                                        {/if}
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4">
+                                                    {#if app.useServiceDistinction}
+                                                        <div
+                                                            class="flex flex-col gap-1"
+                                                        >
+                                                            <span
+                                                                class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 w-fit"
+                                                            >
+                                                                Service
+                                                                Distinction ON
+                                                            </span>
+                                                            {#if app.services && app.services.length > 0}
+                                                                <div
+                                                                    class="flex flex-wrap gap-1 mt-1"
+                                                                >
+                                                                    {#each app.services as svc}
+                                                                        <span
+                                                                            class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-[10px] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600"
+                                                                        >
+                                                                            {svc.name}
+                                                                        </span>
+                                                                    {/each}
+                                                                </div>
+                                                            {:else}
+                                                                <span
+                                                                    class="text-[10px] text-red-500"
+                                                                    >(No
+                                                                    services
+                                                                    configured)</span
+                                                                >
+                                                            {/if}
+                                                        </div>
+                                                    {:else}
+                                                        <div
+                                                            class="flex flex-col gap-1"
+                                                        >
+                                                            <span
+                                                                class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 w-fit"
+                                                            >
+                                                                Global Only
+                                                            </span>
+                                                            <div
+                                                                class="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] text-slate-500"
+                                                            >
+                                                                <span
+                                                                    >DEV: {app
+                                                                        .domains
+                                                                        ?.dev ||
+                                                                        "-"}</span
+                                                                >
+                                                                <span
+                                                                    >STG: {app
+                                                                        .domains
+                                                                        ?.stg ||
+                                                                        "-"}</span
+                                                                >
+                                                                <span
+                                                                    >GLB: {app
+                                                                        .domains
+                                                                        ?.pGlb ||
+                                                                        "-"}</span
+                                                                >
+                                                            </div>
+                                                        </div>
+                                                    {/if}
+                                                </td>
+                                                <td
+                                                    class="px-6 py-4 text-right"
+                                                >
+                                                    <div
+                                                        class="flex justify-end gap-1"
+                                                    >
+                                                        <button
+                                                            class="p-1 text-slate-400 hover:text-blue-500 transition-colors"
+                                                            onclick={() =>
+                                                                editApplication(
+                                                                    app,
+                                                                )}
+                                                        >
+                                                            <span
+                                                                class="material-symbols-outlined text-[18px]"
+                                                                >edit</span
+                                                            >
+                                                        </button>
+                                                        <button
+                                                            class="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                                                            onclick={() =>
+                                                                deleteApplication(
+                                                                    app.id,
+                                                                )}
+                                                        >
+                                                            <span
+                                                                class="material-symbols-outlined text-[18px]"
+                                                                >delete</span
+                                                            >
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        {/each}
+                                    {:else}
+                                        <tr>
+                                            <td
+                                                colspan="3"
+                                                class="px-6 py-8 text-center text-slate-500 dark:text-slate-400"
+                                            >
+                                                No applications configured. Add
+                                                one above.
+                                            </td>
+                                        </tr>
+                                    {/if}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                {/if}
+
+                {#if activeAppSubTab === "site"}
+                    <div class="p-6">
+                        <div
+                            class="mb-8 bg-slate-50 dark:bg-background-dark p-6 rounded-xl border border-slate-200 dark:border-border-dark"
+                        >
+                            <h3
+                                class="text-base font-bold text-slate-800 dark:text-white mb-4"
+                            >
+                                Add Site Context
+                            </h3>
                             <div
-                                class="flex flex-col md:flex-row gap-4 items-start"
+                                class="flex flex-col md:flex-row gap-4 items-end"
                             >
                                 <label
                                     class="flex flex-col gap-1 w-full md:w-1/3"
                                 >
                                     <span
                                         class="text-xs font-semibold text-slate-500 uppercase"
-                                        >Application Name</span
+                                        >Application</span
                                     >
-                                    <input
-                                        type="text"
-                                        placeholder="e.g. WPAY"
-                                        list="app-suggestions"
-                                        class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-medium"
-                                        bind:value={appForm.appName}
-                                    />
-                                    <datalist id="app-suggestions">
-                                        {#each APP_OPTIONS as opt}
-                                            <option value={opt.name}
-                                                >{opt.description}</option
-                                            >
-                                        {/each}
-                                    </datalist>
+                                    <select
+                                        class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 cursor-not-allowed"
+                                        disabled
+                                        value="WPAY"
+                                    >
+                                        <option value="WPAY">WPAY</option>
+                                    </select>
                                 </label>
-                                <label class="flex flex-col gap-1 flex-1">
+                                <label
+                                    class="flex flex-col gap-1 w-full md:w-1/3"
+                                >
                                     <span
                                         class="text-xs font-semibold text-slate-500 uppercase"
-                                        >Description</span
+                                        >Service</span
                                     >
-                                    <input
-                                        type="text"
-                                        placeholder="Brief description"
-                                        class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
-                                        bind:value={appForm.description}
-                                    />
-                                </label>
-                            </div>
-
-                            <!-- Service Distinction Toggle -->
-                            <div>
-                                <label
-                                    class="inline-flex items-center cursor-pointer"
-                                >
-                                    <input
-                                        type="checkbox"
-                                        class="sr-only peer"
-                                        bind:checked={
-                                            appForm.useServiceDistinction
-                                        }
-                                    />
-                                    <div
-                                        class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
-                                    ></div>
-                                    <span
-                                        class="ms-3 text-sm font-medium text-slate-700 dark:text-slate-300"
-                                        >Use Service Distinction (Manage
-                                        Multiple Services)</span
+                                    <select
+                                        class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
+                                        bind:value={siteContext.service}
                                     >
-                                </label>
-                            </div>
-
-                            {#if appForm.useServiceDistinction}
-                                <!-- Services Management List -->
-                                <div class="flex flex-col gap-4">
-                                    <div
-                                        class="flex justify-between items-center"
-                                    >
-                                        <h4
-                                            class="text-sm font-semibold text-slate-700 dark:text-slate-300"
+                                        <option value="" disabled selected
+                                            >Select Service</option
                                         >
-                                            Services List
-                                        </h4>
+                                        {#each availableServicesForSiteContext as s}
+                                            <option value={s}>{s}</option>
+                                        {/each}
+                                    </select>
+                                </label>
+                                <div class="w-full md:w-auto">
+                                    <button
+                                        class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto"
+                                        onclick={addSiteContext}
+                                        disabled={!siteContext.service}
+                                    >
+                                        Add Context
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                        >
+                            {#each filteredSiteContexts as ctx}
+                                <div
+                                    class="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-border-dark p-5 hover:shadow-md transition-shadow group relative flex flex-col h-full"
+                                >
+                                    <div
+                                        class="flex justify-between items-start mb-3"
+                                    >
+                                        <div class="flex flex-col gap-1">
+                                            <span
+                                                class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 w-fit"
+                                            >
+                                                {ctx.application}
+                                            </span>
+                                            <h4
+                                                class="font-bold text-lg text-slate-900 dark:text-white"
+                                            >
+                                                {ctx.service}
+                                            </h4>
+                                        </div>
                                         <button
-                                            class="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-                                            onclick={addAppService}
+                                            class="p-1 text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                            onclick={() =>
+                                                removeSiteContext(ctx.id)}
+                                            title="Delete Site Context"
                                         >
                                             <span
-                                                class="material-symbols-outlined text-[16px]"
-                                                >add_circle</span
+                                                class="material-symbols-outlined text-[18px]"
+                                                >delete</span
                                             >
-                                            Add Service
                                         </button>
                                     </div>
 
-                                    {#if appForm.services.length === 0}
+                                    <div
+                                        class="flex-1 bg-slate-50 dark:bg-slate-900/50 rounded-lg p-3 flex flex-col gap-2"
+                                    >
                                         <div
-                                            class="p-4 rounded-lg bg-orange-50 border border-orange-100 text-sm text-orange-600 dark:bg-orange-900/10 dark:border-orange-900/30 flex gap-2"
+                                            class="text-xs font-semibold text-slate-500 uppercase mb-1 flex justify-between items-center"
                                         >
+                                            <span>Sites</span>
                                             <span
-                                                class="material-symbols-outlined text-[20px]"
-                                                >warning</span
-                                            >
-                                            <span
-                                                >Please add at least one
-                                                service.</span
+                                                class="bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-[10px] text-slate-600 dark:text-slate-300"
+                                                >{ctx.sites.length}</span
                                             >
                                         </div>
-                                    {/if}
 
-                                    {#each appForm.services as service, sIdx}
-                                        <div
-                                            class="bg-white dark:bg-card-dark p-4 rounded-lg border border-slate-200 dark:border-slate-700 relative group"
-                                        >
-                                            <button
-                                                class="absolute top-2 right-2 text-slate-400 hover:text-red-500 transition-colors"
-                                                onclick={() =>
-                                                    removeAppService(
-                                                        service.id,
-                                                    )}
-                                                tabindex="-1"
-                                            >
+                                        <div class="flex flex-wrap gap-2">
+                                            {#each ctx.sites as site}
                                                 <span
-                                                    class="material-symbols-outlined text-[18px]"
-                                                    >close</span
+                                                    class="inline-flex items-center gap-1 px-2 py-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 shadow-sm group/site"
                                                 >
-                                            </button>
+                                                    {site}
+                                                    <button
+                                                        onclick={() =>
+                                                            removeSite(
+                                                                ctx.id,
+                                                                site,
+                                                            )}
+                                                        class="hover:text-red-500 transition-colors hidden group-hover/site:block"
+                                                        aria-label="Remove site"
+                                                    >
+                                                        <span
+                                                            class="material-symbols-outlined text-[12px] font-bold"
+                                                            >close</span
+                                                        >
+                                                    </button>
+                                                </span>
+                                            {/each}
+                                        </div>
 
-                                            <div class="mb-3 w-1/3">
-                                                <label
-                                                    class="block text-xs font-semibold text-slate-500 uppercase mb-1"
-                                                    >Service Name</label
-                                                >
+                                        {#if addingSiteToContextId === ctx.id}
+                                            <div
+                                                class="mt-2 flex gap-2 animate-in fade-in zoom-in-95 duration-200"
+                                            >
                                                 <input
                                                     type="text"
-                                                    placeholder="e.g. wpaystd"
-                                                    class="w-full px-2 py-1.5 text-sm border border-slate-300 dark:border-slate-700 rounded bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:outline-none focus:border-primary"
-                                                    bind:value={service.name}
+                                                    class="flex-1 px-2 py-1 text-xs border border-slate-300 dark:border-slate-700 rounded bg-white dark:bg-slate-800 focus:outline-none focus:border-primary dark:text-white dark:placeholder-slate-400"
+                                                    placeholder="Site Name"
+                                                    bind:value={newSiteName}
+                                                    onkeydown={(e) =>
+                                                        e.key === "Enter" &&
+                                                        addSite(ctx.id)}
+                                                    autofocus
                                                 />
+                                                <button
+                                                    class="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+                                                    onclick={() =>
+                                                        addSite(ctx.id)}
+                                                >
+                                                    Add
+                                                </button>
+                                                <button
+                                                    class="px-2 py-1 bg-slate-200 text-slate-600 rounded text-xs hover:bg-slate-300"
+                                                    onclick={() => {
+                                                        addingSiteToContextId =
+                                                            null;
+                                                        newSiteName = "";
+                                                    }}
+                                                >
+                                                    Esc
+                                                </button>
                                             </div>
-
-                                            <div
-                                                class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3"
+                                        {:else}
+                                            <button
+                                                class="mt-auto w-full py-1.5 text-xs text-slate-500 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800 rounded border border-dashed border-slate-300 dark:border-slate-700 transition-colors flex items-center justify-center gap-1"
+                                                onclick={() => {
+                                                    addingSiteToContextId =
+                                                        ctx.id;
+                                                    newSiteName = "";
+                                                }}
                                             >
-                                                {#each ["dev", "stg", "pGlb", "pKs", "pFc"] as domainKey}
-                                                    <div
-                                                        class="flex flex-col gap-1"
-                                                    >
-                                                        <span
-                                                            class="text-[10px] font-bold text-slate-500 uppercase"
-                                                            >{domainKey}</span
-                                                        >
-                                                        <input
-                                                            type="text"
-                                                            placeholder={`https://${domainKey}...`}
-                                                            class="px-2 py-1.5 text-xs border border-slate-300 dark:border-slate-700 rounded bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:outline-none focus:border-primary"
-                                                            bind:value={
-                                                                (
-                                                                    service.domains as any
-                                                                )[domainKey]
-                                                            }
-                                                        />
-                                                    </div>
-                                                {/each}
-                                            </div>
-                                        </div>
-                                    {/each}
+                                                <span
+                                                    class="material-symbols-outlined text-[14px]"
+                                                    >add</span
+                                                >
+                                                Add Site
+                                            </button>
+                                        {/if}
+                                    </div>
                                 </div>
-                            {:else}
-                                <!-- Single App Domains -->
-                                <div
-                                    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 bg-white dark:bg-card-dark p-4 rounded-lg border border-slate-200 dark:border-slate-700"
-                                >
-                                    {#each ["dev", "stg", "pGlb", "pKs", "pFc"] as domainKey}
-                                        <div class="flex flex-col gap-1">
-                                            <span
-                                                class="text-[10px] font-bold text-slate-500 uppercase"
-                                                >{domainKey}</span
-                                            >
-                                            <input
-                                                type="text"
-                                                placeholder={`https://${domainKey}...`}
-                                                class="px-2 py-1.5 text-xs border border-slate-300 dark:border-slate-700 rounded bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:outline-none focus:border-primary"
-                                                bind:value={
-                                                    (appForm.domains as any)[
-                                                        domainKey
-                                                    ]
-                                                }
-                                            />
-                                        </div>
-                                    {/each}
-                                </div>
-                            {/if}
-
-                            <div
-                                class="flex items-center justify-end gap-2 mt-2"
-                            >
-                                {#if editingAppId}
-                                    <button
-                                        class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
-                                        onclick={cancelAppEdit}>Cancel</button
-                                    >
-                                {/if}
-                                <button
-                                    class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                    onclick={saveApplication}
-                                    disabled={!appForm.appName}
-                                >
-                                    {editingAppId ? "Update App" : "Add App"}
-                                </button>
-                            </div>
+                            {/each}
                         </div>
                     </div>
-
-                    <!-- App List -->
-                    <div
-                        class="overflow-x-auto rounded-lg border border-slate-200 dark:border-border-dark"
-                    >
-                        <table class="w-full text-sm text-left">
-                            <thead
-                                class="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-background-dark border-b border-slate-200 dark:border-border-dark"
-                            >
-                                <tr>
-                                    <th class="px-6 py-4">Application</th>
-                                    <th class="px-6 py-4">Setting</th>
-                                    <th class="px-6 py-4 text-right">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody
-                                class="divide-y divide-slate-100 dark:divide-slate-800"
-                            >
-                                {#if $settingsStore.applications && $settingsStore.applications.length > 0}
-                                    {#each $settingsStore.applications as app}
-                                        <tr
-                                            class="hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                                        >
-                                            <td class="px-6 py-4">
-                                                <div
-                                                    class="flex flex-col gap-0.5"
-                                                >
-                                                    <span
-                                                        class="font-medium text-slate-900 dark:text-white"
-                                                        >{app.appName}</span
-                                                    >
-                                                    {#if app.description}
-                                                        <span
-                                                            class="text-xs text-slate-500"
-                                                            >{app.description}</span
-                                                        >
-                                                    {/if}
-                                                </div>
-                                            </td>
-                                            <td class="px-6 py-4">
-                                                {#if app.useServiceDistinction}
-                                                    <div
-                                                        class="flex flex-col gap-1"
-                                                    >
-                                                        <span
-                                                            class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 w-fit"
-                                                        >
-                                                            Service Distinction
-                                                            ON
-                                                        </span>
-                                                        {#if app.services && app.services.length > 0}
-                                                            <div
-                                                                class="flex flex-wrap gap-1 mt-1"
-                                                            >
-                                                                {#each app.services as svc}
-                                                                    <span
-                                                                        class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-[10px] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600"
-                                                                    >
-                                                                        {svc.name}
-                                                                    </span>
-                                                                {/each}
-                                                            </div>
-                                                        {:else}
-                                                            <span
-                                                                class="text-[10px] text-red-500"
-                                                                >(No services
-                                                                configured)</span
-                                                            >
-                                                        {/if}
-                                                    </div>
-                                                {:else}
-                                                    <div
-                                                        class="flex flex-col gap-1"
-                                                    >
-                                                        <span
-                                                            class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 w-fit"
-                                                        >
-                                                            Global Only
-                                                        </span>
-                                                        <div
-                                                            class="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] text-slate-500"
-                                                        >
-                                                            <span
-                                                                >DEV: {app
-                                                                    .domains
-                                                                    ?.dev ||
-                                                                    "-"}</span
-                                                            >
-                                                            <span
-                                                                >STG: {app
-                                                                    .domains
-                                                                    ?.stg ||
-                                                                    "-"}</span
-                                                            >
-                                                            <span
-                                                                >GLB: {app
-                                                                    .domains
-                                                                    ?.pGlb ||
-                                                                    "-"}</span
-                                                            >
-                                                        </div>
-                                                    </div>
-                                                {/if}
-                                            </td>
-                                            <td class="px-6 py-4 text-right">
-                                                <div
-                                                    class="flex justify-end gap-1"
-                                                >
-                                                    <button
-                                                        class="p-1 text-slate-400 hover:text-blue-500 transition-colors"
-                                                        onclick={() =>
-                                                            editApplication(
-                                                                app,
-                                                            )}
-                                                    >
-                                                        <span
-                                                            class="material-symbols-outlined text-[18px]"
-                                                            >edit</span
-                                                        >
-                                                    </button>
-                                                    <button
-                                                        class="p-1 text-slate-400 hover:text-red-500 transition-colors"
-                                                        onclick={() =>
-                                                            deleteApplication(
-                                                                app.id,
-                                                            )}
-                                                    >
-                                                        <span
-                                                            class="material-symbols-outlined text-[18px]"
-                                                            >delete</span
-                                                        >
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    {/each}
-                                {:else}
-                                    <tr>
-                                        <td
-                                            colspan="3"
-                                            class="px-6 py-8 text-center text-slate-500 dark:text-slate-400"
-                                        >
-                                            No applications configured. Add one
-                                            above.
-                                        </td>
-                                    </tr>
-                                {/if}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                {/if}
             {/if}
         </main>
     </div>

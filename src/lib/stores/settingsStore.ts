@@ -27,7 +27,16 @@ export interface MidContext {
     mid: string;
     encKey: string;
     encIV: string;
+
     hashKey: string;
+}
+
+
+export interface SiteContext {
+    id: string;
+    application: string; // "WPAY"
+    service: string;
+    sites: string[];
 }
 
 export interface InterfaceSettings {
@@ -72,7 +81,9 @@ export interface Application {
 export interface EndpointParameters {
     globalParameters: GlobalParameter[];
     parameterOptions: ParameterOption[];
+
     midContexts: MidContext[];
+    siteContexts: SiteContext[];
 }
 
 export interface SettingsStoreData {
@@ -85,7 +96,9 @@ const defaultSettings: SettingsStoreData = {
     endpoint_parameters: {
         globalParameters: [],
         parameterOptions: [],
-        midContexts: []
+
+        midContexts: [],
+        siteContexts: []
     },
     interface: {
         sidebar: {
@@ -104,35 +117,12 @@ const defaultSettings: SettingsStoreData = {
     applications: []
 };
 
-const createSettingsStore = () => {
-    // Initial value from localStorage or default
-    // Key changed from 'endpoint_settings' to 'settings'
-    const storedValue = browser ? localStorage.getItem('settings') : null;
-    let initialValue: SettingsStoreData = defaultSettings;
+function createSettingsStore() {
+    let initialValue = defaultSettings;
 
-    if (storedValue) {
-        try {
-            const parsed = JSON.parse(storedValue);
-            // Ensure legacy data migration or partial loading if schema changed
-            initialValue = {
-                ...defaultSettings,
-                ...parsed,
-                endpoint_parameters: {
-                    ...defaultSettings.endpoint_parameters,
-                    ...(parsed.endpoint_parameters || {})
-                },
-                interface: {
-                    ...defaultSettings.interface,
-                    ...(parsed.interface || {})
-                },
-                applications: parsed.applications || []
-            };
-        } catch (e) {
-            console.error('Failed to parse settings from localStorage', e);
-        }
-    } else if (browser) {
-        // Migration: Check for old 'endpoint_settings'
-        const oldStored = localStorage.getItem('endpoint_settings');
+    if (browser) {
+        const STORE_KEY = 'settings_store';
+        const oldStored = localStorage.getItem('settings_store');
         if (oldStored) {
             try {
                 const parsedOld = JSON.parse(oldStored);
@@ -145,191 +135,176 @@ const createSettingsStore = () => {
                     return item;
                 };
 
+                // Check if old structure (flat) or new structure (nested in endpoint_parameters)
+                const sourceParams = parsedOld.endpoint_parameters || parsedOld;
+
                 initialValue = {
                     ...defaultSettings,
                     endpoint_parameters: {
-                        globalParameters: (parsedOld.globalParameters || []).map(migrateService),
-                        parameterOptions: (parsedOld.parameterOptions || []).map(migrateService),
-                        midContexts: (parsedOld.midContexts || []).map(migrateService)
+                        globalParameters: (sourceParams.globalParameters || []).map(migrateService),
+                        parameterOptions: (sourceParams.parameterOptions || []).map(migrateService),
+
+                        midContexts: (sourceParams.midContexts || []).map(migrateService),
+                        siteContexts: (sourceParams.siteContexts || sourceParams.serviceContexts || []).map((ctx: any) => ({
+                            ...ctx,
+                            id: ctx.id || crypto.randomUUID(),
+                            sites: ctx.sites || []
+                        }))
                     },
                     interface: {
                         ...defaultSettings.interface,
                         ...(parsedOld.interface || {})
                     },
-                    applications: []
+                    applications: parsedOld.applications || []
                 };
 
-                // Attempt to grab applications from profileStore if possible? 
-                // Or just start empty/fresh. 
-                // Given user request "applications saved", they likely want to persist what they just edited.
-                // But we don't have access to profile local storage here easily in this function synchronously without reading 'profile' key.
-                const oldProfile = localStorage.getItem('profile');
-                if (oldProfile) {
-                    const parsedProfile = JSON.parse(oldProfile);
-                    if (parsedProfile.myApplications) {
-                        initialValue.applications = parsedProfile.myApplications;
-                    }
-                }
-
-                // Save immediately to new key
-                localStorage.setItem('settings', JSON.stringify(initialValue));
-                // Optional: removeItem 'endpoint_settings' later or keep as backup
+                // Remove legacy keys if exist in structure during runtime usage
             } catch (e) {
-                console.error("Failed to migrate old endpoint_settings", e);
+                console.error("Failed to parse settings store", e);
             }
         }
     }
 
     const { subscribe, set, update } = writable<SettingsStoreData>(initialValue);
 
-    const persist = (value: SettingsStoreData) => {
-        if (browser) {
-            localStorage.setItem('settings', JSON.stringify(value));
-        }
-        set(value);
-    };
+    if (browser) {
+        subscribe(val => {
+            localStorage.setItem('settings_store', JSON.stringify(val));
+        });
+    }
 
     return {
         subscribe,
-        set: persist,
-        update: (updater: (value: SettingsStoreData) => SettingsStoreData) => {
-            update(current => {
-                const newValue = updater(current);
-                if (browser) {
-                    localStorage.setItem('settings', JSON.stringify(newValue));
-                }
-                return newValue;
-            });
-        },
-
-        // --- Helper Methods (Updated to target new structure) ---
-
-        // Applications
-        setApplications: (apps: Application[]) => {
-            update(current => {
-                const newValue = { ...current, applications: apps };
-                if (browser) localStorage.setItem('settings', JSON.stringify(newValue));
-                return newValue;
-            });
-        },
-
+        set,
+        update,
         // Global Parameters
-        addGlobalParameter: (param: Omit<GlobalParameter, 'id'>) => {
-            update(current => {
-                const newParams = [...current.endpoint_parameters.globalParameters, { ...param, id: crypto.randomUUID() }];
-                const newValue = {
-                    ...current,
-                    endpoint_parameters: { ...current.endpoint_parameters, globalParameters: newParams }
-                };
-                if (browser) localStorage.setItem('settings', JSON.stringify(newValue));
-                return newValue;
-            });
-        },
-        removeGlobalParameter: (id: string) => {
-            update(current => {
-                const newParams = current.endpoint_parameters.globalParameters.filter(p => p.id !== id);
-                const newValue = {
-                    ...current,
-                    endpoint_parameters: { ...current.endpoint_parameters, globalParameters: newParams }
-                };
-                if (browser) localStorage.setItem('settings', JSON.stringify(newValue));
-                return newValue;
-            });
-        },
-        updateGlobalParameter: (param: GlobalParameter) => {
-            update(current => {
-                const newParams = current.endpoint_parameters.globalParameters.map(p => p.id === param.id ? param : p);
-                const newValue = {
-                    ...current,
-                    endpoint_parameters: { ...current.endpoint_parameters, globalParameters: newParams }
-                };
-                if (browser) localStorage.setItem('settings', JSON.stringify(newValue));
-                return newValue;
-            });
-        },
+        addGlobalParameter: (param: Omit<GlobalParameter, 'id'>) => update(s => {
+            const newParam = { ...param, id: crypto.randomUUID() };
+            return {
+                ...s,
+                endpoint_parameters: {
+                    ...s.endpoint_parameters,
+                    globalParameters: [...s.endpoint_parameters.globalParameters, newParam]
+                }
+            };
+        }),
+        updateGlobalParameter: (param: GlobalParameter) => update(s => ({
+            ...s,
+            endpoint_parameters: {
+                ...s.endpoint_parameters,
+                globalParameters: s.endpoint_parameters.globalParameters.map(p => p.id === param.id ? param : p)
+            }
+        })),
+        removeGlobalParameter: (id: string) => update(s => ({
+            ...s,
+            endpoint_parameters: {
+                ...s.endpoint_parameters,
+                globalParameters: s.endpoint_parameters.globalParameters.filter(p => p.id !== id)
+            }
+        })),
 
         // Parameter Options
-        addParameterOption: (option: Omit<ParameterOption, 'id'>) => {
-            update(current => {
-                const newOptions = [...current.endpoint_parameters.parameterOptions, { ...option, id: crypto.randomUUID() }];
-                const newValue = {
-                    ...current,
-                    endpoint_parameters: { ...current.endpoint_parameters, parameterOptions: newOptions }
-                };
-                if (browser) localStorage.setItem('settings', JSON.stringify(newValue));
-                return newValue;
-            });
-        },
-        updateParameterOption: (option: ParameterOption) => {
-            update(current => {
-                const newOptions = current.endpoint_parameters.parameterOptions.map(p => p.id === option.id ? option : p);
-                const newValue = {
-                    ...current,
-                    endpoint_parameters: { ...current.endpoint_parameters, parameterOptions: newOptions }
-                };
-                if (browser) localStorage.setItem('settings', JSON.stringify(newValue));
-                return newValue;
-            });
-        },
-        removeParameterOption: (id: string) => {
-            update(current => {
-                const newOptions = current.endpoint_parameters.parameterOptions.filter(p => p.id !== id);
-                const newValue = {
-                    ...current,
-                    endpoint_parameters: { ...current.endpoint_parameters, parameterOptions: newOptions }
-                };
-                if (browser) localStorage.setItem('settings', JSON.stringify(newValue));
-                return newValue;
-            });
-        },
+        addParameterOption: (opt: Omit<ParameterOption, 'id'>) => update(s => {
+            const newOption = { ...opt, id: crypto.randomUUID() };
+            return {
+                ...s,
+                endpoint_parameters: {
+                    ...s.endpoint_parameters,
+                    parameterOptions: [...s.endpoint_parameters.parameterOptions, newOption]
+                }
+            };
+        }),
+        updateParameterOption: (opt: Partial<ParameterOption> & { id: string }) => update(s => ({
+            ...s,
+            endpoint_parameters: {
+                ...s.endpoint_parameters,
+                parameterOptions: s.endpoint_parameters.parameterOptions.map(p => p.id === opt.id ? { ...p, ...opt } as ParameterOption : p)
+            }
+        })),
+        removeParameterOption: (id: string) => update(s => ({
+            ...s,
+            endpoint_parameters: {
+                ...s.endpoint_parameters,
+                parameterOptions: s.endpoint_parameters.parameterOptions.filter(p => p.id !== id)
+            }
+        })),
 
-        // Mid Contexts
-        addMidContext: (ctx: Omit<MidContext, 'id'>) => {
-            update(current => {
-                const newContexts = [...current.endpoint_parameters.midContexts, { ...ctx, id: crypto.randomUUID() }];
-                const newValue = {
-                    ...current,
-                    endpoint_parameters: { ...current.endpoint_parameters, midContexts: newContexts }
-                };
-                if (browser) localStorage.setItem('settings', JSON.stringify(newValue));
-                return newValue;
-            });
-        },
-        removeMidContext: (id: string) => {
-            update(current => {
-                const newContexts = current.endpoint_parameters.midContexts.filter(p => p.id !== id);
-                const newValue = {
-                    ...current,
-                    endpoint_parameters: { ...current.endpoint_parameters, midContexts: newContexts }
-                };
-                if (browser) localStorage.setItem('settings', JSON.stringify(newValue));
-                return newValue;
-            });
-        },
-        updateMidContext: (ctx: MidContext) => {
-            update(current => {
-                const newContexts = current.endpoint_parameters.midContexts.map(p => p.id === ctx.id ? ctx : p);
-                const newValue = {
-                    ...current,
-                    endpoint_parameters: { ...current.endpoint_parameters, midContexts: newContexts }
-                };
-                if (browser) localStorage.setItem('settings', JSON.stringify(newValue));
-                return newValue;
-            });
-        },
+        // MID Contexts
+        addMidContext: (ctx: Omit<MidContext, 'id'>) => update(s => {
+            const newContext = { ...ctx, id: crypto.randomUUID() };
+            return {
+                ...s,
+                endpoint_parameters: {
+                    ...s.endpoint_parameters,
+                    midContexts: [...s.endpoint_parameters.midContexts, newContext]
+                }
+            };
+        }),
+        updateMidContext: (ctx: MidContext) => update(s => ({
+            ...s,
+            endpoint_parameters: {
+                ...s.endpoint_parameters,
+                midContexts: s.endpoint_parameters.midContexts.map(c => c.id === ctx.id ? ctx : c)
+            }
+        })),
+        removeMidContext: (id: string) => update(s => ({
+            ...s,
+            endpoint_parameters: {
+                ...s.endpoint_parameters,
+                midContexts: s.endpoint_parameters.midContexts.filter(c => c.id !== id)
+            }
+        })),
 
-        // Interface Settings
-        updateInterfaceSettings: (settings: Partial<InterfaceSettings>) => {
-            update(current => {
-                const newValue = {
-                    ...current,
-                    interface: { ...current.interface, ...settings }
-                };
-                if (browser) localStorage.setItem('settings', JSON.stringify(newValue));
-                return newValue;
-            });
-        },
+        // Site Contexts
+        addSiteContext: (ctx: Omit<SiteContext, 'id'>) => update(s => {
+            const newContext = { ...ctx, id: crypto.randomUUID() };
+            return {
+                ...s,
+                endpoint_parameters: {
+                    ...s.endpoint_parameters,
+                    siteContexts: [...(s.endpoint_parameters.siteContexts || []), newContext]
+                }
+            };
+        }),
+        removeSiteContext: (id: string) => update(s => ({
+            ...s,
+            endpoint_parameters: {
+                ...s.endpoint_parameters,
+                siteContexts: (s.endpoint_parameters.siteContexts || []).filter(c => c.id !== id)
+            }
+        })),
+        addSiteToContext: (contextId: string, siteName: string) => update(s => ({
+            ...s,
+            endpoint_parameters: {
+                ...s.endpoint_parameters,
+                siteContexts: (s.endpoint_parameters.siteContexts || []).map(c =>
+                    c.id === contextId
+                        ? { ...c, sites: [...c.sites, siteName] }
+                        : c
+                )
+            }
+        })),
+        removeSiteFromContext: (contextId: string, siteName: string) => update(s => ({
+            ...s,
+            endpoint_parameters: {
+                ...s.endpoint_parameters,
+                siteContexts: (s.endpoint_parameters.siteContexts || []).map(c =>
+                    c.id === contextId
+                        ? { ...c, sites: c.sites.filter(site => site !== siteName) }
+                        : c
+                )
+            }
+        })),
+
+        // Applications
+        setApplications: (apps: Application[]) => update(s => ({
+            ...s,
+            applications: apps
+        })),
+
+        // Load entire settings (for restore)
+        load: (data: SettingsStoreData) => set(data)
     };
-};
+}
 
 export const settingsStore = createSettingsStore();

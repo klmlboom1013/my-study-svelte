@@ -1,0 +1,141 @@
+
+> my-study-svelte@0.0.1 check
+> svelte-kit sync && svelte-check --tsconfig ./tsconfig.json
+
+Loading svelte-check in workspace: /Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte
+Getting Svelte diagnostics...
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/EndpointExecutionModal.svelte:70:43
+Error: Property 'midContexts' does not exist on type 'SettingsStoreData'. (ts)
+        if (midValue) {
+            const midCtx = $settingsStore.midContexts.find(
+                (c) => c.mid === midValue,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/EndpointExecutionModal.svelte:71:18
+Error: Parameter 'c' implicitly has an 'any' type. (ts)
+            const midCtx = $settingsStore.midContexts.find(
+                (c) => c.mid === midValue,
+            );
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/EndpointExecutionModal.svelte:169:24
+Error: Property 'globalParameters' does not exist on type 'SettingsStoreData'. (ts)
+        // 1. Global Parameters check
+        $settingsStore.globalParameters.forEach((param) => {
+            if (param.application === app && param.key === field.name) {
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/EndpointExecutionModal.svelte:169:50
+Error: Parameter 'param' implicitly has an 'any' type. (ts)
+        // 1. Global Parameters check
+        $settingsStore.globalParameters.forEach((param) => {
+            if (param.application === app && param.key === field.name) {
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/EndpointExecutionModal.svelte:190:24
+Error: Property 'parameterOptions' does not exist on type 'SettingsStoreData'. (ts)
+        // 2. Parameter Options check
+        $settingsStore.parameterOptions.forEach((opt) => {
+            if (opt.application === app && opt.name === field.name) {
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/EndpointExecutionModal.svelte:190:50
+Error: Parameter 'opt' implicitly has an 'any' type. (ts)
+        // 2. Parameter Options check
+        $settingsStore.parameterOptions.forEach((opt) => {
+            if (opt.application === app && opt.name === field.name) {
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/EndpointExecutionModal.svelte:199:42
+Error: Parameter 'co' implicitly has an 'any' type. (ts)
+                    // This param has a list of values
+                    opt.options.forEach((co) => {
+                        options.push({
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/EndpointExecutionModal.svelte:212:28
+Error: Property 'midContexts' does not exist on type 'SettingsStoreData'. (ts)
+        if (field.name === "mid") {
+            $settingsStore.midContexts.forEach((ctx) => {
+                if (ctx.application === app) {
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/EndpointExecutionModal.svelte:212:49
+Error: Parameter 'ctx' implicitly has an 'any' type. (ts)
+        if (field.name === "mid") {
+            $settingsStore.midContexts.forEach((ctx) => {
+                if (ctx.application === app) {
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/endpoint/new/+page.svelte:74:34
+Warn: This reference only captures the initial value of `requestType`. Did you mean to reference it inside a closure instead?
+https://svelte.dev/e/state_referenced_locally (svelte)
+
+    let prevRequestType = $state(requestType);
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/settings/+page.svelte:1195:49
+Warn: Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events (svelte)
+                                                >: {opt.value}
+                                                <span
+                                                    class="ml-1 hover:text-red-500 p-0.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                                                    onclick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (
+                                                            editingOptionIndex ===
+                                                            i
+                                                        ) {
+                                                            cancelOptionValueEdit();
+                                                        } else if (
+                                                            editingOptionIndex !==
+                                                                null &&
+                                                            i <
+                                                                editingOptionIndex
+                                                        ) {
+                                                            // Adjust index if deleting an item before current edit
+                                                            editingOptionIndex--;
+                                                        }
+                                                        currentOptions =
+                                                            currentOptions.filter(
+                                                                (_, idx) =>
+                                                                    idx !== i,
+                                                            );
+                                                    }}>×</span
+                                                >
+                                            </button>
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/settings/+page.svelte:1195:49
+Warn: `<span>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions (svelte)
+                                                >: {opt.value}
+                                                <span
+                                                    class="ml-1 hover:text-red-500 p-0.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                                                    onclick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (
+                                                            editingOptionIndex ===
+                                                            i
+                                                        ) {
+                                                            cancelOptionValueEdit();
+                                                        } else if (
+                                                            editingOptionIndex !==
+                                                                null &&
+                                                            i <
+                                                                editingOptionIndex
+                                                        ) {
+                                                            // Adjust index if deleting an item before current edit
+                                                            editingOptionIndex--;
+                                                        }
+                                                        currentOptions =
+                                                            currentOptions.filter(
+                                                                (_, idx) =>
+                                                                    idx !== i,
+                                                            );
+                                                    }}>×</span
+                                                >
+                                            </button>
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/settings/+page.svelte:1894:49
+Warn: A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control (svelte)
+                                            <div class="mb-3 w-1/3">
+                                                <label
+                                                    class="block text-xs font-semibold text-slate-500 uppercase mb-1"
+                                                    >Service Name</label
+                                                >
+                                                <input
+
+====================================
+svelte-check found 9 errors and 4 warnings in 3 files
