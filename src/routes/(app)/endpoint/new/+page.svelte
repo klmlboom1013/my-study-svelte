@@ -90,6 +90,8 @@
     let isConfigOpen = $state(true);
     let isResponseOpen = $state(true);
 
+    let signatureMethod = $state<string>("");
+
     function handleSave() {
         const newEndpoint: Endpoint = {
             id: crypto.randomUUID(),
@@ -108,6 +110,7 @@
                 charset,
                 customHeaders: customHeaders.filter((h) => h.key && h.value),
             },
+            signatureMethod,
             requestData,
             responseData,
             createdAt: Date.now(),
@@ -422,6 +425,32 @@
                         </div>
                     </div>
                 {/if}
+            </section>
+
+            <!-- Data Integrity Verification Method -->
+            <section class="flex flex-col gap-2">
+                <h2
+                    class="text-lg font-semibold text-slate-900 dark:text-white"
+                >
+                    Data Integrity Verification Method
+                </h2>
+                <div class="flex flex-col gap-2">
+                    <select
+                        bind:value={signatureMethod}
+                        class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-background-dark/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none appearance-none cursor-pointer"
+                    >
+                        <option value="">선택</option>
+                        <option value="HMAC_SHA256_KV"
+                            >toHexString( SHA256(
+                            key=value&...&key=value&hasKey=&#123;hash key&#125;
+                            ) )</option
+                        >
+                        <option value="HMAC_SHA256_V"
+                            >toHexString( SHA256( value&...&value&amp;&#123;hash
+                            key&#125; ) )</option
+                        >
+                    </select>
+                </div>
             </section>
 
             <!-- Request Data Definition -->

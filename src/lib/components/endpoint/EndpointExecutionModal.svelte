@@ -8,6 +8,7 @@
         Trash2,
         ChevronDown,
         Check,
+        X,
     } from "lucide-svelte";
     import { settingsStore } from "$lib/stores/settingsStore";
     import {
@@ -26,9 +27,12 @@
 
     let requestValues = $state<Record<string, any>>({});
     let jsonResult = $state("");
+    let responseResult = $state("");
+    let responseStatus = $state<number | null>(null);
     let signatureRawString = $state("");
     let activeDropdownPath = $state<string | null>(null);
     let executionStage = $state<"READY" | "EXECUTE">("READY"); // New state
+    let isExecuting = $state(false);
     let availableDomains = $state<{ label: string; value: string }[]>([]);
     let selectedDomainPrefix = $state("");
 
@@ -51,6 +55,8 @@
                 requestValues = initializeValues(endpoint.requestData);
                 executionStage = "READY"; // Reset stage
                 jsonResult = ""; // Reset result
+                responseResult = ""; // Reset response
+                responseStatus = null;
                 signatureRawString = ""; // Reset signature source
 
                 // Populate available domains
@@ -218,31 +224,131 @@
                     }
                 }
 
+                if (
+                    endpoint.config?.contentType ===
+                    "application/x-www-form-urlencoded"
+                ) {
+                    const params = new URLSearchParams();
+                    Object.entries(processedValues).forEach(([key, value]) => {
+                        params.append(key, String(value));
+                    });
+                    jsonResult = params.toString().split("&").join("\n");
+                } else {
+                    jsonResult = JSON.stringify(processedValues, null, 2);
+                }
+
                 // If successful, move to EXECUTE stage
                 executionStage = "EXECUTE";
             } catch (e) {
                 console.error("Security processing failed:", e);
                 // Optionally handle error UI here
             }
-
-            executionStage = "EXECUTE"; // Ensure it stays
-
-            if (
-                endpoint.config?.contentType ===
-                "application/x-www-form-urlencoded"
-            ) {
-                const params = new URLSearchParams();
-                Object.entries(processedValues).forEach(([key, value]) => {
-                    params.append(key, String(value));
-                });
-                jsonResult = params.toString().split("&").join("\n");
-            } else {
-                jsonResult = JSON.stringify(processedValues, null, 2);
-            }
         } else {
             // EXECUTE stage logic
-            executionStage = "EXECUTE";
-            console.log("Executing request...");
+            isExecuting = true;
+            responseResult = "";
+            responseStatus = null;
+
+            try {
+                // Build full URL
+                let fullUrl = `${selectedDomainPrefix}`;
+                if (endpoint.scope.site) {
+                    fullUrl += `/${endpoint.scope.site}`;
+                }
+                fullUrl += endpoint.uri;
+
+                const method = endpoint.method;
+                const contentType = endpoint.config.contentType;
+
+                const options: RequestInit = {
+                    method: method,
+                    headers: {},
+                };
+
+                // Prepare Body or Query Params
+                if (method === "GET") {
+                    const params = new URLSearchParams();
+                    // In current implementation, jsonResult contains the encoded string for form-urlencoded
+                    // OR it's a JSON string. For GET, we always expect flat parameters.
+                    const processedData = JSON.parse(
+                        JSON.stringify(requestValues),
+                    );
+
+                    // We need to use the processed (encrypted/signed) values
+                    // But wait, jsonResult already has the formatted string.
+                    // Let's re-parse or use URLSearchParams more directly.
+                    if (contentType === "application/x-www-form-urlencoded") {
+                        const encodedPairs = jsonResult.split("\n");
+                        encodedPairs.forEach((pair) => {
+                            const [k, v] = pair.split("=");
+                            if (k) params.append(k, v || "");
+                        });
+                    } else {
+                        Object.entries(processedData).forEach(([k, v]) => {
+                            params.append(k, String(v));
+                        });
+                    }
+
+                    const qs = params.toString();
+                    if (qs) {
+                        fullUrl += (fullUrl.includes("?") ? "&" : "?") + qs;
+                    }
+                } else {
+                    // POST, PUT, etc.
+                    if (contentType === "application/x-www-form-urlencoded") {
+                        options.headers = {
+                            ...options.headers,
+                            "Content-Type": contentType,
+                        };
+                        options.body = jsonResult.split("\n").join("&");
+                    } else if (contentType === "application/json") {
+                        options.headers = {
+                            ...options.headers,
+                            "Content-Type": contentType,
+                        };
+                        options.body = jsonResult;
+                    } else {
+                        // Default to JSON if not specified
+                        options.headers = {
+                            ...options.headers,
+                            "Content-Type": "application/json",
+                        };
+                        options.body = jsonResult;
+                    }
+                }
+
+                const response = await fetch("/api/proxy", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        url: fullUrl,
+                        method: method,
+                        headers: options.headers,
+                        body: options.body,
+                    }),
+                });
+
+                const proxyResult = await response.json();
+
+                if (response.ok) {
+                    responseStatus = proxyResult.status;
+                    const data = proxyResult.data;
+                    responseResult =
+                        typeof data === "object"
+                            ? JSON.stringify(data, null, 2)
+                            : data;
+                } else {
+                    responseStatus = response.status;
+                    responseResult = `Proxy Error: ${proxyResult.error || "Unknown error"}`;
+                }
+            } catch (error: any) {
+                console.error("API Execution failed:", error);
+                responseResult = `Error: ${error.message}`;
+            } finally {
+                isExecuting = false;
+            }
         }
     }
 
@@ -343,7 +449,41 @@
 
         return options;
     }
+
+    let isMobile = $state(false);
+    $effect(() => {
+        isMobile = window.innerWidth < 768;
+        const handler = () => {
+            isMobile = window.innerWidth < 768;
+        };
+        window.addEventListener("resize", handler);
+        return () => window.removeEventListener("resize", handler);
+    });
 </script>
+
+{#snippet executeButton(extraClass = "")}
+    <button
+        onclick={handleExecute}
+        disabled={isExecuting}
+        class="flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold text-white transition-all hover:scale-105 active:scale-95 shrink-0 rounded-lg shadow-sm disabled:opacity-70 disabled:scale-100 {executionStage ===
+        'READY'
+            ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
+            : 'bg-green-600 hover:bg-green-700 shadow-green-600/20'} {extraClass}"
+    >
+        {#if isExecuting}
+            <div
+                class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
+            ></div>
+            Executing...
+        {:else if executionStage === "READY"}
+            <Check class="w-4 h-4" />
+            Ready
+        {:else}
+            <Play class="w-4 h-4" fill="currentColor" />
+            Execute
+        {/if}
+    </button>
+{/snippet}
 
 {#snippet renderField(
     field: RequestDataField,
@@ -358,49 +498,45 @@
             Max recursion depth exceeded
         </div>
     {:else}
-        <tr
-            class="border-b border-slate-200 dark:border-border-dark last:border-0 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors"
+        <div
+            class="grid grid-cols-[90px_1fr] md:grid-cols-3 border-b border-slate-200 dark:border-border-dark last:border-0 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors"
         >
             <!-- Name Column -->
-            <td
-                class="p-4 align-top w-1/3 border-r border-slate-100 dark:border-border-dark/50"
+            <div
+                class="p-2 md:p-4 align-top md:border-r border-slate-100 dark:border-border-dark/50"
             >
                 <div
                     class="flex flex-col gap-1"
-                    style="padding-left: {level * 1.5}rem;"
+                    style="padding-left: {level * 0.5}rem;"
                 >
-                    <div class="flex items-center gap-2 flex-wrap">
+                    <div class="flex items-center gap-0.5 flex-wrap">
                         <label
                             for={path}
-                            class="font-semibold text-sm text-slate-700 dark:text-slate-200 break-all"
+                            class="font-semibold text-xs text-slate-700 dark:text-slate-200 break-all"
                         >
                             {field.name}
                         </label>
                         {#if field.required}
-                            <span
-                                class="text-[10px] uppercase font-bold text-red-500 bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 rounded"
-                            >
-                                Required
-                            </span>
+                            <span class="text-red-500 font-bold">*</span>
                         {/if}
                     </div>
                     <div
-                        class="text-xs text-slate-500 dark:text-slate-400 font-mono"
+                        class="hidden md:block text-xs text-slate-500 dark:text-slate-400 font-mono"
                     >
                         {field.type}
                     </div>
                     {#if field.description}
                         <div
-                            class="text-xs text-slate-500 mt-1 leading-relaxed"
+                            class="hidden md:block text-xs text-slate-500 mt-1 leading-relaxed"
                         >
                             {field.description}
                         </div>
                     {/if}
                 </div>
-            </td>
+            </div>
 
             <!-- Value Column -->
-            <td class="p-4 align-top w-2/3">
+            <div class="p-2 md:p-4 align-top md:col-span-2">
                 {#if field.type === "List"}
                     <div class="flex flex-col gap-3">
                         {#if values[field.name] && Array.isArray(values[field.name])}
@@ -427,21 +563,17 @@
                                             <Trash2 class="w-3.5 h-3.5" />
                                         </button>
                                     </div>
-                                    <div class="bg-white dark:bg-slate-950">
-                                        <table
-                                            class="w-full text-left border-collapse"
-                                        >
-                                            <tbody>
-                                                {#each field.subFields || [] as subField}
-                                                    {@render renderField(
-                                                        subField,
-                                                        item,
-                                                        `${path}[${index}].${subField.name}`,
-                                                        level + 1,
-                                                    )}
-                                                {/each}
-                                            </tbody>
-                                        </table>
+                                    <div
+                                        class="bg-white dark:bg-slate-950 flex flex-col"
+                                    >
+                                        {#each field.subFields || [] as subField}
+                                            {@render renderField(
+                                                subField,
+                                                item,
+                                                `${path}[${index}].${subField.name}`,
+                                                level + 1,
+                                            )}
+                                        {/each}
                                     </div>
                                 </div>
                             {/each}
@@ -551,12 +683,12 @@
                             oninput={handleUserChange}
                             placeholder={field.description ||
                                 `Enter ${field.name}`}
-                            class="w-full px-3 py-2 text-sm font-normal rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-slate-400 placeholder:font-normal"
+                            class="w-full px-3 py-2 text-sm font-normal rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-slate-400 placeholder:font-normal placeholder:text-xs"
                         />
                     {/if}
                 {/if}
-            </td>
-        </tr>
+            </div>
+        </div>
     {/if}
 {/snippet}
 
@@ -564,15 +696,30 @@
 
 <Modal
     bind:isOpen
-    title="Execute Endpoint"
+    title={isMobile ? "" : "Execute Endpoint"}
     width="max-w-4xl"
-    bodyClass="grid grid-rows-[auto_1fr] max-h-[70vh] overflow-hidden text-base font-medium"
+    bodyClass="max-h-[85vh] overflow-y-auto p-0 text-base font-medium"
 >
     {#if endpoint}
-        <!-- Fixed Header Info -->
+        {#if isMobile}
+            <!-- Mobile Header Replacement -->
+            <div
+                class="bg-white dark:bg-slate-900 px-5 py-4 flex justify-between items-center text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800"
+            >
+                <h2 class="text-lg font-bold">Execute Endpoint</h2>
+                <button
+                    onclick={() => (isOpen = false)}
+                    class="text-slate-500 hover:text-slate-700 p-1"
+                >
+                    <X size={20} />
+                </button>
+            </div>
+        {/if}
+
+        <!-- Body -->
         <!-- Fixed Header Info -->
         <div
-            class="p-5 bg-slate-50 dark:bg-card-dark border-b border-slate-200 dark:border-border-dark shadow-sm z-10 flex justify-between items-start gap-4"
+            class="p-4 md:p-5 bg-slate-50 dark:bg-card-dark border-b border-slate-200 dark:border-border-dark shadow-sm z-10 flex flex-col md:flex-row md:justify-between md:items-start gap-4"
         >
             <div class="flex flex-col gap-3 flex-1 min-w-0">
                 <!-- Row 1: App & Method -->
@@ -596,40 +743,22 @@
                     {endpoint.name}
                 </h3>
 
-                <!-- Row 3: Request Specs -->
-                <div class="flex items-center gap-3 text-sm">
-                    <div class="flex items-center gap-1.5">
-                        <span class="text-slate-500 dark:text-slate-400 text-xs"
-                            >Type</span
-                        >
-                        <span
-                            class="px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
-                        >
-                            {endpoint.requestType}
-                        </span>
-                    </div>
-
-                    {#if endpoint.config.contentType}
-                        <div
-                            class="w-px h-3 bg-slate-300 dark:bg-slate-700 mx-1"
-                        ></div>
-                        <div class="flex items-center gap-1.5">
-                            <span
-                                class="text-slate-500 dark:text-slate-400 text-xs"
-                                >Content-Type</span
-                            >
-                            <span
-                                class="px-1.5 py-0.5 rounded text-xs font-semibold bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
-                            >
-                                {endpoint.config.contentType}
-                            </span>
-                        </div>
-                    {/if}
+                <!-- Mobile Action Button -->
+                <div class="md:hidden mt-1">
+                    {@render executeButton("w-full py-3")}
                 </div>
 
-                <!-- Row 4: Domain & URI -->
+                {#if endpoint.description}
+                    <p
+                        class="hidden md:block text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed"
+                    >
+                        {endpoint.description}
+                    </p>
+                {/if}
+
+                <!-- Row 3: Configuration & Specs -->
                 <div class="mt-2 flex flex-col gap-2">
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 flex-wrap">
                         {#if availableDomains.length > 0}
                             <select
                                 bind:value={selectedDomainPrefix}
@@ -654,76 +783,95 @@
                                 >{endpoint.scope.site}</span
                             >
                         </div>
+
+                        <div
+                            class="w-px h-3 bg-slate-300 dark:bg-slate-700 mx-1"
+                        ></div>
+
+                        <div class="flex items-center gap-1.5">
+                            <span
+                                class="text-slate-500 dark:text-slate-400 text-xs"
+                                >Type</span
+                            >
+                            <span
+                                class="px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                            >
+                                {endpoint.requestType}
+                            </span>
+                        </div>
+
+                        {#if endpoint.config.contentType}
+                            <div
+                                class="hidden md:flex items-center gap-1.5 ml-1"
+                            >
+                                <span
+                                    class="text-slate-500 dark:text-slate-400 text-xs text-nowrap"
+                                    >Content-Type</span
+                                >
+                                <span
+                                    class="px-1.5 py-0.5 rounded text-xs font-semibold bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-nowrap"
+                                >
+                                    {endpoint.config.contentType}
+                                </span>
+                            </div>
+                        {/if}
+
+                        {#if endpoint.config.charset}
+                            <div class="flex items-center gap-1.5 ml-1">
+                                <span
+                                    class="text-slate-500 dark:text-slate-400 text-xs"
+                                    >Charset</span
+                                >
+                                <span
+                                    class="px-1.5 py-0.5 rounded text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                                >
+                                    {endpoint.config.charset}
+                                </span>
+                            </div>
+                        {/if}
                     </div>
 
                     <div
-                        class="px-3 py-2 bg-white dark:bg-slate-950/50 rounded border border-slate-200 dark:border-slate-800 font-mono text-xs text-slate-600 dark:text-slate-400 break-all w-full flex items-center gap-1"
+                        class="px-3 py-2 bg-white dark:bg-slate-950/50 rounded border border-slate-200 dark:border-slate-800 font-mono text-xs text-slate-600 dark:text-slate-400 break-all w-full flex flex-wrap items-center gap-1"
                     >
                         {#if selectedDomainPrefix}
                             <span class="text-slate-400 select-none"
                                 >{selectedDomainPrefix}</span
                             >
                         {/if}
+                        <span
+                            class="text-indigo-500/80 dark:text-indigo-400/80 select-none"
+                            >/{endpoint.scope.site}</span
+                        >
                         <span>{endpoint.uri}</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Execute Button -->
-            <button
-                onclick={handleExecute}
-                class="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white transition-all hover:scale-105 active:scale-95 shrink-0 rounded-lg shadow-sm {executionStage ===
-                'READY'
-                    ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
-                    : 'bg-green-600 hover:bg-green-700 shadow-green-600/20'}"
-            >
-                {#if executionStage === "READY"}
-                    <Check class="w-4 h-4" />
-                    Ready
-                {:else}
-                    <Play class="w-4 h-4" fill="currentColor" />
-                    Execute
-                {/if}
-            </button>
+            <!-- Desktop Execute Button -->
+            <div class="hidden md:block shrink-0">
+                {@render executeButton()}
+            </div>
         </div>
 
-        <!-- Scrollable Body -->
-        <div
-            class="overflow-y-auto min-h-0 p-6 flex flex-col gap-6 bg-white dark:bg-slate-900"
-        >
+        <!-- Body contents -->
+        <div class="p-0 md:p-6 flex flex-col gap-6 bg-white dark:bg-slate-900">
             <!-- Data Input Form -->
             <div class="flex flex-col gap-4">
                 {#if endpoint.requestData && endpoint.requestData.length > 0}
                     <div
-                        class="rounded-lg border border-slate-200 dark:border-border-dark"
+                        class="md:rounded-lg md:border border-slate-200 dark:border-border-dark overflow-hidden flex flex-col bg-white dark:bg-slate-950/50"
                     >
-                        <table
-                            class="w-full text-left border-collapse bg-white dark:bg-slate-950/50"
-                        >
-                            <thead
-                                class="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-border-dark"
-                            >
-                                <tr>
-                                    <th
-                                        class="p-4 w-1/3 font-semibold text-sm text-slate-600 dark:text-slate-400 border-r border-slate-200 dark:border-border-dark/50"
-                                        >Name</th
-                                    >
-                                    <th
-                                        class="p-4 w-2/3 font-semibold text-sm text-slate-600 dark:text-slate-400"
-                                        >Description</th
-                                    >
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {#each endpoint.requestData as field}
-                                    {@render renderField(
-                                        field,
-                                        requestValues,
-                                        field.name,
-                                    )}
-                                {/each}
-                            </tbody>
-                        </table>
+                        <!-- Data Fields -->
+                        <div class="flex flex-col">
+                            {#each endpoint.requestData as field}
+                                {@render renderField(
+                                    field,
+                                    requestValues,
+                                    field.name,
+                                )}
+                            {/each}
+                        </div>
                     </div>
                 {:else}
                     <div
@@ -765,6 +913,34 @@
                     </div>
                     <pre
                         class="p-4 bg-slate-900 text-slate-50 overflow-x-auto text-sm font-mono scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">{jsonResult}</pre>
+                </div>
+            {/if}
+
+            <!-- Response Result -->
+            {#if responseResult}
+                <div
+                    class="rounded-lg border border-slate-200 dark:border-border-dark overflow-hidden shrink-0"
+                    transition:fade
+                >
+                    <div
+                        class="px-4 py-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-border-dark font-medium text-sm flex justify-between items-center"
+                    >
+                        <span class="text-slate-700 dark:text-slate-300"
+                            >Response</span
+                        >
+                        {#if responseStatus}
+                            <span
+                                class="px-2 py-0.5 rounded text-[10px] font-bold {responseStatus >=
+                                    200 && responseStatus < 300
+                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'}"
+                            >
+                                STATUS: {responseStatus}
+                            </span>
+                        {/if}
+                    </div>
+                    <pre
+                        class="p-4 bg-slate-950 text-emerald-400 overflow-x-auto text-sm font-mono scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent min-h-[100px]">{responseResult}</pre>
                 </div>
             {/if}
         </div>

@@ -178,6 +178,7 @@
             },
             config: {
                 contentType,
+                charset,
                 customHeaders: customHeaders.filter((h) => h.key && h.value),
             },
             signatureMethod, // Add to save payload
@@ -512,8 +513,8 @@
                         <option value="">선택</option>
                         <option value="HMAC_SHA256_KV"
                             >toHexString( SHA256(
-                            key=value&...&key=value&hash=&#123;hash key&#125; )
-                            )</option
+                            key=value&...&key=value&hasKey=&#123;hash key&#125;
+                            ) )</option
                         >
                         <option value="HMAC_SHA256_V"
                             >toHexString( SHA256( value&...&value&amp;&#123;hash

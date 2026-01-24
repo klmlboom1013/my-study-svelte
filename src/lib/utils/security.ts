@@ -24,7 +24,7 @@ export async function generateSignature(
 
     // 2. Construct raw string logic based on method template
     // Expected templates: 
-    // "toHexString( SHA256( key=value&...&key=value&hash={hash key} ) )"
+    // "toHexString( SHA256( key=value&...&key=value&hasKey={hash key} ) )"
     // "toHexString( SHA256( value&...&value&{hash key} ) )"
 
     // Expected values from Editor: "HMAC_SHA256_KV" or "HMAC_SHA256_V"
@@ -50,16 +50,16 @@ export async function generateSignature(
     if (context.hashKey) {
         // Explicit code check
         if (method === 'HMAC_SHA256_KV') {
-            // "...&hash={hash key}" -> &hash=KEY
-            rawString += `&hash=${context.hashKey}`;
+            // "...&hasKey={hash key}" -> &hasKey=KEY
+            rawString += `&hasKey=${context.hashKey}`;
         } else if (method === 'HMAC_SHA256_V') {
             // "...&{hash key}" -> &KEY
             rawString += `&${context.hashKey}`;
         } else {
             // Legacy/Text parsing fallback
-            if (method.includes('hash={hash key}')) {
+            if (method.includes('hasKey={hash key}') || method.includes('hash={hash key}')) {
                 if (isKeyValue) {
-                    rawString += `&hash=${context.hashKey}`;
+                    rawString += `&hasKey=${context.hashKey}`;
                 } else {
                     rawString += `&${context.hashKey}`;
                 }

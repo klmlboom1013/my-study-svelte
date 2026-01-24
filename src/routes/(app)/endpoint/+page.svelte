@@ -350,7 +350,7 @@
             <button
                 onclick={handleDriveBackup}
                 disabled={syncState !== "idle"}
-                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-card-dark dark:text-slate-300 dark:border-border-dark dark:hover:bg-background-dark disabled:opacity-50 min-w-[100px] justify-center"
+                class="flex items-center gap-2 px-2 sm:px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-card-dark dark:text-slate-300 dark:border-border-dark dark:hover:bg-background-dark disabled:opacity-50 min-w-0 sm:min-w-[100px] justify-center"
             >
                 {#if syncState === "backup"}
                     <span
@@ -368,7 +368,7 @@
             <button
                 onclick={handleDriveRestore}
                 disabled={syncState !== "idle"}
-                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-card-dark dark:text-slate-300 dark:border-border-dark dark:hover:bg-background-dark disabled:opacity-50 min-w-[100px] justify-center"
+                class="flex items-center gap-2 px-2 sm:px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-card-dark dark:text-slate-300 dark:border-border-dark dark:hover:bg-background-dark disabled:opacity-50 min-w-0 sm:min-w-[100px] justify-center"
             >
                 {#if syncState === "restore"}
                     <span
@@ -400,7 +400,7 @@
                     >
                 </div>
                 <input
-                    class="flex w-full min-w-0 flex-1 resize-none overflow-hidden bg-transparent rounded-r-lg text-slate-900 dark:text-white focus:outline-0 placeholder:text-slate-400 dark:placeholder:text-[#5a718a] px-2 text-sm"
+                    class="flex w-full min-w-0 flex-1 resize-none overflow-hidden bg-transparent rounded-r-lg text-slate-900 dark:text-white focus:outline-0 placeholder:text-slate-400 dark:placeholder:text-[#5a718a] placeholder:text-xs px-2 text-sm"
                     placeholder="Search endpoints by name."
                     bind:value={searchTerm}
                 />
@@ -512,7 +512,7 @@
                                             </span>
                                         </div>
                                         <div
-                                            class="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1"
+                                            class="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex gap-1"
                                         >
                                             <button
                                                 onclick={(e) => {
@@ -615,7 +615,7 @@
                             </span>
                         </div>
                         <div
-                            class="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1"
+                            class="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex gap-1"
                         >
                             <button
                                 onclick={(e) => {

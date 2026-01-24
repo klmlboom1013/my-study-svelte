@@ -29,7 +29,7 @@
 {#if isOpen}
     <!-- Backdrop -->
     <div
-        class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4"
         transition:fade={{ duration: 200 }}
         onclick={(e) => {
             if (e.target === e.currentTarget) close();
@@ -54,18 +54,20 @@
             aria-modal="true"
             tabindex="-1"
         >
-            <!-- Header -->
-            <div
-                class="bg-white dark:bg-slate-900 px-6 py-4 flex justify-between items-center text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800"
-            >
-                <h2 class="text-xl font-bold">{title}</h2>
-                <button
-                    onclick={close}
-                    class="hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded-full transition-colors"
+            {#if title}
+                <!-- Header -->
+                <div
+                    class="bg-white dark:bg-slate-900 px-6 py-4 flex justify-between items-center text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800"
                 >
-                    <X size={24} />
-                </button>
-            </div>
+                    <h2 class="text-xl font-bold">{title}</h2>
+                    <button
+                        onclick={close}
+                        class="hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded-full transition-colors"
+                    >
+                        <X size={24} />
+                    </button>
+                </div>
+            {/if}
 
             <!-- Body -->
             <div class={bodyClass}>
