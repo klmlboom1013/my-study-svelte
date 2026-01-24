@@ -771,6 +771,24 @@
         if (!wpayApp || !wpayApp.services) return [];
         return wpayApp.services.map((s) => s.name);
     });
+
+    function getServicesForApp(appName: string) {
+        if (!appName) return [];
+
+        const customApp = $settingsStore.applications?.find(
+            (a) => a.appName === appName,
+        );
+        if (customApp && customApp.services && customApp.services.length > 0) {
+            return customApp.services.map((s) => s.name);
+        }
+
+        // Fallback for WPAY
+        if (appName === "WPAY") {
+            return [...SERVICE_OPTIONS];
+        }
+
+        return [];
+    }
 </script>
 
 <div class="max-w-screen-2xl mx-auto py-8 px-4">
@@ -945,11 +963,13 @@
                                             </select>
                                         </div>
                                     </label>
-                                    {#if globalParam.application?.toUpperCase() === "WPAY"}
+                                    {#if getServicesForApp(globalParam.application).length > 0}
                                         <div class="w-full md:w-1/3">
                                             <MultiSelectBox
                                                 bind:value={selectedService}
-                                                options={[...SERVICE_OPTIONS]}
+                                                options={getServicesForApp(
+                                                    globalParam.application,
+                                                )}
                                                 placeholder="Select Service"
                                             />
                                         </div>
@@ -1017,7 +1037,8 @@
                             class="bg-white dark:bg-card-dark rounded-lg border border-slate-200 dark:border-border-dark overflow-hidden"
                         >
                             <!-- List Filter Toolbar (Visible only if WPAY is selected in Header) -->
-                            {#if $appStateStore.selectedApp === "WPAY"}
+                            <!-- List Filter Toolbar (Visible if App has Services) -->
+                            {#if getServicesForApp($appStateStore.selectedApp).length > 0}
                                 <div
                                     class="px-6 py-3 border-b border-slate-200 dark:border-border-dark flex justify-end"
                                 >
@@ -1029,7 +1050,7 @@
                                             <option value=""
                                                 >All Services</option
                                             >
-                                            {#each SERVICE_OPTIONS as service}
+                                            {#each getServicesForApp($appStateStore.selectedApp) as service}
                                                 <option value={service}
                                                     >{service}</option
                                                 >
@@ -1080,26 +1101,34 @@
                                                 <td
                                                     class="px-6 py-4 font-medium text-slate-500 dark:text-slate-400 text-xs"
                                                 >
-                                                    {#if param.service && param.service.length > 0}
-                                                        {#each param.service as s}
-                                                            <span
-                                                                class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 mr-1"
-                                                                >{s}</span
-                                                            >
-                                                        {/each}
-                                                    {:else}
-                                                        <span
-                                                            class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600"
-                                                            >All</span
-                                                        >
-                                                    {/if}
+                                                    <div
+                                                        class="flex gap-1 flex-wrap"
+                                                    >
+                                                        {#if param.service && param.service.length > 0}
+                                                            {#each param.service as s}
+                                                                <span
+                                                                    class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600"
+                                                                    >{s}</span
+                                                                >
+                                                            {/each}
+                                                        {:else}
+                                                            <!-- If All (empty), show all configured services for this app -->
+                                                            {#each getServicesForApp(param.application) as s}
+                                                                <span
+                                                                    class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600"
+                                                                    >{s}</span
+                                                                >
+                                                            {/each}
+                                                        {/if}
+                                                    </div>
                                                 </td>
                                                 <td
                                                     class="px-6 py-4 font-medium text-slate-700 dark:text-slate-300"
                                                     >{param.key}</td
                                                 >
                                                 <td
-                                                    class="px-6 py-4 text-slate-600 dark:text-slate-400 font-mono text-xs"
+                                                    class="px-6 py-4 text-slate-600 dark:text-slate-400 font-mono text-xs max-w-xs truncate"
+                                                    title={param.value}
                                                     >{param.value}</td
                                                 >
                                                 <td
@@ -1177,7 +1206,7 @@
                                             {/each}
                                         </select>
                                     </label>
-                                    {#if paramOption.application?.toUpperCase() === "WPAY"}
+                                    {#if getServicesForApp(paramOption.application).length > 0}
                                         <div class="w-full md:w-1/3">
                                             <div
                                                 class="flex flex-col gap-1 w-full"
@@ -1190,9 +1219,9 @@
                                                     bind:value={
                                                         selectedOptionService
                                                     }
-                                                    options={[
-                                                        ...SERVICE_OPTIONS,
-                                                    ]}
+                                                    options={getServicesForApp(
+                                                        paramOption.application,
+                                                    )}
                                                     placeholder="Select Service"
                                                 />
                                             </div>
@@ -1377,26 +1406,19 @@
                                     >
                                         <div class="flex flex-col gap-1">
                                             <div
-                                                class="flex gap-2 items-center"
+                                                class="flex gap-2 items-center flex-wrap"
                                             >
                                                 <span
                                                     class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
                                                     >{opt.application}</span
                                                 >
                                                 {#if opt.service && opt.service.length > 0}
-                                                    {#if opt.service.length === SERVICE_OPTIONS.length}
+                                                    {#each opt.service as s}
                                                         <span
                                                             class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-[10px] text-slate-500 dark:text-slate-400"
-                                                            >All</span
+                                                            >{s}</span
                                                         >
-                                                    {:else}
-                                                        {#each opt.service as s}
-                                                            <span
-                                                                class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-[10px] text-slate-500 dark:text-slate-400 mr-1"
-                                                                >{s}</span
-                                                            >
-                                                        {/each}
-                                                    {/if}
+                                                    {/each}
                                                 {/if}
                                             </div>
                                             <h4

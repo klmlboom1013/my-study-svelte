@@ -442,7 +442,7 @@
                         <option value="">선택</option>
                         <option value="HMAC_SHA256_KV"
                             >toHexString( SHA256(
-                            key=value&...&key=value&hasKey=&#123;hash key&#125;
+                            key=value&...&key=value&hashKey=&#123;hash key&#125;
                             ) )</option
                         >
                         <option value="HMAC_SHA256_V"

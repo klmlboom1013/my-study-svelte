@@ -14,9 +14,12 @@
     import {
         generateSignature,
         encryptData,
+        decryptData,
+        urlDecodeData,
         urlEncodeData,
         type SecurityContext,
     } from "$lib/utils/security";
+    import { CheckCircle, XCircle, ShieldCheck, LockOpen } from "lucide-svelte";
     import type { Endpoint, RequestDataField } from "$lib/types/endpoint";
     import { fade, slide } from "svelte/transition";
 
@@ -35,6 +38,15 @@
     let isExecuting = $state(false);
     let availableDomains = $state<{ label: string; value: string }[]>([]);
     let selectedDomainPrefix = $state("");
+    let securityContext = $state<SecurityContext>({});
+
+    // Response Validation State
+    let responseSignatureRawString = $state("");
+    let responseCalculatedSignature = $state("");
+    let responseValidationSuccess = $state<boolean | null>(null);
+    let responseDecryptedData = $state<
+        { name: string; value: string; original: string; type: string }[]
+    >([]);
 
     const globalParameters = $derived(
         $settingsStore.endpoint_parameters.globalParameters,
@@ -149,23 +161,19 @@
 
         if (executionStage === "READY") {
             // 1. Find Security Context (HashKey, EncKey, EncIV) based on selected MID
-            let context: SecurityContext = {};
             const midValue = requestValues["mid"];
+            securityContext = {};
 
             if (midValue) {
                 const midCtx = midContexts.find((c) => c.mid === midValue);
                 if (midCtx) {
-                    context = {
+                    securityContext = {
                         hashKey: midCtx.hashKey,
                         encKey: midCtx.encKey,
                         encIV: midCtx.encIV,
                     };
                 }
             }
-
-            // 2. Process based on Method (GET vs POST)
-            // GET: Encrypt -> Sign -> Encode
-            // POST: Encrypt -> Encode -> Sign
 
             let processedValues = { ...requestValues };
 
@@ -174,12 +182,75 @@
                 processedValues = encryptData(
                     processedValues,
                     endpoint.requestData,
-                    context,
+                    securityContext,
                 );
 
                 const signatureField = endpoint.requestData.find(
                     (f) => f.name === "signature",
                 );
+
+                if (endpoint.requestType === "FORM") {
+                    // FORM Type PREPARATION
+                    // 1. Encrypt (already in processedValues from Step A)
+
+                    // FIX: Ensure returnUrl is absolute
+                    if (
+                        processedValues["returnUrl"] &&
+                        String(processedValues["returnUrl"]).startsWith("/")
+                    ) {
+                        processedValues["returnUrl"] =
+                            window.location.origin +
+                            processedValues["returnUrl"];
+                        requestValues["returnUrl"] =
+                            processedValues["returnUrl"]; // Update UI & Persistence for Execute stage
+                    }
+
+                    // 2. Specific URL Encoding for Signature & Display
+                    // Only encode fields that are explicitly marked as 'encode' in definition
+                    let encodedValues = { ...processedValues };
+
+                    endpoint.requestData.forEach((field) => {
+                        // Check if field is marked for encoding (assuming property is 'encode' or similar, strict check)
+                        if (field.encode && encodedValues[field.name]) {
+                            encodedValues[field.name] = encodeURIComponent(
+                                encodedValues[field.name],
+                            );
+                        }
+                    });
+
+                    // 3. Generate Signature using ENCODED values
+                    if (endpoint.signatureMethod && signatureField) {
+                        const { signature, rawString } =
+                            await generateSignature(
+                                encodedValues, // Use ENCODED data
+                                endpoint.requestData,
+                                endpoint.signatureMethod,
+                                securityContext,
+                            );
+                        // Add signature to both Maps
+                        processedValues[signatureField.name] = signature; // Raw map (for Form submit logic re-creation)
+                        encodedValues[signatureField.name] = signature; // Encoded map (for Display)
+
+                        // IMPORTANT: Update requestValues with the signature so it persists for the EXECUTE stage
+                        requestValues[signatureField.name] = signature;
+                        signatureRawString = rawString;
+                    }
+
+                    // 4. Display Logic (Encoded Values in key=value format)
+                    const params = new URLSearchParams();
+                    Object.entries(encodedValues).forEach(([key, value]) => {
+                        params.append(key, String(value));
+                    });
+                    jsonResult = params.toString().split("&").join("\n");
+
+                    executionStage = "EXECUTE";
+                    return;
+                }
+
+                // NOT FORM TYPE Logic (GET/POST JSON/etc)
+
+                // For GET/POST, we might have different encoding or signature needs.
+                // Reusing original logic structure:
 
                 if (endpoint.method === "GET") {
                     if (endpoint.signatureMethod && signatureField) {
@@ -188,38 +259,24 @@
                                 processedValues,
                                 endpoint.requestData,
                                 endpoint.signatureMethod,
-                                context,
+                                securityContext,
                             );
                         processedValues[signatureField.name] = signature;
-                        requestValues[signatureField.name] = signature; // Update UI
+                        requestValues[signatureField.name] = signature;
                         signatureRawString = rawString;
                     }
-
-                    // Step C: URL Encode (Final step for GET)
-                    processedValues = urlEncodeData(
-                        processedValues,
-                        endpoint.requestData,
-                    );
                 } else {
-                    // POST (and others) rules
-
-                    // Step B: URL Encode
-                    processedValues = urlEncodeData(
-                        processedValues,
-                        endpoint.requestData,
-                    );
-
-                    // Step C: Generate Signature (on encrypted AND encoded data)
+                    // POST default
                     if (endpoint.signatureMethod && signatureField) {
                         const { signature, rawString } =
                             await generateSignature(
                                 processedValues,
                                 endpoint.requestData,
                                 endpoint.signatureMethod,
-                                context,
+                                securityContext,
                             );
                         processedValues[signatureField.name] = signature;
-                        requestValues[signatureField.name] = signature; // Update UI
+                        requestValues[signatureField.name] = signature;
                         signatureRawString = rawString;
                     }
                 }
@@ -241,7 +298,8 @@
                 executionStage = "EXECUTE";
             } catch (e) {
                 console.error("Security processing failed:", e);
-                // Optionally handle error UI here
+                responseResult =
+                    "Error during preparation: " + (e as Error).message;
             }
         } else {
             // EXECUTE stage logic
@@ -249,6 +307,134 @@
             responseResult = "";
             responseStatus = null;
 
+            if (endpoint.requestType === "FORM") {
+                // FORM Execution: Open Popup with RAW Encrypted Values
+                try {
+                    const popupName = `wpay_popup_${Date.now()}`;
+                    const width = 500;
+                    const height = 700;
+                    const left = (window.screen.width - width) / 2;
+                    const top = (window.screen.height - height) / 2;
+
+                    window.open(
+                        "",
+                        popupName,
+                        `width=${width},height=${height},top=${top},left=${left},scrollbars=yes,resizable=yes`,
+                    );
+
+                    const form = document.createElement("form");
+                    form.method = endpoint.method || "POST";
+
+                    let fullUrl = `${selectedDomainPrefix}`;
+                    if (endpoint.scope.site)
+                        fullUrl += `/${endpoint.scope.site}`;
+                    fullUrl += endpoint.uri;
+
+                    form.action = fullUrl;
+                    form.target = popupName;
+                    form.style.display = "none";
+
+                    // Re-calculate encryption because processedValues was local to READY block.
+                    // We use requestValues which now contains the User Input + Generated Signature.
+                    // WAIT: requestValues has the raw user input + the raw signature.
+                    // We need to re-encrypt the user inputs.
+
+                    // 1. Re-Find Context
+                    const midValue = requestValues["mid"];
+                    let execContext = {};
+                    if (midValue) {
+                        const midCtx = midContexts.find(
+                            (c) => c.mid === midValue,
+                        );
+                        if (midCtx)
+                            execContext = {
+                                hashKey: midCtx.hashKey,
+                                encKey: midCtx.encKey,
+                                encIV: midCtx.encIV,
+                            };
+                    }
+
+                    // 2. Encrypt (Using requestValues as source)
+                    // encryptData will encrypt fields marked as Encrypt.
+                    // It will NOT touch fields not marked (like signature usually).
+                    let payload = encryptData(
+                        requestValues,
+                        endpoint.requestData,
+                        execContext,
+                    );
+
+                    // 3. Ensure Signature is present in payload
+                    const signatureField = endpoint.requestData.find(
+                        (f) => f.name === "signature",
+                    );
+                    if (signatureField && requestValues[signatureField.name]) {
+                        payload[signatureField.name] =
+                            requestValues[signatureField.name];
+                    }
+
+                    Object.entries(payload).forEach(([key, value]) => {
+                        const input = document.createElement("input");
+                        input.type = "hidden";
+                        input.name = key;
+                        input.value = String(value || "");
+                        form.appendChild(input);
+                    });
+
+                    document.body.appendChild(form);
+                    form.submit();
+                    document.body.removeChild(form);
+
+                    // Setup BroadcastChannel (Fallback for when window.opener is lost)
+                    const bc = new BroadcastChannel("wpay_channel");
+
+                    const handleWpayResult = (resultData: any) => {
+                        console.log(
+                            "WPAY_RESULT received via " +
+                                (bc ? "BroadcastChannel" : "postMessage"),
+                        );
+                        responseStatus = 200;
+                        responseResult = JSON.stringify(resultData, null, 2);
+
+                        // Trigger Validation
+                        console.log("Triggering validateResponse...");
+                        validateResponse(resultData, execContext);
+
+                        // Cleanup
+                        window.removeEventListener("message", messageHandler);
+                        if (bc) bc.close();
+                    };
+
+                    bc.onmessage = (event) => {
+                        if (event.data && event.data.type === "WPAY_RESULT") {
+                            console.log(
+                                "Received message via BroadcastChannel",
+                            );
+                            handleWpayResult(event.data.data);
+                        }
+                    };
+
+                    console.log("Adding WPAY_RESULT message listener...");
+                    const messageHandler = (event: MessageEvent) => {
+                        // console.log("Message received in modal:", event); // Silenced spam
+                        if (event.data && event.data.type === "WPAY_RESULT") {
+                            console.log(
+                                "Received message via window.postMessage",
+                            );
+                            handleWpayResult(event.data.data);
+                        }
+                    };
+                    window.addEventListener("message", messageHandler);
+                } catch (e) {
+                    console.error(e);
+                    responseResult =
+                        "Error opening popup: " + (e as Error).message;
+                } finally {
+                    isExecuting = false;
+                }
+                return;
+            }
+
+            // Normal API Execution (fetch proxy)
             try {
                 // Build full URL
                 let fullUrl = `${selectedDomainPrefix}`;
@@ -267,29 +453,31 @@
 
                 // Prepare Body or Query Params
                 if (method === "GET") {
-                    const params = new URLSearchParams();
-                    // In current implementation, jsonResult contains the encoded string for form-urlencoded
-                    // OR it's a JSON string. For GET, we always expect flat parameters.
-                    const processedData = JSON.parse(
-                        JSON.stringify(requestValues),
-                    );
-
-                    // We need to use the processed (encrypted/signed) values
-                    // But wait, jsonResult already has the formatted string.
-                    // Let's re-parse or use URLSearchParams more directly.
+                    let qs = "";
                     if (contentType === "application/x-www-form-urlencoded") {
-                        const encodedPairs = jsonResult.split("\n");
-                        encodedPairs.forEach((pair) => {
-                            const [k, v] = pair.split("=");
-                            if (k) params.append(k, v || "");
-                        });
+                        // jsonResult already has encoded key=value lines
+                        qs = jsonResult.split("\n").join("&");
                     } else {
-                        Object.entries(processedData).forEach(([k, v]) => {
-                            params.append(k, String(v));
-                        });
+                        // Fallback/JSON mode for GET
+                        const params = new URLSearchParams();
+                        try {
+                            const processedData = JSON.parse(jsonResult);
+                            Object.entries(processedData).forEach(([k, v]) => {
+                                params.append(k, String(v));
+                            });
+                        } catch (e) {
+                            console.error(
+                                "Failed to parse jsonResult for GET query params:",
+                                e,
+                            );
+                            // Fallback to requestValues (unencrypted/unprocessed) if parsing fails
+                            Object.entries(requestValues).forEach(([k, v]) => {
+                                params.append(k, String(v));
+                            });
+                        }
+                        qs = params.toString();
                     }
 
-                    const qs = params.toString();
                     if (qs) {
                         fullUrl += (fullUrl.includes("?") ? "&" : "?") + qs;
                     }
@@ -339,6 +527,11 @@
                         typeof data === "object"
                             ? JSON.stringify(data, null, 2)
                             : data;
+
+                    // Validate Response
+                    if (data && typeof data === "object") {
+                        validateResponse(data, securityContext);
+                    }
                 } else {
                     responseStatus = response.status;
                     responseResult = `Proxy Error: ${proxyResult.error || "Unknown error"}`;
@@ -363,6 +556,14 @@
             executionStage = "READY";
             jsonResult = ""; // Clear result to avoid confusion
             signatureRawString = ""; // Clear signature source
+            responseResult = ""; // Clear previous response
+            responseStatus = null; // Clear previous status
+
+            // Clear validation results
+            responseSignatureRawString = "";
+            responseCalculatedSignature = "";
+            responseValidationSuccess = null;
+            responseDecryptedData = [];
         }
     }
 
@@ -459,6 +660,67 @@
         window.addEventListener("resize", handler);
         return () => window.removeEventListener("resize", handler);
     });
+
+    async function validateResponse(
+        data: Record<string, any>,
+        context: SecurityContext,
+    ) {
+        if (!endpoint) return;
+
+        // 1. Signature Validation
+        const signatureField = endpoint.responseData.find(
+            (f) => f.name === "signature",
+        );
+        const receivedSignature = data["signature"];
+
+        if (signatureField && receivedSignature && endpoint.signatureMethod) {
+            const { signature, rawString } = await generateSignature(
+                data,
+                endpoint.responseData,
+                endpoint.signatureMethod,
+                context,
+            );
+            responseSignatureRawString = rawString;
+            responseCalculatedSignature = signature;
+            responseValidationSuccess = signature === receivedSignature;
+        }
+
+        // 2. Decryption & Decoding
+        const decryptedList: typeof responseDecryptedData = [];
+        // Helper to check if processing needed
+        const needsProcessing = (f: any) =>
+            (f.decoded || f.encrypt) && data[f.name];
+
+        const fieldsToProcess = endpoint.responseData.filter(needsProcessing);
+
+        if (fieldsToProcess.length > 0) {
+            // URL Decode first
+            const decodedMap = urlDecodeData(data, fieldsToProcess);
+            // Then Decrypt (pass the potentially decoded values)
+            const decryptedMap = decryptData(
+                decodedMap,
+                fieldsToProcess,
+                context,
+            );
+
+            fieldsToProcess.forEach((f) => {
+                const original = data[f.name];
+                const final = decryptedMap[f.name];
+
+                let typeLabel = [];
+                if (f.decoded) typeLabel.push("URL Decoded");
+                if (f.encrypt) typeLabel.push("Decrypted");
+
+                decryptedList.push({
+                    name: f.name,
+                    original: String(original),
+                    value: String(final),
+                    type: typeLabel.join(" + "),
+                });
+            });
+        }
+        responseDecryptedData = decryptedList;
+    }
 </script>
 
 {#snippet executeButton(extraClass = "")}
@@ -941,6 +1203,121 @@
                     </div>
                     <pre
                         class="p-4 bg-slate-950 text-emerald-400 overflow-x-auto text-sm font-mono scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent min-h-[100px]">{responseResult}</pre>
+                </div>
+            {/if}
+
+            <!-- Response Validation Section -->
+            {#if executionStage === "EXECUTE" && (responseValidationSuccess !== null || responseDecryptedData.length > 0)}
+                <div
+                    class="mt-4 border-t border-slate-200 dark:border-border-dark pt-4 mb-10"
+                >
+                    <h4
+                        class="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2"
+                    >
+                        <ShieldCheck size={16} class="text-blue-500" />
+                        Response Validation
+                    </h4>
+
+                    {#if responseValidationSuccess !== null}
+                        <div
+                            class="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 border border-slate-200 dark:border-slate-800 mb-4"
+                        >
+                            <div class="flex items-center justify-between mb-3">
+                                <span
+                                    class="text-sm font-semibold text-slate-700 dark:text-slate-300"
+                                >
+                                    Signature Verification
+                                </span>
+                                <span
+                                    class={`text-xs font-bold px-2 py-1 rounded flex items-center gap-1 ${
+                                        responseValidationSuccess
+                                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                            : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                                    }`}
+                                >
+                                    {#if responseValidationSuccess}
+                                        <CheckCircle size={12} /> Valid
+                                    {:else}
+                                        <XCircle size={12} /> Invalid
+                                    {/if}
+                                </span>
+                            </div>
+
+                            <div class="space-y-3">
+                                <div>
+                                    <div class="text-xs text-slate-500 mb-1">
+                                        Source String
+                                    </div>
+                                    <div
+                                        class="bg-white dark:bg-slate-950 p-2 rounded border border-slate-200 dark:border-slate-800 text-xs font-mono break-all text-slate-600 dark:text-slate-400"
+                                    >
+                                        {responseSignatureRawString}
+                                    </div>
+                                </div>
+                                <div
+                                    class="grid grid-cols-1 md:grid-cols-2 gap-3"
+                                >
+                                    <div>
+                                        <div
+                                            class="text-xs text-slate-500 mb-1"
+                                        >
+                                            Generated Signature
+                                        </div>
+                                        <div
+                                            class="bg-white dark:bg-slate-950 p-2 rounded border border-slate-200 dark:border-slate-800 text-xs font-mono break-all text-slate-600 dark:text-slate-400"
+                                        >
+                                            {responseCalculatedSignature}
+                                        </div>
+                                    </div>
+                                    <!-- We could show received signature too, but validation result implies match/mismatch -->
+                                </div>
+                            </div>
+                        </div>
+                    {/if}
+
+                    {#if responseDecryptedData.length > 0}
+                        <div
+                            class="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 border border-slate-200 dark:border-slate-800"
+                        >
+                            <div class="flex items-center gap-2 mb-3">
+                                <LockOpen size={14} class="text-slate-500" />
+                                <span
+                                    class="text-sm font-semibold text-slate-700 dark:text-slate-300"
+                                >
+                                    Decrypted / Decoded Data
+                                </span>
+                            </div>
+                            <div class="space-y-2">
+                                {#each responseDecryptedData as item}
+                                    <div
+                                        class="bg-white dark:bg-slate-950 rounded border border-slate-200 dark:border-slate-800 p-3"
+                                    >
+                                        <div
+                                            class="flex justify-between items-start mb-1"
+                                        >
+                                            <span
+                                                class="text-xs font-bold text-slate-700 dark:text-slate-300"
+                                            >
+                                                {item.name}
+                                            </span>
+                                            <span
+                                                class="text-[10px] uppercase tracking-wider text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded"
+                                            >
+                                                {item.type}
+                                            </span>
+                                        </div>
+                                        <div class="grid grid-cols-1 gap-1">
+                                            <div
+                                                class="text-xs text-emerald-600 dark:text-emerald-400 font-mono break-all"
+                                            >
+                                                {item.value}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {/each}
+                            </div>
+                        </div>
+                    {/if}
                 </div>
             {/if}
         </div>

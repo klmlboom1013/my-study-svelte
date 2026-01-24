@@ -34,7 +34,7 @@
 
     function getSignatureMethodLabel(method?: string) {
         if (method === "HMAC_SHA256_KV")
-            return "toHexString( SHA256( key=value&...&key=value&hasKey={hash key} ) )";
+            return "toHexString( SHA256( key=value&...&key=value&hashKey={hash key} ) )";
         if (method === "HMAC_SHA256_V")
             return "toHexString( SHA256( value&...&value&{hash key} ) )";
         return "-";

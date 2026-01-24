@@ -1,5 +1,5 @@
-import { encryptSeed } from './encryption/cryptoSeed';
-import type { RequestDataField } from '$lib/types/endpoint';
+import { encryptSeed, decryptSeed } from './encryption/cryptoSeed';
+import type { RequestDataField, ResponseDataField } from '$lib/types/endpoint';
 
 export interface SecurityContext {
     hashKey?: string;
@@ -9,7 +9,7 @@ export interface SecurityContext {
 
 export async function generateSignature(
     values: Record<string, any>,
-    fields: RequestDataField[],
+    fields: { name: string; signingOrder?: number }[],
     method: string,
     context: SecurityContext
 ): Promise<{ signature: string; rawString: string }> {
@@ -24,7 +24,7 @@ export async function generateSignature(
 
     // 2. Construct raw string logic based on method template
     // Expected templates: 
-    // "toHexString( SHA256( key=value&...&key=value&hasKey={hash key} ) )"
+    // "toHexString( SHA256( key=value&...&key=value&hashKey={hash key} ) )"
     // "toHexString( SHA256( value&...&value&{hash key} ) )"
 
     // Expected values from Editor: "HMAC_SHA256_KV" or "HMAC_SHA256_V"
@@ -50,16 +50,16 @@ export async function generateSignature(
     if (context.hashKey) {
         // Explicit code check
         if (method === 'HMAC_SHA256_KV') {
-            // "...&hasKey={hash key}" -> &hasKey=KEY
-            rawString += `&hasKey=${context.hashKey}`;
+            // "...&hashKey={hash key}" -> &hashKey=KEY
+            rawString += `&hashKey=${context.hashKey}`;
         } else if (method === 'HMAC_SHA256_V') {
             // "...&{hash key}" -> &KEY
             rawString += `&${context.hashKey}`;
         } else {
             // Legacy/Text parsing fallback
-            if (method.includes('hasKey={hash key}') || method.includes('hash={hash key}')) {
+            if (method.includes('hashKey={hash key}') || method.includes('hash={hash key}')) {
                 if (isKeyValue) {
-                    rawString += `&hasKey=${context.hashKey}`;
+                    rawString += `&hashKey=${context.hashKey}`;
                 } else {
                     rawString += `&${context.hashKey}`;
                 }
@@ -112,6 +112,54 @@ export function urlEncodeData(
         if (field.encoded) {
             let val = processed[field.name];
             processed[field.name] = encodeURIComponent(String(val));
+        }
+    }
+
+    return processed;
+}
+
+export function decryptData(
+    values: Record<string, any>,
+    fields: ResponseDataField[],
+    context: SecurityContext
+): Record<string, any> {
+    const processed = { ...values };
+
+    if (context.encKey && context.encIV) {
+        for (const field of fields) {
+            if (field.encrypt) {
+                let val = processed[field.name];
+                const shouldDecrypt = val !== "" && val !== null && val !== undefined;
+                if (shouldDecrypt) {
+                    try {
+                        processed[field.name] = decryptSeed(String(val), context.encKey, context.encIV);
+                    } catch (e) {
+                        console.error(`Decryption failed for ${field.name}`, e);
+                    }
+                }
+            }
+        }
+    }
+
+    return processed;
+}
+
+export function urlDecodeData(
+    values: Record<string, any>,
+    fields: ResponseDataField[]
+): Record<string, any> {
+    const processed = { ...values };
+
+    for (const field of fields) {
+        if (field.decoded) {
+            let val = processed[field.name];
+            if (val) {
+                try {
+                    processed[field.name] = decodeURIComponent(String(val));
+                } catch (e) {
+                    console.error(`Decoding failed for ${field.name}`, e);
+                }
+            }
         }
     }
 
