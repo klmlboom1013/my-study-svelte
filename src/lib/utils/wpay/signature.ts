@@ -12,11 +12,15 @@ export async function generateSignature(
         "socialNo2",
         "frnrYn",
         "returnUrl"
-    ]
+    ],
+    encodeFields: string[] = []
 ): Promise<{ signature: string; source: string }> {
     const parts: string[] = [];
     for (const key of signingOrder) {
-        const value = data[key] || "";
+        let value = data[key] || "";
+        if (encodeFields.includes(key)) {
+            value = encodeURIComponent(value);
+        }
         parts.push(`${key}=${value}`);
     }
 

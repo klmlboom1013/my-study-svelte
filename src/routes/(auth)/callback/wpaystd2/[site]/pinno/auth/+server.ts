@@ -1,4 +1,3 @@
-
 import type { RequestHandler } from './$types';
 
 const generateResponse = (data: any) => {
@@ -65,9 +64,10 @@ export const GET: RequestHandler = async ({ url }) => {
         mid: url.searchParams.get('mid') || '',
         wtid: url.searchParams.get('wtid') || '',
         wpayUserKey: url.searchParams.get('wpayUserKey') || '',
+        userId: url.searchParams.get('userId') || '',
         signature: url.searchParams.get('signature') || ''
     };
-    console.log("SERVER GET /pinno/auth:", data); // Server-side log
+    console.log("SERVER GET /pinno/auth:", data);
     return generateResponse(data);
 };
 
@@ -79,6 +79,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
         mid: formData.get('mid')?.toString() || '',
         wtid: formData.get('wtid')?.toString() || '',
         wpayUserKey: formData.get('wpayUserKey')?.toString() || '',
+        userId: formData.get('userId')?.toString() || '',
         signature: formData.get('signature')?.toString() || '',
     };
 
@@ -90,6 +91,6 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
         maxAge: 60 // 1 minute
     });
 
-    console.log("SERVER POST /pinno/auth:", data); // Server-side log
+    console.log("SERVER POST /pinno/auth:", data);
     return generateResponse(data);
 };

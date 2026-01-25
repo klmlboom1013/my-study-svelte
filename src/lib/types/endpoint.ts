@@ -10,6 +10,7 @@ export interface RequestDataField {
     encoded: boolean;
     signingOrder?: number;
     description?: string;
+    defaultValue?: string;
     subFields?: RequestDataField[];
 }
 
