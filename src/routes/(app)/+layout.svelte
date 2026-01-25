@@ -5,7 +5,7 @@
     import SidebarNav from "$lib/components/layout/SidebarNav.svelte";
     import { onMount } from "svelte";
     import { fade, fly } from "svelte/transition";
-    import { afterNavigate } from "$app/navigation";
+    import { afterNavigate, goto } from "$app/navigation";
     import { auth } from "$lib/firebase/firebase";
     import { onAuthStateChanged } from "firebase/auth";
     import { profileStore } from "$lib/stores/profileStore";
@@ -46,6 +46,13 @@
     });
 
     onMount(() => {
+        // App Authentication Check
+        const accessToken = getCookie("accessToken");
+        if (!accessToken) {
+            goto("/signin");
+            return;
+        }
+
         // Firebase Auth Listener (Keep for basic user sync if needed, though we rely on store)
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             // This is just to ensure authStore has the user if page refreshes

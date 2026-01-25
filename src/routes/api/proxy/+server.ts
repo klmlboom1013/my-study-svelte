@@ -1,4 +1,4 @@
-import { json } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -6,34 +6,39 @@ export const POST: RequestHandler = async ({ request }) => {
         const { url, method, headers, body } = await request.json();
 
         if (!url) {
-            return json({ error: 'Missing target URL' }, { status: 400 });
+            throw error(400, 'Missing url parameter');
         }
 
-        console.log(`Proxying ${method} request to: ${url}`);
+        // Clean headers to avoid conflicts
+        const cleanHeaders: Record<string, string> = { ...headers };
+        delete cleanHeaders['host'];
+        delete cleanHeaders['origin'];
+        delete cleanHeaders['referer'];
+        delete cleanHeaders['content-length'];
 
-        const response = await fetch(url, {
+        const fetchOptions: RequestInit = {
             method: method || 'GET',
-            headers: headers || {},
-            body: body || undefined
-        });
+            headers: cleanHeaders,
+            body: body ? body : undefined
+        };
 
-        const status = response.status;
-        const contentType = response.headers.get('content-type') || '';
+        const response = await fetch(url, fetchOptions);
+        const responseBody = await response.text();
 
-        let responseData;
-        if (contentType.includes('application/json')) {
-            responseData = await response.json();
-        } else {
-            responseData = await response.text();
+        // Create response headers map
+        const responseHeaders = new Headers();
+        if (response.headers.has('content-type')) {
+            responseHeaders.set('content-type', response.headers.get('content-type')!);
         }
 
-        return json({
-            status,
-            data: responseData,
-            headers: Object.fromEntries(response.headers.entries())
+        return new Response(responseBody, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: responseHeaders
         });
-    } catch (error: any) {
-        console.error('Proxy error:', error);
-        return json({ error: error.message }, { status: 500 });
+
+    } catch (e) {
+        console.error('Proxy Error:', e);
+        throw error(500, `Proxy Request Failed: ${(e as Error).message}`);
     }
 };

@@ -7,12 +7,14 @@ let isSyncing = false;
 let driveFileId: string | null = null;
 let debounceTimer: ReturnType<typeof setTimeout>;
 
+import { executionService } from "./executionService"; // Import added
+
 export const syncService = {
     init: () => {
         // Listen for auth changes
         authStore.subscribe(async (user) => {
             if (user.accessToken) {
-                await syncService.loadFromDrive(user.accessToken);
+                syncService.loadFromDrive(user.accessToken).catch(() => { });
             } else {
                 driveFileId = null;
             }
@@ -21,6 +23,11 @@ export const syncService = {
         // Register generic change listener to endpointService
         // We need to modify endpointService to allow this, or poll, or use a store
         endpointService.onChange(() => {
+            syncService.scheduleSave();
+        });
+
+        // Listen for Execution History Changes (Presets)
+        executionService.onChange(() => {
             syncService.scheduleSave();
         });
     },
@@ -40,11 +47,17 @@ export const syncService = {
                     // Merge logic: For now, overwrite local with cloud or merge intelligently
                     // Simple strategy: Cloud wins on initial load
                     endpointService.importEndpoints(data.endpoints);
-                    console.log("Synced from Drive:", data.endpoints.length, "endpoints");
+                    console.log("Synced Endpoints from Drive:", data.endpoints.length);
+                }
+
+                if (data.executionHistory) {
+                    executionService.importHistory(data.executionHistory);
+                    console.log("Synced Execution History from Drive");
                 }
             }
         } catch (e) {
             console.error("Sync Load Error:", e);
+            throw e; // Re-throw to allow caller to handle
         } finally {
             isSyncing = false;
         }
@@ -53,7 +66,7 @@ export const syncService = {
     scheduleSave: () => {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
-            syncService.saveToDrive();
+            syncService.saveToDrive().catch(() => { });
         }, 2000); // 2 seconds debounce
     },
 
@@ -64,8 +77,11 @@ export const syncService = {
         isSyncing = true;
         try {
             const endpoints = endpointService.getEndpoints();
+            const executionHistory = executionService.getAllHistory();
+
             const content = {
                 endpoints,
+                executionHistory,
                 updatedAt: Date.now()
             };
 
@@ -78,6 +94,7 @@ export const syncService = {
             console.log("Synced to Drive");
         } catch (e) {
             console.error("Sync Save Error:", e);
+            throw e; // Re-throw to allow caller to handle
         } finally {
             isSyncing = false;
         }

@@ -9,7 +9,22 @@
         ChevronDown,
         Check,
         X,
+        Save,
+        History,
+        RotateCcw,
+        Bookmark,
+        CloudUpload,
+        CloudDownload,
+        Copy,
+        CopyCheck,
+        Loader2,
     } from "lucide-svelte";
+    import { syncService } from "$lib/services/syncService";
+    import { authStore } from "$lib/services/authService";
+    import {
+        executionService,
+        type ExecutionPreset,
+    } from "$lib/services/executionService";
     import { settingsStore } from "$lib/stores/settingsStore";
     import {
         generateSignature,
@@ -20,8 +35,9 @@
         type SecurityContext,
     } from "$lib/utils/security";
     import { CheckCircle, XCircle, ShieldCheck, LockOpen } from "lucide-svelte";
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
     import type { Endpoint, RequestDataField } from "$lib/types/endpoint";
-    import { fade, slide } from "svelte/transition";
+    import { fade, slide, scale } from "svelte/transition";
 
     let {
         isOpen = $bindable(false),
@@ -40,6 +56,12 @@
     let selectedDomainPrefix = $state("");
     let securityContext = $state<SecurityContext>({});
 
+    // Preset & History State
+    let presets = $state<ExecutionPreset[]>([]);
+    let showSavePresetDialog = $state(false);
+    let newPresetName = $state("");
+    let isPresetDropdownOpen = $state(false); // Added state for preset dropdown
+
     // Response Validation State
     let responseSignatureRawString = $state("");
     let responseCalculatedSignature = $state("");
@@ -47,6 +69,41 @@
     let responseDecryptedData = $state<
         { name: string; value: string; original: string; type: string }[]
     >([]);
+    let copiedSection = $state<string | null>(null);
+
+    // Sync Notification State
+    let showSyncAlert = $state(false);
+    let syncAlertMessage = $state("");
+    let syncAlertTitle = $state("");
+    let isBackingUp = $state(false);
+    let isRestoring = $state(false);
+
+    let headerRef = $state<HTMLElement | null>(null);
+    let isHeaderInView = $state(true);
+
+    $effect(() => {
+        if (headerRef && headerRef.parentElement) {
+            const body = headerRef.parentElement;
+            const handleScroll = () => {
+                // Show FAB when scrolled down more than 50px
+                isHeaderInView = body.scrollTop < 50;
+            };
+
+            body.addEventListener("scroll", handleScroll);
+            // Initial check
+            handleScroll();
+
+            return () => body.removeEventListener("scroll", handleScroll);
+        }
+    });
+
+    function handleCopy(text: string, section: string) {
+        navigator.clipboard.writeText(text);
+        copiedSection = section;
+        setTimeout(() => {
+            if (copiedSection === section) copiedSection = null;
+        }, 2000);
+    }
 
     const globalParameters = $derived(
         $settingsStore.endpoint_parameters.globalParameters,
@@ -63,8 +120,23 @@
     $effect(() => {
         if (isOpen && endpoint) {
             untrack(() => {
-                // Initialize values based on schema
-                requestValues = initializeValues(endpoint.requestData);
+                const history = executionService.getHistory(endpoint.id);
+                presets = history.presets;
+
+                if (history.lastUsed) {
+                    // Merge schema with last used to handle schema updates safely
+                    const baseValues = initializeValues(endpoint.requestData);
+                    const { domainPrefix: lastDomain, ...lastValues } =
+                        history.lastUsed;
+                    requestValues = { ...baseValues, ...lastValues };
+
+                    if (lastDomain) {
+                        selectedDomainPrefix = lastDomain;
+                    }
+                } else {
+                    requestValues = initializeValues(endpoint.requestData);
+                }
+
                 executionStage = "READY"; // Reset stage
                 jsonResult = ""; // Reset result
                 responseResult = ""; // Reset response
@@ -73,6 +145,7 @@
 
                 // Populate available domains
                 const tempDomains = [];
+                // ... (rest of domain logic remains same)
 
                 const app = applications.find(
                     (a) => a.appName === endpoint?.application,
@@ -139,6 +212,56 @@
             if (!target.closest(".param-dropdown-container")) {
                 activeDropdownPath = null;
             }
+        }
+        // Always close preset dropdown when clicking outside (propagation stopped inside)
+        if (isPresetDropdownOpen) {
+            isPresetDropdownOpen = false;
+        }
+    }
+
+    async function handleBackup() {
+        if (!$authStore.accessToken) {
+            syncAlertTitle = "Authentication Required";
+            syncAlertMessage = "Google Drive connection required.";
+            showSyncAlert = true;
+            return;
+        }
+        try {
+            isBackingUp = true;
+            await syncService.saveToDrive();
+            syncAlertTitle = "Backup Successful";
+            syncAlertMessage = "Backup completed!";
+            showSyncAlert = true;
+        } catch (e) {
+            syncAlertTitle = "Backup Failed";
+            syncAlertMessage = "Error saving to Drive: " + (e as Error).message;
+            showSyncAlert = true;
+        } finally {
+            isBackingUp = false;
+        }
+    }
+
+    async function handleRestore() {
+        if (!$authStore.accessToken) {
+            syncAlertTitle = "Authentication Required";
+            syncAlertMessage = "Google Drive connection required.";
+            showSyncAlert = true;
+            return;
+        }
+        try {
+            isRestoring = true;
+            await syncService.loadFromDrive($authStore.accessToken);
+            syncAlertTitle = "Restore Successful";
+            syncAlertMessage =
+                "Restore completed! (Re-open modal to see updates)";
+            showSyncAlert = true;
+        } catch (e) {
+            syncAlertTitle = "Restore Failed";
+            syncAlertMessage =
+                "Error loading from Drive: " + (e as Error).message;
+            showSyncAlert = true;
+        } finally {
+            isRestoring = false;
         }
     }
 
@@ -207,16 +330,10 @@
 
                     // 2. Specific URL Encoding for Signature & Display
                     // Only encode fields that are explicitly marked as 'encode' in definition
-                    let encodedValues = { ...processedValues };
-
-                    endpoint.requestData.forEach((field) => {
-                        // Check if field is marked for encoding (assuming property is 'encode' or similar, strict check)
-                        if (field.encode && encodedValues[field.name]) {
-                            encodedValues[field.name] = encodeURIComponent(
-                                encodedValues[field.name],
-                            );
-                        }
-                    });
+                    const encodedValues = urlEncodeData(
+                        processedValues,
+                        endpoint.requestData,
+                    );
 
                     // 3. Generate Signature using ENCODED values
                     if (endpoint.signatureMethod && signatureField) {
@@ -228,68 +345,58 @@
                                 securityContext,
                             );
                         // Add signature to both Maps
-                        processedValues[signatureField.name] = signature; // Raw map (for Form submit logic re-creation)
-                        encodedValues[signatureField.name] = signature; // Encoded map (for Display)
+                        processedValues[signatureField.name] = signature;
+                        encodedValues[signatureField.name] = signature;
 
                         // IMPORTANT: Update requestValues with the signature so it persists for the EXECUTE stage
                         requestValues[signatureField.name] = signature;
                         signatureRawString = rawString;
                     }
 
-                    // 4. Display Logic (Encoded Values in key=value format)
-                    const params = new URLSearchParams();
-                    Object.entries(encodedValues).forEach(([key, value]) => {
-                        params.append(key, String(value));
-                    });
-                    jsonResult = params.toString().split("&").join("\n");
+                    // 4. Display Logic (Manual key=value construction to avoid double-encoding)
+                    jsonResult = Object.entries(encodedValues)
+                        .map(([key, value]) => `${key}=${value}`)
+                        .join("\n");
 
                     executionStage = "EXECUTE";
                     return;
                 }
 
                 // NOT FORM TYPE Logic (GET/POST JSON/etc)
+                const encodedValues = urlEncodeData(
+                    processedValues,
+                    endpoint.requestData,
+                );
 
-                // For GET/POST, we might have different encoding or signature needs.
-                // Reusing original logic structure:
+                // Use encoded values for signature if it's POST and we are about to URL encode
+                const valuesForSignature =
+                    endpoint.method === "POST" &&
+                    endpoint.config?.contentType ===
+                        "application/x-www-form-urlencoded"
+                        ? encodedValues
+                        : processedValues;
 
-                if (endpoint.method === "GET") {
-                    if (endpoint.signatureMethod && signatureField) {
-                        const { signature, rawString } =
-                            await generateSignature(
-                                processedValues,
-                                endpoint.requestData,
-                                endpoint.signatureMethod,
-                                securityContext,
-                            );
-                        processedValues[signatureField.name] = signature;
-                        requestValues[signatureField.name] = signature;
-                        signatureRawString = rawString;
-                    }
-                } else {
-                    // POST default
-                    if (endpoint.signatureMethod && signatureField) {
-                        const { signature, rawString } =
-                            await generateSignature(
-                                processedValues,
-                                endpoint.requestData,
-                                endpoint.signatureMethod,
-                                securityContext,
-                            );
-                        processedValues[signatureField.name] = signature;
-                        requestValues[signatureField.name] = signature;
-                        signatureRawString = rawString;
-                    }
+                if (endpoint.signatureMethod && signatureField) {
+                    const { signature, rawString } = await generateSignature(
+                        valuesForSignature,
+                        endpoint.requestData,
+                        endpoint.signatureMethod,
+                        securityContext,
+                    );
+                    processedValues[signatureField.name] = signature;
+                    encodedValues[signatureField.name] = signature;
+                    requestValues[signatureField.name] = signature;
+                    signatureRawString = rawString;
                 }
 
                 if (
                     endpoint.config?.contentType ===
                     "application/x-www-form-urlencoded"
                 ) {
-                    const params = new URLSearchParams();
-                    Object.entries(processedValues).forEach(([key, value]) => {
-                        params.append(key, String(value));
-                    });
-                    jsonResult = params.toString().split("&").join("\n");
+                    // Manual construction to respect field.encoded
+                    jsonResult = Object.entries(encodedValues)
+                        .map(([key, value]) => `${key}=${value}`)
+                        .join("\n");
                 } else {
                     jsonResult = JSON.stringify(processedValues, null, 2);
                 }
@@ -307,12 +414,20 @@
             responseResult = "";
             responseStatus = null;
 
+            // Save to execution history
+            if (endpoint) {
+                executionService.saveLastUsed(endpoint.id, {
+                    ...requestValues,
+                    domainPrefix: selectedDomainPrefix,
+                });
+            }
+
             if (endpoint.requestType === "FORM") {
                 // FORM Execution: Open Popup with RAW Encrypted Values
                 try {
                     const popupName = `wpay_popup_${Date.now()}`;
-                    const width = 500;
-                    const height = 700;
+                    const width = 451;
+                    const height = 908;
                     const left = (window.screen.width - width) / 2;
                     const top = (window.screen.height - height) / 2;
 
@@ -371,6 +486,10 @@
                         payload[signatureField.name] =
                             requestValues[signatureField.name];
                     }
+
+                    // 4. PRE-ENCODE (To match signature source and prevent double-encoding mismatch)
+                    // This ensures that what is sent in the form matches the 'Request Parameters' display.
+                    payload = urlEncodeData(payload, endpoint.requestData);
 
                     Object.entries(payload).forEach(([key, value]) => {
                         const input = document.createElement("input");
@@ -431,125 +550,174 @@
                 } finally {
                     isExecuting = false;
                 }
-                return;
-            }
+            } else {
+                // REST Execution (GET/POST/etc)
+                try {
+                    // 1. Prepare URL
+                    let fullUrl = `${selectedDomainPrefix}`;
+                    if (endpoint.scope.site)
+                        fullUrl += `/${endpoint.scope.site}`;
+                    fullUrl += endpoint.uri;
 
-            // Normal API Execution (fetch proxy)
-            try {
-                // Build full URL
-                let fullUrl = `${selectedDomainPrefix}`;
-                if (endpoint.scope.site) {
-                    fullUrl += `/${endpoint.scope.site}`;
-                }
-                fullUrl += endpoint.uri;
+                    // 2. Re-Encrypt for Execution (same logic as FORM)
+                    const midValue = requestValues["mid"];
+                    let execContext = {};
+                    if (midValue) {
+                        const midCtx = midContexts.find(
+                            (c) => c.mid === midValue,
+                        );
+                        if (midCtx)
+                            execContext = {
+                                hashKey: midCtx.hashKey,
+                                encKey: midCtx.encKey,
+                                encIV: midCtx.encIV,
+                            };
+                    }
 
-                const method = endpoint.method;
-                const contentType = endpoint.config.contentType;
+                    // Encrypt
+                    let payload = encryptData(
+                        requestValues,
+                        endpoint.requestData,
+                        execContext,
+                    );
 
-                const options: RequestInit = {
-                    method: method,
-                    headers: {},
-                };
+                    // Ensure Signature is present
+                    const signatureField = endpoint.requestData.find(
+                        (f) => f.name === "signature",
+                    );
+                    if (signatureField && requestValues[signatureField.name]) {
+                        payload[signatureField.name] =
+                            requestValues[signatureField.name];
+                    }
 
-                // Prepare Body or Query Params
-                if (method === "GET") {
-                    let qs = "";
-                    if (contentType === "application/x-www-form-urlencoded") {
-                        // jsonResult already has encoded key=value lines
-                        qs = jsonResult.split("\n").join("&");
-                    } else {
-                        // Fallback/JSON mode for GET
-                        const params = new URLSearchParams();
-                        try {
-                            const processedData = JSON.parse(jsonResult);
-                            Object.entries(processedData).forEach(([k, v]) => {
-                                params.append(k, String(v));
+                    // 3. Prepare Fetch Options
+                    let body: BodyInit | null = null;
+                    const headers: HeadersInit = {};
+
+                    // Add Custom Headers if any
+                    if (endpoint.config?.customHeaders) {
+                        endpoint.config.customHeaders.forEach((h) => {
+                            headers[h.key] = h.value;
+                        });
+                    }
+
+                    if (endpoint.config?.contentType) {
+                        headers["Content-Type"] = endpoint.config.contentType;
+                    }
+
+                    if (
+                        endpoint.method !== "GET" &&
+                        endpoint.method !== "DELETE"
+                    ) {
+                        // For POST/PUT/PATCH
+                        if (
+                            endpoint.config?.contentType ===
+                            "application/x-www-form-urlencoded"
+                        ) {
+                            const params = new URLSearchParams();
+                            Object.entries(payload).forEach(([key, value]) => {
+                                if (value !== undefined && value !== null) {
+                                    params.append(key, String(value));
+                                }
                             });
-                        } catch (e) {
-                            console.error(
-                                "Failed to parse jsonResult for GET query params:",
-                                e,
-                            );
-                            // Fallback to requestValues (unencrypted/unprocessed) if parsing fails
-                            Object.entries(requestValues).forEach(([k, v]) => {
-                                params.append(k, String(v));
-                            });
+                            body = params;
+                        } else {
+                            // Default JSON
+                            body = JSON.stringify(payload);
+                            if (!headers["Content-Type"]) {
+                                headers["Content-Type"] = "application/json";
+                            }
                         }
-                        qs = params.toString();
-                    }
-
-                    if (qs) {
-                        fullUrl += (fullUrl.includes("?") ? "&" : "?") + qs;
-                    }
-                } else {
-                    // POST, PUT, etc.
-                    if (contentType === "application/x-www-form-urlencoded") {
-                        options.headers = {
-                            ...options.headers,
-                            "Content-Type": contentType,
-                        };
-                        options.body = jsonResult.split("\n").join("&");
-                    } else if (contentType === "application/json") {
-                        options.headers = {
-                            ...options.headers,
-                            "Content-Type": contentType,
-                        };
-                        options.body = jsonResult;
                     } else {
-                        // Default to JSON if not specified
-                        options.headers = {
-                            ...options.headers,
-                            "Content-Type": "application/json",
-                        };
-                        options.body = jsonResult;
+                        // For GET/DELETE -> Query Params
+                        const params = new URLSearchParams();
+                        Object.entries(payload).forEach(([key, value]) => {
+                            if (value !== undefined && value !== null) {
+                                params.append(key, String(value));
+                            }
+                        });
+                        const queryString = params.toString();
+                        if (queryString) {
+                            fullUrl +=
+                                (fullUrl.includes("?") ? "&" : "?") +
+                                queryString;
+                        }
                     }
-                }
 
-                const response = await fetch("/api/proxy", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
+                    // 4. Perform Request via Proxy to avoid CORS
+                    const proxyBody = {
                         url: fullUrl,
-                        method: method,
-                        headers: options.headers,
-                        body: options.body,
-                    }),
-                });
+                        method: endpoint.method,
+                        headers,
+                        body:
+                            body instanceof URLSearchParams
+                                ? body.toString()
+                                : body,
+                    };
 
-                const proxyResult = await response.json();
+                    const response = await fetch("/api/proxy", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(proxyBody),
+                    });
 
-                if (response.ok) {
-                    responseStatus = proxyResult.status;
-                    const data = proxyResult.data;
-                    responseResult =
-                        typeof data === "object"
-                            ? JSON.stringify(data, null, 2)
-                            : data;
-
-                    // Validate Response
-                    if (data && typeof data === "object") {
-                        validateResponse(data, securityContext);
-                    }
-                } else {
                     responseStatus = response.status;
-                    responseResult = `Proxy Error: ${proxyResult.error || "Unknown error"}`;
+                    const text = await response.text();
+
+                    try {
+                        const data = JSON.parse(text);
+                        responseResult = JSON.stringify(data, null, 2);
+                        // Validate
+                        validateResponse(data, execContext);
+                    } catch (e) {
+                        // Not JSON
+                        responseResult = text;
+                    }
+                } catch (e) {
+                    console.error("REST execution failed:", e);
+                    responseResult =
+                        "Error executing request: " + (e as Error).message;
+                } finally {
+                    isExecuting = false;
                 }
-            } catch (error: any) {
-                console.error("API Execution failed:", error);
-                responseResult = `Error: ${error.message}`;
-            } finally {
-                isExecuting = false;
             }
         }
     }
 
-    // ... [Original addListItem, removeListItem, getOptions etc. remain unchanged] ...
-    // Since I'm replacing a large block, I need to include the functions I'm actively *not* changing if they are inside the replaced range
-    // BUT replace_file_content works on line ranges. I should try to narrow the range if possible, or just be careful.
-    // The previous block was lines 26-145 (variables + handleExecute).
-    // I will target that block specifically.
+    function loadPreset(preset: ExecutionPreset) {
+        const baseValues = initializeValues(endpoint?.requestData);
+        requestValues = { ...baseValues, ...preset.values };
+        if (preset.domainPrefix) {
+            selectedDomainPrefix = preset.domainPrefix;
+        }
+        handleUserChange();
+    }
+
+    function handleSavePreset() {
+        if (!endpoint || !newPresetName.trim()) return;
+        const newPreset = executionService.savePreset(
+            endpoint.id,
+            newPresetName.trim(),
+            requestValues,
+            selectedDomainPrefix,
+        );
+        presets = [...presets, newPreset];
+        newPresetName = "";
+        showSavePresetDialog = false;
+    }
+
+    function handleDeletePreset(id: string) {
+        if (!endpoint) return;
+        executionService.deletePreset(endpoint.id, id);
+        presets = presets.filter((p) => p.id !== id);
+    }
+
+    function resetToDefault() {
+        requestValues = initializeValues(endpoint?.requestData);
+        handleUserChange();
+    }
 
     function handleUserChange() {
         if (executionStage === "EXECUTE") {
@@ -723,26 +891,33 @@
     }
 </script>
 
-{#snippet executeButton(extraClass = "")}
+{#snippet executeButton(extraClass = "", showText = true)}
     <button
         onclick={handleExecute}
         disabled={isExecuting}
-        class="flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold text-white transition-all hover:scale-105 active:scale-95 shrink-0 rounded-lg shadow-sm disabled:opacity-70 disabled:scale-100 {executionStage ===
+        class="flex items-center justify-center gap-2 px-3 md:px-5 py-2.5 text-sm font-bold text-white transition-all hover:scale-105 active:scale-95 shrink-0 rounded-lg shadow-sm disabled:opacity-70 disabled:scale-100 {executionStage ===
         'READY'
             ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
             : 'bg-green-600 hover:bg-green-700 shadow-green-600/20'} {extraClass}"
+        title={!showText
+            ? isExecuting
+                ? "Executing..."
+                : executionStage === "READY"
+                  ? "Ready"
+                  : "Execute"
+            : ""}
     >
         {#if isExecuting}
             <div
                 class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
             ></div>
-            Executing...
+            {#if showText}Executing...{/if}
         {:else if executionStage === "READY"}
             <Check class="w-4 h-4" />
-            Ready
+            {#if showText}Ready{/if}
         {:else}
             <Play class="w-4 h-4" fill="currentColor" />
-            Execute
+            {#if showText}Execute{/if}
         {/if}
     </button>
 {/snippet}
@@ -895,9 +1070,8 @@
 
                             {#if activeDropdownPath === path}
                                 <div
-                                    transition:slide={{
+                                    transition:fade={{
                                         duration: 200,
-                                        axis: "y",
                                     }}
                                     class="absolute right-0 top-full mt-1 z-50 w-full min-w-[200px] max-h-[200px] overflow-y-auto rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-slate-900 shadow-xl"
                                 >
@@ -954,6 +1128,35 @@
     {/if}
 {/snippet}
 
+{#snippet fab()}
+    {#if !isHeaderInView}
+        <div
+            class="absolute bottom-10 right-10 z-[999] flex flex-col gap-4 items-end"
+            transition:scale={{ duration: 200, start: 0.8 }}
+        >
+            <button
+                onclick={handleExecute}
+                disabled={isExecuting}
+                class="w-16 h-16 flex items-center justify-center rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.3)] transition-all hover:scale-110 active:scale-95 disabled:opacity-70 text-white {executionStage ===
+                'READY'
+                    ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/40'
+                    : 'bg-green-600 hover:bg-green-700 shadow-green-600/40'}"
+                title={executionStage === "READY" ? "Ready" : "Execute"}
+            >
+                {#if isExecuting}
+                    <div
+                        class="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"
+                    ></div>
+                {:else if executionStage === "READY"}
+                    <Check class="w-7 h-7 text-white" />
+                {:else}
+                    <Play class="w-7 h-7 text-white" fill="currentColor" />
+                {/if}
+            </button>
+        </div>
+    {/if}
+{/snippet}
+
 <svelte:window onclick={handleOutsideClick} />
 
 <Modal
@@ -961,6 +1164,7 @@
     title={isMobile ? "" : "Execute Endpoint"}
     width="max-w-4xl"
     bodyClass="max-h-[85vh] overflow-y-auto p-0 text-base font-medium"
+    overlay={fab}
 >
     {#if endpoint}
         {#if isMobile}
@@ -981,6 +1185,7 @@
         <!-- Body -->
         <!-- Fixed Header Info -->
         <div
+            bind:this={headerRef}
             class="p-4 md:p-5 bg-slate-50 dark:bg-card-dark border-b border-slate-200 dark:border-border-dark shadow-sm z-10 flex flex-col md:flex-row md:justify-between md:items-start gap-4"
         >
             <div class="flex flex-col gap-3 flex-1 min-w-0">
@@ -998,16 +1203,287 @@
                     </span>
                 </div>
 
-                <!-- Row 2: Name -->
-                <h3
-                    class="font-bold text-xl text-slate-900 dark:text-white leading-tight"
+                <!-- Row 2: Name & Actions -->
+                <div
+                    class="flex flex-col md:flex-row md:items-center justify-between gap-4"
                 >
-                    {endpoint.name}
-                </h3>
+                    <h3
+                        class="font-bold text-xl text-slate-900 dark:text-white leading-tight"
+                    >
+                        {endpoint.name}
+                    </h3>
 
-                <!-- Mobile Action Button -->
-                <div class="md:hidden mt-1">
-                    {@render executeButton("w-full py-3")}
+                    <div class="flex items-center gap-2 shrink-0">
+                        <!-- Desktop Actions (Backup, Restore, Preset, Execute) -->
+                        <div class="hidden md:flex items-center gap-2">
+                            <!-- Backup / Restore Buttons -->
+                            {#if $authStore.accessToken}
+                                <div class="flex items-center gap-1">
+                                    <button
+                                        onclick={handleBackup}
+                                        disabled={isBackingUp || isRestoring}
+                                        class="flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        title="Backup to Google Drive"
+                                    >
+                                        {#if isBackingUp}
+                                            <Loader2
+                                                size={16}
+                                                class="animate-spin"
+                                            />
+                                        {:else}
+                                            <CloudUpload size={16} />
+                                        {/if}
+                                        <span class="hidden lg:inline"
+                                            >Backup</span
+                                        >
+                                    </button>
+                                    <button
+                                        onclick={handleRestore}
+                                        disabled={isBackingUp || isRestoring}
+                                        class="flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        title="Restore from Google Drive"
+                                    >
+                                        {#if isRestoring}
+                                            <Loader2
+                                                size={16}
+                                                class="animate-spin"
+                                            />
+                                        {:else}
+                                            <CloudDownload size={16} />
+                                        {/if}
+                                        <span class="hidden lg:inline"
+                                            >Restore</span
+                                        >
+                                    </button>
+                                </div>
+                            {/if}
+
+                            <!-- PRESET DROPDOWN -->
+                            <div class="relative">
+                                <button
+                                    onclick={(e) => {
+                                        e.stopPropagation();
+                                        isPresetDropdownOpen =
+                                            !isPresetDropdownOpen;
+                                    }}
+                                    class="flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors {isPresetDropdownOpen
+                                        ? 'bg-slate-50 dark:bg-slate-700'
+                                        : ''}"
+                                >
+                                    <Bookmark size={16} />
+                                    <span>Preset</span>
+                                    <ChevronDown size={14} />
+                                </button>
+
+                                <!-- Dropdown Menu -->
+                                {#if isPresetDropdownOpen}
+                                    <div
+                                        transition:fade={{
+                                            duration: 150,
+                                        }}
+                                        class="absolute right-0 top-full mt-1 w-60 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-800 z-[60] overflow-hidden"
+                                        onclick={(e) => e.stopPropagation()}
+                                    >
+                                        <div
+                                            class="max-h-[300px] overflow-y-auto p-1"
+                                        >
+                                            {#if presets.length > 0}
+                                                <div
+                                                    class="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                                >
+                                                    Saved Presets
+                                                </div>
+                                                {#each presets as preset}
+                                                    <div
+                                                        class="flex items-center justify-between group/item hover:bg-slate-50 dark:hover:bg-slate-800 rounded px-2 py-1.5"
+                                                    >
+                                                        <button
+                                                            onclick={() => {
+                                                                loadPreset(
+                                                                    preset,
+                                                                );
+                                                                isPresetDropdownOpen = false;
+                                                            }}
+                                                            class="flex-1 text-left text-sm text-slate-700 dark:text-slate-200 truncate pr-2"
+                                                        >
+                                                            {preset.name}
+                                                        </button>
+                                                        <button
+                                                            onclick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDeletePreset(
+                                                                    preset.id,
+                                                                );
+                                                            }}
+                                                            class="text-slate-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity p-1"
+                                                        >
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </div>
+                                                {/each}
+                                                <div
+                                                    class="h-px bg-slate-100 dark:bg-slate-800 my-1"
+                                                ></div>
+                                            {/if}
+
+                                            <button
+                                                onclick={() => {
+                                                    showSavePresetDialog = true;
+                                                    isPresetDropdownOpen = false;
+                                                }}
+                                                class="w-full flex items-center gap-2 px-2 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                                            >
+                                                <Save size={14} />
+                                                <span>Save Current Values</span>
+                                            </button>
+
+                                            <button
+                                                onclick={() => {
+                                                    resetToDefault();
+                                                    isPresetDropdownOpen = false;
+                                                }}
+                                                class="w-full flex items-center gap-2 px-2 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded transition-colors"
+                                            >
+                                                <RotateCcw size={14} />
+                                                <span>Reset to Defaults</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                {/if}
+                            </div>
+
+                            {@render executeButton()}
+                        </div>
+
+                        <!-- Mobile Action Buttons -->
+                        <div class="md:hidden mt-0 flex items-center gap-2">
+                            <!-- Backup / Restore (Mobile) -->
+                            {#if $authStore.accessToken}
+                                <button
+                                    onclick={handleBackup}
+                                    disabled={isBackingUp || isRestoring}
+                                    class="flex items-center justify-center p-2.5 text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg disabled:opacity-50"
+                                    title="Backup"
+                                >
+                                    {#if isBackingUp}
+                                        <Loader2
+                                            size={20}
+                                            class="animate-spin"
+                                        />
+                                    {:else}
+                                        <CloudUpload size={20} />
+                                    {/if}
+                                </button>
+                                <button
+                                    onclick={handleRestore}
+                                    disabled={isBackingUp || isRestoring}
+                                    class="flex items-center justify-center p-2.5 text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg disabled:opacity-50"
+                                    title="Restore"
+                                >
+                                    {#if isRestoring}
+                                        <Loader2
+                                            size={20}
+                                            class="animate-spin"
+                                        />
+                                    {:else}
+                                        <CloudDownload size={20} />
+                                    {/if}
+                                </button>
+                            {/if}
+
+                            <!-- Preset Dropdown (Mobile) -->
+                            <div class="relative">
+                                <button
+                                    onclick={(e) => {
+                                        e.stopPropagation();
+                                        isPresetDropdownOpen =
+                                            !isPresetDropdownOpen;
+                                    }}
+                                    class="flex items-center justify-center p-2.5 text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg {isPresetDropdownOpen
+                                        ? 'bg-slate-50 dark:bg-slate-700'
+                                        : ''}"
+                                    title="Presets"
+                                >
+                                    <Bookmark size={20} />
+                                </button>
+
+                                {#if isPresetDropdownOpen}
+                                    <div
+                                        transition:fade={{
+                                            duration: 150,
+                                        }}
+                                        class="absolute left-0 top-full mt-1 w-60 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-800 z-[70] overflow-hidden"
+                                        onclick={(e) => e.stopPropagation()}
+                                    >
+                                        <div
+                                            class="max-h-[300px] overflow-y-auto p-1"
+                                        >
+                                            {#if presets.length > 0}
+                                                <div
+                                                    class="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                                >
+                                                    Saved Presets
+                                                </div>
+                                                {#each presets as preset}
+                                                    <div
+                                                        class="flex items-center justify-between group/item hover:bg-slate-50 dark:hover:bg-slate-800 rounded px-2 py-1.5"
+                                                    >
+                                                        <button
+                                                            onclick={() => {
+                                                                loadPreset(
+                                                                    preset,
+                                                                );
+                                                                isPresetDropdownOpen = false;
+                                                            }}
+                                                            class="flex-1 text-left text-sm text-slate-700 dark:text-slate-200 truncate pr-2"
+                                                        >
+                                                            {preset.name}
+                                                        </button>
+                                                        <button
+                                                            onclick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDeletePreset(
+                                                                    preset.id,
+                                                                );
+                                                            }}
+                                                            class="text-slate-400 hover:text-red-500 p-1"
+                                                        >
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </div>
+                                                {/each}
+                                                <div
+                                                    class="h-px bg-slate-100 dark:bg-slate-800 my-1"
+                                                ></div>
+                                            {/if}
+                                            <button
+                                                onclick={() => {
+                                                    showSavePresetDialog = true;
+                                                    isPresetDropdownOpen = false;
+                                                }}
+                                                class="w-full flex items-center gap-2 px-2 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                                            >
+                                                <Save size={14} />
+                                                <span>Save Current Values</span>
+                                            </button>
+                                            <button
+                                                onclick={() => {
+                                                    resetToDefault();
+                                                    isPresetDropdownOpen = false;
+                                                }}
+                                                class="w-full flex items-center gap-2 px-2 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded transition-colors"
+                                            >
+                                                <RotateCcw size={14} />
+                                                <span>Reset to Defaults</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                {/if}
+                            </div>
+
+                            {@render executeButton("flex-1", false)}
+                        </div>
+                    </div>
                 </div>
 
                 {#if endpoint.description}
@@ -1019,102 +1495,133 @@
                 {/if}
 
                 <!-- Row 3: Configuration & Specs -->
-                <div class="mt-2 flex flex-col gap-2">
-                    <div class="flex items-center gap-2 flex-wrap">
-                        {#if availableDomains.length > 0}
-                            <select
-                                bind:value={selectedDomainPrefix}
-                                class="px-2 py-1.5 rounded text-xs font-semibold bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500/20"
-                            >
-                                {#each availableDomains as domain}
-                                    <option value={domain.value}
-                                        >{domain.label}</option
-                                    >
-                                {/each}
-                            </select>
-                        {/if}
-
-                        <div
-                            class="flex items-center gap-1.5 px-2 py-1.5 rounded bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/30"
+                <div class="mt-2 flex items-center gap-2 flex-wrap">
+                    {#if availableDomains.length > 0}
+                        <select
+                            bind:value={selectedDomainPrefix}
+                            class="px-2 py-1.5 rounded text-xs font-semibold bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500/20"
                         >
-                            <span
-                                class="text-[10px] uppercase font-bold opacity-70"
-                                >Site</span
-                            >
-                            <span class="text-xs font-semibold"
-                                >{endpoint.scope.site}</span
-                            >
-                        </div>
-
-                        <div
-                            class="w-px h-3 bg-slate-300 dark:bg-slate-700 mx-1"
-                        ></div>
-
-                        <div class="flex items-center gap-1.5">
-                            <span
-                                class="text-slate-500 dark:text-slate-400 text-xs"
-                                >Type</span
-                            >
-                            <span
-                                class="px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
-                            >
-                                {endpoint.requestType}
-                            </span>
-                        </div>
-
-                        {#if endpoint.config.contentType}
-                            <div
-                                class="hidden md:flex items-center gap-1.5 ml-1"
-                            >
-                                <span
-                                    class="text-slate-500 dark:text-slate-400 text-xs text-nowrap"
-                                    >Content-Type</span
+                            {#each availableDomains as domain}
+                                <option value={domain.value}
+                                    >{domain.label}</option
                                 >
-                                <span
-                                    class="px-1.5 py-0.5 rounded text-xs font-semibold bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-nowrap"
-                                >
-                                    {endpoint.config.contentType}
-                                </span>
-                            </div>
-                        {/if}
+                            {/each}
+                        </select>
+                    {/if}
 
-                        {#if endpoint.config.charset}
-                            <div class="flex items-center gap-1.5 ml-1">
-                                <span
-                                    class="text-slate-500 dark:text-slate-400 text-xs"
-                                    >Charset</span
-                                >
-                                <span
-                                    class="px-1.5 py-0.5 rounded text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
-                                >
-                                    {endpoint.config.charset}
-                                </span>
-                            </div>
-                        {/if}
+                    <div
+                        class="flex items-center gap-1.5 px-2 py-1.5 rounded bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/30"
+                    >
+                        <span class="text-[10px] uppercase font-bold opacity-70"
+                            >Site</span
+                        >
+                        <span class="text-xs font-semibold"
+                            >{endpoint.scope.site}</span
+                        >
                     </div>
 
                     <div
-                        class="px-3 py-2 bg-white dark:bg-slate-950/50 rounded border border-slate-200 dark:border-slate-800 font-mono text-xs text-slate-600 dark:text-slate-400 break-all w-full flex flex-wrap items-center gap-1"
-                    >
-                        {#if selectedDomainPrefix}
-                            <span class="text-slate-400 select-none"
-                                >{selectedDomainPrefix}</span
-                            >
-                        {/if}
-                        <span
-                            class="text-indigo-500/80 dark:text-indigo-400/80 select-none"
-                            >/{endpoint.scope.site}</span
+                        class="w-px h-3 bg-slate-300 dark:bg-slate-700 mx-1"
+                    ></div>
+
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-slate-500 dark:text-slate-400 text-xs"
+                            >Type</span
                         >
-                        <span>{endpoint.uri}</span>
+                        <span
+                            class="px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                        >
+                            {endpoint.requestType}
+                        </span>
+                    </div>
+
+                    {#if endpoint.config.contentType}
+                        <div class="flex items-center gap-1.5 ml-2">
+                            <span
+                                class="text-slate-500 dark:text-slate-400 text-xs text-nowrap"
+                                >Content-Type</span
+                            >
+                            <span
+                                class="px-1.5 py-0.5 rounded text-xs font-semibold bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-nowrap"
+                            >
+                                {endpoint.config.contentType}
+                            </span>
+                        </div>
+                    {/if}
+
+                    {#if endpoint.config.charset}
+                        <div class="flex items-center gap-1.5 ml-1">
+                            <span
+                                class="text-slate-500 dark:text-slate-400 text-xs"
+                                >Charset</span
+                            >
+                            <span
+                                class="px-1.5 py-0.5 rounded text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                            >
+                                {endpoint.config.charset}
+                            </span>
+                        </div>
+                    {/if}
+                </div>
+                <div
+                    class="px-3 py-2 bg-white dark:bg-slate-950/50 rounded border border-slate-200 dark:border-slate-800 font-mono text-xs text-slate-600 dark:text-slate-400 break-all w-full flex flex-wrap items-center gap-1"
+                >
+                    {#if selectedDomainPrefix}
+                        <span class="text-slate-400 select-none"
+                            >{selectedDomainPrefix}</span
+                        >
+                    {/if}
+                    <span
+                        class="text-indigo-500/80 dark:text-indigo-400/80 select-none"
+                        >/{endpoint.scope.site}</span
+                    >
+                    <span>{endpoint.uri}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- SAVE PRESET DIALOG OVERLAY -->
+        {#if showSavePresetDialog}
+            <div
+                class="absolute inset-0 z-50 flex items-center justify-center bg-black/20 dark:bg-black/50 backdrop-blur-sm p-4"
+                transition:fade={{ duration: 150 }}
+            >
+                <div
+                    class="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-5 w-full max-w-sm"
+                    transition:fade={{ duration: 200 }}
+                >
+                    <h3
+                        class="text-lg font-bold text-slate-900 dark:text-white mb-4"
+                    >
+                        Save Preset
+                    </h3>
+                    <input
+                        type="text"
+                        bind:value={newPresetName}
+                        placeholder="Enter preset name..."
+                        class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white mb-4 focus:ring-2 focus:ring-blue-500/20 outline-none"
+                    />
+                    <div class="flex justify-end gap-2">
+                        <button
+                            onclick={() => {
+                                showSavePresetDialog = false;
+                                newPresetName = "";
+                            }}
+                            class="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onclick={handleSavePreset}
+                            disabled={!newPresetName.trim()}
+                            class="px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Save
+                        </button>
                     </div>
                 </div>
             </div>
-
-            <!-- Desktop Execute Button -->
-            <div class="hidden md:block shrink-0">
-                {@render executeButton()}
-            </div>
-        </div>
+        {/if}
 
         <!-- Body contents -->
         <div class="p-0 md:p-6 flex flex-col gap-6 bg-white dark:bg-slate-900">
@@ -1151,9 +1658,21 @@
                     class="rounded-lg border border-slate-200 dark:border-border-dark overflow-hidden shrink-0"
                 >
                     <div
-                        class="px-4 py-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-border-dark font-medium text-sm text-slate-700 dark:text-slate-300"
+                        class="px-4 py-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-border-dark font-medium text-sm text-slate-700 dark:text-slate-300 flex justify-between items-center"
                     >
-                        Signature Source String
+                        <span>Signature Source String</span>
+                        <button
+                            onclick={() =>
+                                handleCopy(signatureRawString, "signature")}
+                            class="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded transition-colors text-slate-500"
+                            title="Copy to clipboard"
+                        >
+                            {#if copiedSection === "signature"}
+                                <CopyCheck size={14} class="text-green-500" />
+                            {:else}
+                                <Copy size={14} />
+                            {/if}
+                        </button>
                     </div>
                     <div
                         class="p-4 bg-white dark:bg-slate-950/50 font-mono text-sm text-slate-600 dark:text-slate-400 break-all"
@@ -1169,9 +1688,20 @@
                     class="rounded-lg border border-slate-200 dark:border-border-dark overflow-hidden shrink-0"
                 >
                     <div
-                        class="px-4 py-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-border-dark font-medium text-sm text-slate-700 dark:text-slate-300"
+                        class="px-4 py-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-border-dark font-medium text-sm text-slate-700 dark:text-slate-300 flex justify-between items-center"
                     >
-                        Request Parameters
+                        <span>Request Parameters</span>
+                        <button
+                            onclick={() => handleCopy(jsonResult, "params")}
+                            class="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded transition-colors text-slate-500"
+                            title="Copy to clipboard"
+                        >
+                            {#if copiedSection === "params"}
+                                <CopyCheck size={14} class="text-green-500" />
+                            {:else}
+                                <Copy size={14} />
+                            {/if}
+                        </button>
                     </div>
                     <pre
                         class="p-4 bg-slate-900 text-slate-50 overflow-x-auto text-sm font-mono scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">{jsonResult}</pre>
@@ -1187,19 +1717,33 @@
                     <div
                         class="px-4 py-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-border-dark font-medium text-sm flex justify-between items-center"
                     >
-                        <span class="text-slate-700 dark:text-slate-300"
-                            >Response</span
-                        >
-                        {#if responseStatus}
-                            <span
-                                class="px-2 py-0.5 rounded text-[10px] font-bold {responseStatus >=
-                                    200 && responseStatus < 300
-                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'}"
+                        <div class="flex items-center gap-2">
+                            <span class="text-slate-700 dark:text-slate-300"
+                                >Response</span
                             >
-                                STATUS: {responseStatus}
-                            </span>
-                        {/if}
+                            {#if responseStatus}
+                                <span
+                                    class="px-2 py-0.5 rounded text-[10px] font-bold {responseStatus >=
+                                        200 && responseStatus < 300
+                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'}"
+                                >
+                                    STATUS: {responseStatus}
+                                </span>
+                            {/if}
+                        </div>
+                        <button
+                            onclick={() =>
+                                handleCopy(responseResult, "response")}
+                            class="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded transition-colors text-slate-500"
+                            title="Copy to clipboard"
+                        >
+                            {#if copiedSection === "response"}
+                                <CopyCheck size={14} class="text-green-500" />
+                            {:else}
+                                <Copy size={14} />
+                            {/if}
+                        </button>
                     </div>
                     <pre
                         class="p-4 bg-slate-950 text-emerald-400 overflow-x-auto text-sm font-mono scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent min-h-[100px]">{responseResult}</pre>
@@ -1323,3 +1867,9 @@
         </div>
     {/if}
 </Modal>
+
+<AlertModal
+    bind:isOpen={showSyncAlert}
+    title={syncAlertTitle}
+    message={syncAlertMessage}
+/>

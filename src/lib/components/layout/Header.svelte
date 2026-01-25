@@ -6,7 +6,7 @@
     import Tooltip from "$lib/components/ui/Tooltip.svelte";
     import UserMenu from "$lib/components/auth/UserMenu.svelte";
     import SelectBox from "$lib/components/ui/SelectBox.svelte";
-    import { initAuth } from "$lib/services/authService";
+    import { initAuth, authStore } from "$lib/services/authService";
     import { profileStore } from "$lib/stores/profileStore";
     import { syncService } from "$lib/services/syncService";
 
@@ -101,6 +101,11 @@
         if (event.key === "Enter") {
             updateUrl();
         }
+    }
+
+    function clearSearch() {
+        headerSearchTerm = "";
+        updateUrl();
     }
 
     // Watch selectedApp change (Local State Change)
@@ -214,18 +219,25 @@
                         >
                     </div>
                     <input
-                        class="flex w-full min-w-0 flex-1 resize-none overflow-hidden bg-transparent rounded-r-lg text-slate-900 dark:text-white focus:outline-0 placeholder:text-slate-400 dark:placeholder:text-[#5a718a] px-2 text-sm"
-                        placeholder="Endpoint / to Search"
+                        class="flex w-full min-w-0 flex-1 resize-none overflow-hidden bg-transparent rounded-r-lg text-slate-900 dark:text-white focus:outline-0 placeholder:text-slate-400 dark:placeholder:text-[#5a718a] pl-2 pr-8 text-sm"
+                        placeholder="Endpoint search"
                         bind:value={headerSearchTerm}
                         onkeydown={handleSearchKeydown}
                     />
-                    <div class="flex items-center pr-2">
-                        <kbd
-                            class="hidden sm:inline-block border border-slate-200 dark:border-border-dark rounded px-1.5 text-[10px] font-mono text-slate-400"
+                    {#if headerSearchTerm}
+                        <button
+                            onclick={() => {
+                                headerSearchTerm = "";
+                                updateUrl();
+                            }}
+                            class="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all flex items-center justify-center"
+                            title="Clear search"
                         >
-                            /
-                        </kbd>
-                    </div>
+                            <span class="material-symbols-outlined text-[16px]"
+                                >close</span
+                            >
+                        </button>
+                    {/if}
                 </div>
             </label>
         {/if}
@@ -263,6 +275,29 @@
                         <span class="sr-only">History</span>
                     </button>
                 </Tooltip>
+
+                <!-- Sync Status Indicator -->
+                {#if $authStore.accessToken}
+                    <div
+                        class="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800/30"
+                        title="Google Drive Sync Active"
+                    >
+                        <span class="material-symbols-outlined text-[16px]"
+                            >cloud_done</span
+                        >
+                        <span class="text-xs font-bold">Synced</span>
+                    </div>
+                {:else}
+                    <div
+                        class="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+                        title="Google Drive Sync Inactive"
+                    >
+                        <span class="material-symbols-outlined text-[16px]"
+                            >cloud_off</span
+                        >
+                        <span class="text-xs font-bold">Not Synced</span>
+                    </div>
+                {/if}
 
                 <div
                     class="w-px h-4 bg-slate-200 dark:bg-border-dark mx-1"

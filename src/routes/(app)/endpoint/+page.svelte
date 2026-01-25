@@ -70,6 +70,8 @@
         untrack(() => {
             if (queryTerm !== null && queryTerm !== searchTerm) {
                 searchTerm = queryTerm;
+            } else if (queryTerm === null && searchTerm !== "") {
+                searchTerm = "";
             }
             // Check if appParam changed or if it was removed (which means All/Reset)
             // But if appParam is null, it means not in URL. If filterApp was set, we should clear it?

@@ -9,6 +9,7 @@
         width?: string;
         onClose?: () => void;
         bodyClass?: string;
+        overlay?: import("svelte").Snippet;
     }
 
     let {
@@ -18,6 +19,7 @@
         width = "max-w-md",
         onClose,
         bodyClass = "p-6 text-text-message text-base font-medium max-h-[80vh] overflow-y-auto",
+        overlay,
     }: Props = $props();
 
     function close() {
@@ -73,6 +75,10 @@
             <div class={bodyClass}>
                 {@render children?.()}
             </div>
+
+            {#if overlay}
+                {@render overlay()}
+            {/if}
         </div>
     </div>
 {/if}
