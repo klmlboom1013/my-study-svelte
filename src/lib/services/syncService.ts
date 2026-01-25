@@ -1,4 +1,4 @@
-import { authStore } from "./authService";
+import { authStore, disconnectGoogle } from "./authService";
 import { driveService } from "./driveService";
 import { endpointService } from "./endpointService";
 import { get } from "svelte/store";
@@ -55,8 +55,11 @@ export const syncService = {
                     console.log("Synced Execution History from Drive");
                 }
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error("Sync Load Error:", e);
+            if (e.message?.includes("Unauthorized") || e.message?.includes("401")) {
+                disconnectGoogle();
+            }
             throw e; // Re-throw to allow caller to handle
         } finally {
             isSyncing = false;
@@ -92,8 +95,11 @@ export const syncService = {
                 driveFileId = newFile.id;
             }
             console.log("Synced to Drive");
-        } catch (e) {
+        } catch (e: any) {
             console.error("Sync Save Error:", e);
+            if (e.message?.includes("Unauthorized") || e.message?.includes("401")) {
+                disconnectGoogle();
+            }
             throw e; // Re-throw to allow caller to handle
         } finally {
             isSyncing = false;

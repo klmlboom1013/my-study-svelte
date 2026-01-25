@@ -3,12 +3,28 @@ interface DriveFile {
     name: string;
 }
 
+const handleResponse = async (response: Response, context: string) => {
+    if (!response.ok) {
+        if (response.status === 401) {
+            throw new Error("Unauthorized: Google Drive session expired. Please re-connect.");
+        }
+        let errorBody = "";
+        try {
+            errorBody = await response.text();
+        } catch (e) {
+            errorBody = response.statusText;
+        }
+        console.error(`${context} Error:`, response.status, errorBody);
+        throw new Error(`${context}: ${response.status} ${errorBody || response.statusText}`);
+    }
+    return response.json();
+};
+
 export const driveService = {
     // List files in the App Data Folder to find a specific file
     async listFiles(accessToken: string, filename: string): Promise<DriveFile[]> {
         if (!accessToken) {
-            console.warn("Drive API: No access token provided.");
-            return [];
+            throw new Error("Drive API: No access token provided.");
         }
 
         const query = `name = '${filename}'`;
@@ -20,17 +36,7 @@ export const driveService = {
             },
         });
 
-        if (!response.ok) {
-            if (response.status === 401) {
-                // Throw specific error for 401 so consumer can trigger re-auth
-                throw new Error("Drive API: Unauthorized (401)");
-            }
-            const errorText = await response.text();
-            console.error("Drive List Error Details:", response.status, errorText);
-            throw new Error(`Drive List Error: ${response.status} ${errorText}`);
-        }
-
-        const data = await response.json();
+        const data = await handleResponse(response, "Drive List");
         return data.files || [];
     },
 
@@ -45,7 +51,10 @@ export const driveService = {
         });
 
         if (!response.ok) {
-            throw new Error(`Drive Download Error: ${response.statusText}`);
+            if (response.status === 401) {
+                throw new Error("Unauthorized: Google Drive session expired. Please re-connect.");
+            }
+            throw new Error(`Drive Download Error: ${response.status} ${response.statusText}`);
         }
 
         return await response.json();
@@ -78,11 +87,7 @@ export const driveService = {
             body: formData,
         });
 
-        if (!response.ok) {
-            throw new Error(`Drive Create Error: ${response.statusText}`);
-        }
-
-        return await response.json();
+        return await handleResponse(response, "Drive Create");
     },
 
     // Update existing file content
@@ -98,11 +103,7 @@ export const driveService = {
             body: JSON.stringify(content, null, 2),
         });
 
-        if (!response.ok) {
-            throw new Error(`Drive Update Error: ${response.statusText}`);
-        }
-
-        return await response.json();
+        return await handleResponse(response, "Drive Update");
     },
 
     // Helper: Save Endpoints (Create or Update)

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { untrack } from "svelte";
+    import { untrack, tick } from "svelte";
     import Modal from "$lib/components/ui/Modal.svelte";
     import {
         Code,
@@ -18,9 +18,10 @@
         Copy,
         CopyCheck,
         Loader2,
+        ChevronUp,
     } from "lucide-svelte";
     import { syncService } from "$lib/services/syncService";
-    import { authStore } from "$lib/services/authService";
+    import { authStore, disconnectGoogle } from "$lib/services/authService";
     import {
         executionService,
         type ExecutionPreset,
@@ -78,8 +79,31 @@
     let isBackingUp = $state(false);
     let isRestoring = $state(false);
 
+    let isPressingFab = $state(false);
+    let fabMenuVisible = $state(false);
+    let fabPressTimer: ReturnType<typeof setTimeout> | null = null;
+
     let headerRef = $state<HTMLElement | null>(null);
     let isHeaderInView = $state(true);
+
+    async function scrollToBottom() {
+        await tick();
+        if (headerRef && headerRef.parentElement) {
+            headerRef.parentElement.scrollTo({
+                top: headerRef.parentElement.scrollHeight,
+                behavior: "smooth",
+            });
+        }
+    }
+
+    function scrollToTop() {
+        if (headerRef && headerRef.parentElement) {
+            headerRef.parentElement.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
+        }
+    }
 
     $effect(() => {
         if (headerRef && headerRef.parentElement) {
@@ -217,6 +241,9 @@
         if (isPresetDropdownOpen) {
             isPresetDropdownOpen = false;
         }
+        if (fabMenuVisible) {
+            fabMenuVisible = false;
+        }
     }
 
     async function handleBackup() {
@@ -232,9 +259,19 @@
             syncAlertTitle = "Backup Successful";
             syncAlertMessage = "Backup completed!";
             showSyncAlert = true;
-        } catch (e) {
-            syncAlertTitle = "Backup Failed";
-            syncAlertMessage = "Error saving to Drive: " + (e as Error).message;
+        } catch (e: any) {
+            const errorMsg = e.message || String(e);
+            console.error("Backup failed:", e);
+
+            if (errorMsg.includes("Unauthorized") || errorMsg.includes("401")) {
+                syncAlertTitle = "Session Expired";
+                syncAlertMessage =
+                    "Your Google Drive session has expired. Please connect again.";
+                disconnectGoogle();
+            } else {
+                syncAlertTitle = "Backup Failed";
+                syncAlertMessage = "Error saving to Drive: " + errorMsg;
+            }
             showSyncAlert = true;
         } finally {
             isBackingUp = false;
@@ -255,10 +292,19 @@
             syncAlertMessage =
                 "Restore completed! (Re-open modal to see updates)";
             showSyncAlert = true;
-        } catch (e) {
-            syncAlertTitle = "Restore Failed";
-            syncAlertMessage =
-                "Error loading from Drive: " + (e as Error).message;
+        } catch (e: any) {
+            const errorMsg = e.message || String(e);
+            console.error("Restore failed:", e);
+
+            if (errorMsg.includes("Unauthorized") || errorMsg.includes("401")) {
+                syncAlertTitle = "Session Expired";
+                syncAlertMessage =
+                    "Your Google Drive session has expired. Please connect again.";
+                disconnectGoogle();
+            } else {
+                syncAlertTitle = "Restore Failed";
+                syncAlertMessage = "Error loading from Drive: " + errorMsg;
+            }
             showSyncAlert = true;
         } finally {
             isRestoring = false;
@@ -359,6 +405,7 @@
                         .join("\n");
 
                     executionStage = "EXECUTE";
+                    scrollToBottom();
                     return;
                 }
 
@@ -403,6 +450,7 @@
 
                 // If successful, move to EXECUTE stage
                 executionStage = "EXECUTE";
+                scrollToBottom();
             } catch (e) {
                 console.error("Security processing failed:", e);
                 responseResult =
@@ -513,6 +561,7 @@
                         );
                         responseStatus = 200;
                         responseResult = JSON.stringify(resultData, null, 2);
+                        scrollToBottom();
 
                         // Trigger Validation
                         console.log("Triggering validateResponse...");
@@ -669,6 +718,7 @@
                     try {
                         const data = JSON.parse(text);
                         responseResult = JSON.stringify(data, null, 2);
+                        scrollToBottom();
                         // Validate
                         validateResponse(data, execContext);
                     } catch (e) {
@@ -733,6 +783,24 @@
             responseValidationSuccess = null;
             responseDecryptedData = [];
         }
+    }
+
+    function startPress() {
+        isPressingFab = true;
+        fabPressTimer = setTimeout(() => {
+            if (isPressingFab) {
+                fabMenuVisible = true;
+                isPressingFab = false;
+            }
+        }, 800);
+    }
+
+    function cancelPress() {
+        if (fabPressTimer) {
+            clearTimeout(fabPressTimer);
+            fabPressTimer = null;
+        }
+        isPressingFab = false;
     }
 
     function addListItem(fieldName: string, subFields?: RequestDataField[]) {
@@ -1131,26 +1199,103 @@
 {#snippet fab()}
     {#if !isHeaderInView}
         <div
-            class="absolute bottom-10 right-10 z-[999] flex flex-col gap-4 items-end"
+            class="absolute bottom-8 right-8 z-[999] flex flex-col gap-4 items-end"
             transition:scale={{ duration: 200, start: 0.8 }}
         >
+            {#if fabMenuVisible}
+                <div
+                    class="flex flex-col gap-3 items-end mb-2"
+                    transition:slide={{ duration: 200 }}
+                >
+                    <!-- Backup -->
+                    <button
+                        onclick={() => {
+                            handleBackup();
+                            fabMenuVisible = false;
+                        }}
+                        class="flex items-center gap-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-lg transition-all hover:scale-105"
+                    >
+                        <span class="text-xs font-bold">Backup</span>
+                        <CloudUpload size={18} />
+                    </button>
+
+                    <!-- Restore -->
+                    <button
+                        onclick={() => {
+                            handleRestore();
+                            fabMenuVisible = false;
+                        }}
+                        class="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-lg transition-all hover:scale-105"
+                    >
+                        <span class="text-xs font-bold">Restore</span>
+                        <CloudDownload size={18} />
+                    </button>
+
+                    <!-- Preset -->
+                    <button
+                        onclick={(e) => {
+                            scrollToTop();
+                            isPresetDropdownOpen = true;
+                            fabMenuVisible = false;
+                            e.stopPropagation();
+                        }}
+                        class="flex items-center gap-2 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg shadow-lg transition-all hover:scale-105"
+                    >
+                        <span class="text-xs font-bold">Presets</span>
+                        <Bookmark size={18} />
+                    </button>
+
+                    <!-- Scroll Top -->
+                    <button
+                        onclick={() => {
+                            scrollToTop();
+                            fabMenuVisible = false;
+                        }}
+                        class="flex items-center gap-2 px-3 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg shadow-lg transition-all hover:scale-105"
+                    >
+                        <span class="text-xs font-bold">Top</span>
+                        <ChevronUp size={18} />
+                    </button>
+                </div>
+            {/if}
+
             <button
-                onclick={handleExecute}
+                onmousedown={startPress}
+                onmouseup={cancelPress}
+                onmouseleave={cancelPress}
+                ontouchstart={() => {
+                    startPress();
+                }}
+                ontouchend={cancelPress}
+                onclick={() => {
+                    if (!fabMenuVisible) {
+                        handleExecute();
+                    } else {
+                        fabMenuVisible = false;
+                    }
+                }}
                 disabled={isExecuting}
-                class="w-16 h-16 flex items-center justify-center rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.3)] transition-all hover:scale-110 active:scale-95 disabled:opacity-70 text-white {executionStage ===
-                'READY'
-                    ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/40'
-                    : 'bg-green-600 hover:bg-green-700 shadow-green-600/40'}"
-                title={executionStage === "READY" ? "Ready" : "Execute"}
+                class="w-12 h-12 flex items-center justify-center rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.3)] transition-all hover:scale-110 active:scale-95 disabled:opacity-70 text-white {fabMenuVisible
+                    ? 'bg-slate-800 rotate-45'
+                    : executionStage === 'READY'
+                      ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/40'
+                      : 'bg-green-600 hover:bg-green-700 shadow-green-600/40'}"
+                title={fabMenuVisible
+                    ? "Close Menu"
+                    : executionStage === "READY"
+                      ? "Ready"
+                      : "Execute"}
             >
-                {#if isExecuting}
+                {#if fabMenuVisible}
+                    <Plus class="w-7 h-7" />
+                {:else if isExecuting}
                     <div
-                        class="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"
+                        class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"
                     ></div>
                 {:else if executionStage === "READY"}
-                    <Check class="w-7 h-7 text-white" />
+                    <Check class="w-6 h-6 text-white" />
                 {:else}
-                    <Play class="w-7 h-7 text-white" fill="currentColor" />
+                    <Play class="w-6 h-6 text-white" fill="currentColor" />
                 {/if}
             </button>
         </div>
