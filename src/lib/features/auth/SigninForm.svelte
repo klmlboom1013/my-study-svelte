@@ -166,30 +166,56 @@
 
     // WPAY Message Handling
     async function handleWpayMessage(event: MessageEvent) {
-        if (
-            event.data?.source?.includes("react-devtools") ||
-            !event.data?.resultCode
-        )
-            return;
+        console.log("Received WPAY Message:", event.data);
 
-        const resData = event.data;
+        let resData = event.data;
+        // Extract data if wrapped in { type: "WPAY_RESULT", data: { ... } }
+        if (resData?.type === "WPAY_RESULT" && resData?.data) {
+            resData = resData.data;
+        }
+
+        if (resData?.source?.includes("react-devtools") || !resData?.resultCode)
+            return;
 
         const isPinAuth = !resData.userId && !resData.ci;
 
-        // Server-Side Verification & Decryption
+        // Server-Side Verification & Decryption (Auth Dedicated)
         try {
-            const res = await fetch("/api/wpay/verify", {
+            const res = await fetch("/api/auth/wpay/verify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ resData }),
             });
             const result = await res.json();
 
-            if (!res.ok || !result.isSigValid) {
-                alert(
-                    "WPAY Signature Verification Failed (Server)! " +
-                        (result.error || ""),
-                );
+            if (!result.isSigValid) {
+                console.warn("Signature verification failed", result);
+                wpayResultTitle =
+                    (isPinAuth ? "WPAY PIN Auth" : "WPAY Member Signup") +
+                    " Result";
+                validationError = "Signature verification failed (Server)";
+                modalNextAction = "CLOSE";
+                wpayResultData = [
+                    {
+                        key: "signature",
+                        label: "서명 상태",
+                        encrypted: resData.signature,
+                        decrypted: "INVALID (서명 불일치)",
+                    },
+                    {
+                        key: "resultCode",
+                        label: "결과 코드",
+                        encrypted: resData.resultCode,
+                        decrypted: "-",
+                    },
+                    {
+                        key: "resultMsg",
+                        label: "결과 메시지",
+                        encrypted: resData.resultMsg,
+                        decrypted: "-",
+                    },
+                ];
+                showResultModal = true;
                 return;
             }
 
@@ -225,8 +251,8 @@
                     {
                         key: "wtid",
                         label: "WPAY 트랜잭션 ID",
-                        encrypted: decrypted.wtid,
-                        decrypted: "-",
+                        encrypted: resData.wtid,
+                        decrypted: decrypted.wtid,
                     },
                     {
                         key: "wpayUserKey",
@@ -377,6 +403,7 @@
                 resData.status === "00"
             ) {
                 // 2. If Success, Open PIN Auth Popup
+                console.log("WPAY Membership Check Success:", resData);
                 handlePinAuth(decrypted.wpayUserKey);
             } else {
                 wpayResultTitle = "WPAY Member Auth Result";
@@ -426,7 +453,7 @@
                 window.location.origin + `/callback/wpay/result`,
             );
 
-            const res = await fetch("/api/wpay/sign", {
+            const res = await fetch("/api/auth/wpay/sign", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -444,7 +471,7 @@
             }
 
             const payload = await res.json();
-            console.log("WPAY Signup Payload:", payload);
+            console.log("WPAY Signup Request Payload (to Popup):", payload);
 
             // 2. Submit form to the updated, already-open popup
             // Note: Since we reverted wpayAuthService, we use submitForm which targets "wpay-auth-popup"
@@ -493,7 +520,7 @@
                 window.location.origin + `/callback/wpay/result`,
             );
 
-            const res = await fetch("/api/wpay/sign", {
+            const res = await fetch("/api/auth/wpay/sign", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -511,7 +538,10 @@
             }
 
             const finalPayload = await res.json();
-            console.log("WPAY PIN Auth Payload:", finalPayload);
+            console.log(
+                "WPAY PIN Auth Request Payload (to Popup):",
+                finalPayload,
+            );
 
             // 2. Submit form to the pre-opened popup
             wpayAuthService.submitForm(

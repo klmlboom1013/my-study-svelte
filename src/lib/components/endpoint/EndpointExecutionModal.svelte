@@ -5,6 +5,7 @@
     import { syncService } from "$lib/features/drive/services/syncService";
     import {
         authStore,
+        loginWithGoogle,
         disconnectGoogle,
     } from "$lib/features/auth/services/authService";
     import {
@@ -22,7 +23,20 @@
         type SecurityContext,
     } from "$lib/utils/security";
     import type { Endpoint, RequestDataField } from "$lib/types/endpoint";
-    import { Code } from "lucide-svelte";
+    import {
+        Code,
+        Loader2,
+        Play,
+        Check,
+        ArrowUp,
+        RotateCcw,
+        CloudDownload,
+        X,
+        CloudUpload,
+        Bookmark,
+        Trash2,
+    } from "lucide-svelte";
+    import { scale, slide } from "svelte/transition";
 
     // Sub-components
     import ExecutionSettings from "./ExecutionSettings.svelte";
@@ -65,8 +79,7 @@
     let isBackingUp = $state(false);
     let isRestoring = $state(false);
 
-    let headerRef = $state<HTMLElement | null>(null);
-    let isHeaderInView = $state(true);
+    let isButtonInView = $state(true);
 
     const globalParameters = $derived(
         $settingsStore.endpoint_parameters.globalParameters,
@@ -81,17 +94,20 @@
 
     async function scrollToBottom() {
         await tick();
-        if (headerRef?.parentElement) {
-            headerRef.parentElement.scrollTo({
-                top: headerRef.parentElement.scrollHeight,
+        const modalBody = document.querySelector(".max-h-\\[85vh\\]");
+        if (modalBody) {
+            modalBody.scrollTo({
+                top: modalBody.scrollHeight,
                 behavior: "smooth",
             });
         }
     }
 
     function scrollToTop() {
-        if (headerRef?.parentElement) {
-            headerRef.parentElement.scrollTo({
+        // Scroll to top implementation - no longer relies on headerRef
+        const modalBody = document.querySelector(".max-h-\\[85vh\\]");
+        if (modalBody) {
+            modalBody.scrollTo({
                 top: 0,
                 behavior: "smooth",
             });
@@ -185,14 +201,15 @@
     function initializeValues(fields: RequestDataField[] = []) {
         const values: Record<string, any> = {};
         for (const field of fields) {
-            if (field.subFields) {
+            if (field.subFields && field.subFields.length > 0) {
                 values[field.name] =
                     field.type === "List"
                         ? []
                         : initializeValues(field.subFields);
             } else {
+                const def = field.defaultValue;
                 values[field.name] =
-                    field.defaultValue ||
+                    (def && typeof def !== "object" ? def : "") ||
                     (field.type === "boolean" ? false : "");
             }
         }
@@ -552,10 +569,13 @@
     // Sync Handlers
     async function handleSyncAction(action: "backup" | "restore") {
         if (!$authStore.accessToken) {
-            syncAlertTitle = "Authentication Required";
-            syncAlertMessage = "Google Drive connection required.";
-            showSyncAlert = true;
-            return;
+            try {
+                await loginWithGoogle();
+                if (!$authStore.accessToken) return;
+            } catch (e) {
+                console.error("Login failed", e);
+                return;
+            }
         }
         try {
             if (action === "backup") {
@@ -579,17 +599,198 @@
             showSyncAlert = true;
         }
     }
+
+    // Observer for Header visibility removed
+
+    // FAB State
+    let isFabMenuOpen = $state(false);
+    let isPresetMenuOpen = $state(false);
+    let longPressTimer: any;
+    let isLongPress = false;
+
+    function handleFabStart(e: PointerEvent) {
+        if (isExecuting) return;
+        isLongPress = false;
+        longPressTimer = setTimeout(() => {
+            isLongPress = true;
+            isFabMenuOpen = true;
+            if (navigator.vibrate) navigator.vibrate(50);
+        }, 500);
+    }
+
+    function handleFabEnd(e: PointerEvent) {
+        clearTimeout(longPressTimer);
+
+        if (isLongPress) return;
+
+        if (isFabMenuOpen) {
+            isFabMenuOpen = false;
+            return;
+        }
+
+        if (isPresetMenuOpen) {
+            isPresetMenuOpen = false;
+            return;
+        }
+
+        // Normal Click
+        handleExecute();
+    }
 </script>
+
+{#snippet fabOverlay()}
+    {#if !isButtonInView && endpoint}
+        <div
+            class="absolute bottom-4 right-4 z-50 flex flex-col gap-3 items-center"
+            transition:scale={{ duration: 200, start: 0.8 }}
+        >
+            {#if isFabMenuOpen}
+                <button
+                    onclick={() => {
+                        scrollToTop();
+                        isFabMenuOpen = false;
+                    }}
+                    transition:slide={{ axis: "y", duration: 200 }}
+                    class="h-9 w-9 rounded-full shadow-lg bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
+                    title="Scroll to Top"
+                >
+                    <ArrowUp size={16} />
+                </button>
+                <button
+                    onclick={() => {
+                        handleSyncAction("restore");
+                        isFabMenuOpen = false;
+                    }}
+                    transition:slide={{ axis: "y", duration: 200 }}
+                    class="h-9 w-9 rounded-full shadow-lg bg-indigo-50 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center hover:bg-indigo-100 dark:hover:bg-slate-700 border border-indigo-200 dark:border-slate-700"
+                    title="Restore from Drive"
+                >
+                    <CloudDownload size={16} />
+                </button>
+                <button
+                    onclick={() => {
+                        handleSyncAction("backup");
+                        isFabMenuOpen = false;
+                    }}
+                    transition:slide={{ axis: "y", duration: 200 }}
+                    class="h-9 w-9 rounded-full shadow-lg bg-emerald-50 dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-slate-700 border border-emerald-200 dark:border-slate-700"
+                    title="Backup to Drive"
+                >
+                    <CloudUpload size={16} />
+                </button>
+                <button
+                    onclick={() => {
+                        isPresetMenuOpen = true;
+                        isFabMenuOpen = false;
+                    }}
+                    transition:slide={{ axis: "y", duration: 200 }}
+                    class="h-9 w-9 rounded-full shadow-lg bg-amber-50 dark:bg-slate-800 text-amber-600 dark:text-amber-400 flex items-center justify-center hover:bg-amber-100 dark:hover:bg-slate-700 border border-amber-200 dark:border-slate-700"
+                    title="Presets"
+                >
+                    <Bookmark size={16} />
+                </button>
+            {/if}
+
+            <button
+                onpointerdown={handleFabStart}
+                onpointerup={handleFabEnd}
+                onpointerleave={() => clearTimeout(longPressTimer)}
+                disabled={isExecuting}
+                class="h-12 w-12 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-70 disabled:scale-100 {isFabMenuOpen ||
+                isPresetMenuOpen
+                    ? 'bg-slate-600 hover:bg-slate-700'
+                    : executionStage === 'READY'
+                      ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/40'
+                      : 'bg-green-600 hover:bg-green-700 shadow-green-600/40'}"
+                title={isFabMenuOpen
+                    ? "Close Menu"
+                    : executionStage === "READY"
+                      ? "Execute (Long press for menu)"
+                      : "Execute"}
+            >
+                {#if isExecuting}
+                    <Loader2 size={20} class="animate-spin" />
+                {:else if isFabMenuOpen || isPresetMenuOpen}
+                    <X size={20} />
+                {:else if executionStage === "READY"}
+                    <Check size={20} strokeWidth={3} />
+                {:else}
+                    <Play size={20} fill="currentColor" />
+                {/if}
+            </button>
+        </div>
+
+        {#if isPresetMenuOpen}
+            <div
+                class="absolute bottom-20 right-4 z-50 w-64 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden"
+                transition:scale={{ duration: 150, start: 0.9 }}
+            >
+                <div class="p-2 max-h-[200px] overflow-y-auto">
+                    {#if presets.length > 0}
+                        <div
+                            class="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                        >
+                            Saved Presets
+                        </div>
+                        {#each presets as preset}
+                            <div
+                                class="flex items-center justify-between group/item hover:bg-slate-50 dark:hover:bg-slate-800 rounded px-2 py-1.5"
+                            >
+                                <button
+                                    onclick={() => {
+                                        const base = initializeValues(
+                                            endpoint.requestData,
+                                        );
+                                        requestValues = {
+                                            ...base,
+                                            ...preset.values,
+                                        };
+                                        if (preset.domainPrefix)
+                                            selectedDomainPrefix =
+                                                preset.domainPrefix;
+                                        handleUserChange();
+                                        isPresetMenuOpen = false;
+                                    }}
+                                    class="flex-1 text-left text-sm text-slate-700 dark:text-slate-200 truncate pr-2"
+                                >
+                                    {preset.name}
+                                </button>
+                                <button
+                                    onclick={(e) => {
+                                        e.stopPropagation();
+                                        executionService.deletePreset(
+                                            endpoint.id,
+                                            preset.id,
+                                        );
+                                        presets = executionService.getHistory(
+                                            endpoint.id,
+                                        ).presets;
+                                    }}
+                                    class="text-slate-400 hover:text-red-500 p-1"
+                                >
+                                    <Trash2 size={12} />
+                                </button>
+                            </div>
+                        {/each}
+                    {:else}
+                        <div
+                            class="px-4 py-8 text-center text-xs text-slate-400"
+                        >
+                            No presets saved
+                        </div>
+                    {/if}
+                </div>
+            </div>
+        {/if}
+    {/if}
+{/snippet}
 
 <Modal
     bind:isOpen
-    title={isHeaderInView
-        ? window.innerWidth < 768
-            ? ""
-            : "Execute Endpoint"
-        : "Execute Endpoint"}
+    title="Execute Endpoint"
     width="max-w-4xl"
     bodyClass="max-h-[85vh] overflow-y-auto p-0 scroll-smooth"
+    overlay={fabOverlay}
 >
     {#if endpoint}
         <ExecutionSettings
@@ -602,8 +803,7 @@
             {isBackingUp}
             {isRestoring}
             isMobile={window.innerWidth < 768}
-            {isHeaderInView}
-            bind:headerRef
+            bind:isButtonInView
             onBackup={() => handleSyncAction("backup")}
             onRestore={() => handleSyncAction("restore")}
             onLoadPreset={(p: ExecutionPreset) => {

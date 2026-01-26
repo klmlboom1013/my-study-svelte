@@ -8,8 +8,8 @@ export interface MembershipSearchParams {
 export async function searchWpayMember(params: MembershipSearchParams): Promise<Record<string, any>> {
     const { apiUrl, merchantId, userId, hNum } = params;
 
-    // Call Component-level API (which does encryption/decryption)
-    const response = await fetch('/api/wpay/membership', {
+    // Call Auth-specific API (for Login)
+    const response = await fetch('/api/auth/wpay/membership', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'

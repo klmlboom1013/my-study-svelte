@@ -335,59 +335,78 @@
     <Breadcrumbs
         items={[{ label: "Home", href: "/" }, { label: "Test Endpoint" }]}
     />
-    <div class="flex items-end justify-between mb-6">
-        <div>
-            <h1 class="text-3xl font-bold text-slate-900 dark:text-white mb-2">
-                Endpoints
-            </h1>
-            <p class="text-slate-500 dark:text-slate-400">
-                Manage your API endpoints and configurations.
-            </p>
-        </div>
-        <div class="flex items-center gap-2">
-            <button
-                onclick={() => goto("/endpoint/new")}
-                class="hidden md:flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all"
-            >
-                <span class="material-symbols-outlined text-[20px]">add</span>
-                <span>New Endpoint</span>
-            </button>
+    <div class="mb-6">
+        {#snippet syncButtons()}
             <button
                 onclick={handleDriveBackup}
                 disabled={syncState !== "idle"}
-                class="flex items-center gap-2 px-2 sm:px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-card-dark dark:text-slate-300 dark:border-border-dark dark:hover:bg-background-dark disabled:opacity-50 min-w-0 sm:min-w-[100px] justify-center"
+                class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-card-dark dark:text-slate-300 dark:border-border-dark dark:hover:bg-background-dark disabled:opacity-50 min-w-[90px] justify-center"
             >
                 {#if syncState === "backup"}
                     <span
-                        class="material-symbols-outlined text-[20px] animate-spin"
+                        class="material-symbols-outlined text-[18px] animate-spin"
                         >sync</span
                     >
                     <span>Wait...</span>
                 {:else}
-                    <span class="material-symbols-outlined text-[20px]"
+                    <span class="material-symbols-outlined text-[18px]"
                         >cloud_upload</span
                     >
-                    <span class="hidden sm:inline">Backup</span>
+                    <span>Backup</span>
                 {/if}
             </button>
             <button
                 onclick={handleDriveRestore}
                 disabled={syncState !== "idle"}
-                class="flex items-center gap-2 px-2 sm:px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-card-dark dark:text-slate-300 dark:border-border-dark dark:hover:bg-background-dark disabled:opacity-50 min-w-0 sm:min-w-[100px] justify-center"
+                class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-card-dark dark:text-slate-300 dark:border-border-dark dark:hover:bg-background-dark disabled:opacity-50 min-w-[90px] justify-center"
             >
                 {#if syncState === "restore"}
                     <span
-                        class="material-symbols-outlined text-[20px] animate-spin"
+                        class="material-symbols-outlined text-[18px] animate-spin"
                         >sync</span
                     >
                     <span>Wait...</span>
                 {:else}
-                    <span class="material-symbols-outlined text-[20px]"
+                    <span class="material-symbols-outlined text-[18px]"
                         >cloud_download</span
                     >
-                    <span class="hidden sm:inline">Restore</span>
+                    <span>Restore</span>
                 {/if}
             </button>
+        {/snippet}
+
+        <div class="mb-6">
+            <div class="flex items-end justify-between gap-4 mb-4 md:mb-6">
+                <div>
+                    <h1
+                        class="text-3xl font-bold text-slate-900 dark:text-white mb-2"
+                    >
+                        Endpoints
+                    </h1>
+                    <p class="text-slate-500 dark:text-slate-400">
+                        Manage your API endpoints and configurations.
+                    </p>
+                </div>
+
+                <!-- Desktop Buttons -->
+                <div class="hidden md:flex items-center gap-2">
+                    <button
+                        onclick={() => goto("/endpoint/new")}
+                        class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all shrink-0"
+                    >
+                        <span class="material-symbols-outlined text-[20px]"
+                            >add</span
+                        >
+                        <span>New Endpoint</span>
+                    </button>
+                    {@render syncButtons()}
+                </div>
+            </div>
+
+            <!-- Mobile Buttons -->
+            <div class="flex md:hidden items-center gap-2">
+                {@render syncButtons()}
+            </div>
         </div>
     </div>
 

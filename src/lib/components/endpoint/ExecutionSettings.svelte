@@ -28,7 +28,7 @@
         isBackingUp = false,
         isRestoring = false,
         isMobile,
-        isHeaderInView,
+        isButtonInView = $bindable(true),
         onBackup,
         onRestore,
         onLoadPreset,
@@ -43,6 +43,26 @@
     let isPresetDropdownOpen = $state(false);
     let showSavePresetDialog = $state(false);
     let newPresetName = $state("");
+    let executeButtonRef = $state<HTMLElement | null>(null);
+
+    $effect(() => {
+        if (!executeButtonRef) return;
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                isButtonInView = entry.isIntersecting;
+            },
+            {
+                threshold: 0,
+            },
+        );
+
+        observer.observe(executeButtonRef);
+
+        return () => {
+            observer.disconnect();
+        };
+    });
 
     function handleSave() {
         if (!newPresetName.trim()) return;
@@ -56,21 +76,6 @@
         isPresetDropdownOpen = !isPresetDropdownOpen;
     }
 </script>
-
-{#if isMobile}
-    <!-- Mobile Header Replacement -->
-    <div
-        class="bg-white dark:bg-slate-900 px-5 py-4 flex justify-between items-center text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800"
-    >
-        <h2 class="text-lg font-bold">Execute Endpoint</h2>
-        <button
-            onclick={onClose}
-            class="text-slate-500 hover:text-slate-700 p-1"
-        >
-            <X size={20} />
-        </button>
-    </div>
-{/if}
 
 <div
     bind:this={headerRef}
@@ -96,7 +101,7 @@
             class="flex flex-col md:flex-row md:items-center justify-between gap-4"
         >
             <h3
-                class="font-bold text-xl text-slate-900 dark:text-white leading-tight"
+                class="font-bold text-xl text-slate-900 dark:text-white leading-tight flex-1 min-w-0"
             >
                 {endpoint?.name}
             </h3>
@@ -104,34 +109,38 @@
             <div class="flex items-center gap-2 shrink-0">
                 <!-- Desktop Actions -->
                 <div class="hidden md:flex items-center gap-2">
-                    {#if $authStore.accessToken}
-                        <div class="flex items-center gap-1">
-                            <button
-                                onclick={onBackup}
-                                disabled={isBackingUp || isRestoring}
-                                class="flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
-                            >
-                                {#if isBackingUp}
-                                    <Loader2 size={16} class="animate-spin" />
-                                {:else}
-                                    <CloudUpload size={16} />
-                                {/if}
-                                <span class="hidden lg:inline">Backup</span>
-                            </button>
-                            <button
-                                onclick={onRestore}
-                                disabled={isBackingUp || isRestoring}
-                                class="flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
-                            >
-                                {#if isRestoring}
-                                    <Loader2 size={16} class="animate-spin" />
-                                {:else}
-                                    <CloudDownload size={16} />
-                                {/if}
-                                <span class="hidden lg:inline">Restore</span>
-                            </button>
-                        </div>
-                    {/if}
+                    <div class="flex items-center gap-2">
+                        <button
+                            onclick={onBackup}
+                            disabled={isBackingUp || isRestoring}
+                            class="flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+                            title={$authStore.accessToken
+                                ? "Backup to Drive"
+                                : "Connect Google Drive to Backup"}
+                        >
+                            {#if isBackingUp}
+                                <Loader2 size={16} class="animate-spin" />
+                            {:else}
+                                <CloudUpload size={16} />
+                            {/if}
+                            <span class="hidden lg:inline">Backup</span>
+                        </button>
+                        <button
+                            onclick={onRestore}
+                            disabled={isBackingUp || isRestoring}
+                            class="flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+                            title={$authStore.accessToken
+                                ? "Restore from Drive"
+                                : "Connect Google Drive to Restore"}
+                        >
+                            {#if isRestoring}
+                                <Loader2 size={16} class="animate-spin" />
+                            {:else}
+                                <CloudDownload size={16} />
+                            {/if}
+                            <span class="hidden lg:inline">Restore</span>
+                        </button>
+                    </div>
 
                     <div class="relative">
                         <button
@@ -216,6 +225,7 @@
                     </div>
 
                     <button
+                        bind:this={executeButtonRef}
                         onclick={onExecute}
                         disabled={isExecuting}
                         class="flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold text-white transition-all hover:scale-105 active:scale-95 shrink-0 rounded-lg shadow-sm disabled:opacity-70 disabled:scale-100 {executionStage ===
@@ -346,46 +356,55 @@
             </div>
         </div>
 
+        {#if endpoint?.description}
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                {endpoint.description}
+            </p>
+        {/if}
+
         <!-- URL & Domain Row -->
-        <div class="flex flex-col gap-2">
-            <div class="flex flex-wrap items-center gap-4">
-                {#if availableDomains.length > 0}
-                    <select
-                        bind:value={selectedDomainPrefix}
-                        class="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-blue-500/30"
-                    >
-                        {#each availableDomains as domain}
-                            <option value={domain.value}>{domain.label}</option>
-                        {/each}
-                    </select>
-                {/if}
+        <div class="flex flex-wrap items-center gap-4">
+            <!-- Line 1: Basic Info -->
 
-                <div
-                    class="flex items-center gap-1.5 px-2 py-1.5 rounded bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/30"
+            {#if availableDomains.length > 0}
+                <select
+                    bind:value={selectedDomainPrefix}
+                    class="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-blue-500/30"
                 >
-                    <span class="text-[10px] uppercase font-bold opacity-70"
-                        >Site</span
-                    >
-                    <span class="text-xs font-semibold"
-                        >{endpoint?.scope?.site}</span
-                    >
-                </div>
+                    {#each availableDomains as domain}
+                        <option value={domain.value}>{domain.label}</option>
+                    {/each}
+                </select>
+            {/if}
 
-                <div class="w-px h-3 bg-slate-300 dark:bg-slate-700 mx-1"></div>
+            <div
+                class="flex items-center gap-1.5 px-2 py-1.5 rounded bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/30"
+            >
+                <span class="text-[10px] uppercase font-bold opacity-70"
+                    >Site</span
+                >
+                <span class="text-xs font-semibold"
+                    >{endpoint?.scope?.site}</span
+                >
+            </div>
 
-                <div class="flex items-center gap-1.5">
-                    <span class="text-slate-500 dark:text-slate-400 text-xs"
-                        >Type</span
-                    >
-                    <span
-                        class="px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
-                    >
-                        {endpoint?.requestType}
-                    </span>
-                </div>
+            <div class="w-px h-3 bg-slate-300 dark:bg-slate-700 mx-1"></div>
 
+            <div class="flex items-center gap-1.5">
+                <span class="text-slate-500 dark:text-slate-400 text-xs"
+                    >Type</span
+                >
+                <span
+                    class="px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                >
+                    {endpoint?.requestType}
+                </span>
+            </div>
+
+            <!-- Line 2: Advanced Info -->
+            {#if endpoint?.config?.contentType || endpoint?.config?.charset}
                 {#if endpoint?.config?.contentType}
-                    <div class="flex items-center gap-1.5 ml-0 md:ml-2">
+                    <div class="flex items-center gap-1.5">
                         <span
                             class="text-slate-500 dark:text-slate-400 text-xs text-nowrap"
                             >Content-Type</span
@@ -397,7 +416,21 @@
                         </span>
                     </div>
                 {/if}
-            </div>
+
+                {#if endpoint?.config?.charset}
+                    <div class="flex items-center gap-1.5">
+                        <span
+                            class="text-slate-500 dark:text-slate-400 text-xs text-nowrap"
+                            >Charset</span
+                        >
+                        <span
+                            class="px-1.5 py-0.5 rounded text-xs font-semibold bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 text-nowrap"
+                        >
+                            {endpoint.config.charset}
+                        </span>
+                    </div>
+                {/if}
+            {/if}
 
             <div
                 class="px-3 py-2 bg-white dark:bg-slate-950/50 rounded border border-slate-200 dark:border-slate-800 font-mono text-xs text-slate-600 dark:text-slate-400 break-all w-full flex flex-wrap items-center gap-1"

@@ -128,7 +128,7 @@
 {/if}
 
 <!-- Response Validation Section -->
-{#if executionStage === "EXECUTE" && (responseValidationSuccess !== null || responseDecryptedData.length > 0)}
+{#if executionStage === "EXECUTE" && responseResult && (responseValidationSuccess !== null || responseDecryptedData.length > 0)}
     <div
         class="mt-4 border-t border-slate-200 dark:border-border-dark pt-4 mb-10"
     >

@@ -42,22 +42,18 @@ export const POST: RequestHandler = async ({ request }) => {
 
         } else if (type === 'pin_auth') {
             // Params: wpayUserKey, returnUrl
-            // wpayUserKey is already encrypted? No, usually clear text in DB, but api expects...?
-            // Wait, wpayUserKey in payload.
-            // Guide: "wpayUserKey": "WPAY 사용자 키" (Plain text or Encrypted?)
-            // Usually wpayUserKey is public identifier (token-like), not encrypted in request unless specified.
-            // Guide Check:
-            // PIN Auth Payload: wpayUserKey (encrypt: X)
-            // So we use it as is.
+            const encWpayUserKey = wpayServerService.encrypt(params.wpayUserKey, mid);
 
             payload = {
                 mid,
-                wpayUserKey: params.wpayUserKey,
+                wpayUserKey: encWpayUserKey,
                 ci: "",
                 returnUrl: params.returnUrl
             };
 
             signingOrder = ["mid", "wpayUserKey", "ci", "returnUrl"];
+            // Important: wpayUserKey MUST NOT be URL encoded as per user request.
+            // Since encodeFields is empty, it won't be encoded.
         } else {
             return json({ error: "Invalid type" }, { status: 400 });
         }
