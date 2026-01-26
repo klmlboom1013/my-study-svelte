@@ -1,19 +1,15 @@
 <script lang="ts">
     import { onMount, onDestroy, tick } from "svelte";
     import { goto } from "$app/navigation";
-    import {
-        createAccessToken,
-        validateAccessToken,
-    } from "$lib/utils/auth/accessToken";
+    // import { createAccessToken, validateAccessToken } from "$lib/utils/auth/accessToken"; // Removed. used API.
     import { setCookie, getCookie } from "$lib/utils/cookie";
     import { profileStore } from "$lib/stores/profileStore";
-    import { wpayAuthService } from "$lib/services/wpayAuthService";
-    import { WPAY_POPUP_CONFIG } from "$lib/constants/wpayConfig";
-    import { MERCHANT_KEYS } from "$lib/utils/encryption/cryptoKeys";
-    import { AVATARS } from "$lib/constants/avatars";
+    import { wpayAuthService } from "$lib/features/auth/services/wpayAuthService";
+    import { WPAY_POPUP_CONFIG, WPAY_INTEGRATION } from "$lib/types/wpay";
+    import { AVATARS } from "$lib/features/auth/constants/avatars";
     import { searchWpayMember } from "$lib/utils/wpay/membershipService";
-    import { generateSignature } from "$lib/utils/wpay/signature";
-    import { encryptSeed } from "$lib/utils/encryption/cryptoSeed";
+    // import { generateSignature } from "$lib/utils/wpay/signature"; // Handled by Server
+    // import { encryptSeed } from "$lib/utils/encryption/cryptoSeed"; // Handled by Server
     import WpayResultModal from "$lib/components/wpay/WpayResultModal.svelte";
 
     // Sub-components
@@ -27,14 +23,7 @@
     let { isModal = false, onComplete }: Props = $props();
 
     // Fixed Configuration
-    const mid = "INIwpayT03";
-    const site = "stdwpay";
-    // const server = "PROD"; // Implicitly PROD
-    const URLS = {
-        MEMBER_SEARCH: "https://wpay.inicis.com/stdwpay/apis/schMemRegInfo",
-        SIGNUP: "https://wpaystd.inicis.com/stdwpay/std/u/v1/memreg",
-        PIN_AUTH: "https://wpaystd.inicis.com/stdwpay/std/u/v1/pinno/auth",
-    };
+    // All configuration moved to WPAY_INTEGRATION constant
 
     // State
     let userId = $state("wpayTestUser01");
@@ -59,12 +48,70 @@
     // Communications
     let authChannel: BroadcastChannel;
 
-    onMount(async () => {
-        authChannel = new BroadcastChannel("wpay_auth_channel");
+    onMount(() => {
+        const init = async () => {
+            authChannel = new BroadcastChannel("wpay_channel");
+            authChannel.onmessage = (event) =>
+                handleWpayMessage({ data: event.data } as MessageEvent);
+
+            const storageHandler = (event: StorageEvent) => {
+                if (event.key === "wpay_auth_result" && event.newValue) {
+                    try {
+                        handleWpayMessage({
+                            data: JSON.parse(event.newValue),
+                        } as MessageEvent);
+                        localStorage.removeItem("wpay_auth_result");
+                    } catch {}
+                }
+            };
+            window.addEventListener("storage", storageHandler);
+
+            // Load Cache
+            const stored = localStorage.getItem("sign-in-page");
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    isSaveCache = parsed.isSaveCache;
+                    if (isSaveCache) {
+                        userId = parsed.userId || "wpayTestUser01";
+                        hNum = parsed.hNum || "";
+                    }
+                } catch {}
+            }
+
+            // Cookie check
+            const token = getCookie("accessToken");
+            if (token && WPAY_INTEGRATION.MID) {
+                try {
+                    const res = await fetch("/api/auth/validate", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            token,
+                            mid: WPAY_INTEGRATION.MID,
+                        }),
+                    });
+                    const { isValid } = await res.json();
+                    if (isValid && !isModal) goto("/");
+                } catch {}
+            }
+
+            // Cleanup function for internal listeners if needed,
+            // but we need to return the cleanup from the outer scope.
+            // Wait, I need access to storageHandler for cleanup.
+            // So storageHandler definition must be outside async or shared.
+        };
+
+        // Define cleanup-relevant vars here?
+        let storageHandler: (event: StorageEvent) => void;
+
+        // Actually, let's restructure:
+
+        authChannel = new BroadcastChannel("wpay_channel");
         authChannel.onmessage = (event) =>
             handleWpayMessage({ data: event.data } as MessageEvent);
 
-        const storageHandler = (event: StorageEvent) => {
+        const storageHandlerRef = (event: StorageEvent) => {
             if (event.key === "wpay_auth_result" && event.newValue) {
                 try {
                     handleWpayMessage({
@@ -74,32 +121,46 @@
                 } catch {}
             }
         };
-        window.addEventListener("storage", storageHandler);
+        window.addEventListener("storage", storageHandlerRef);
 
-        // Load Cache
-        const stored = localStorage.getItem("sign-in-page");
-        if (stored) {
-            try {
-                const parsed = JSON.parse(stored);
-                isSaveCache = parsed.isSaveCache;
-                if (isSaveCache) {
-                    userId = parsed.userId || "wpayTestUser01";
-                    hNum = parsed.hNum || "";
-                }
-            } catch {}
-        }
+        const checkAuth = async () => {
+            // Load Cache
+            const stored = localStorage.getItem("sign-in-page");
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    isSaveCache = parsed.isSaveCache;
+                    if (isSaveCache) {
+                        userId = parsed.userId || "wpayTestUser01";
+                        hNum = parsed.hNum || "";
+                    }
+                } catch {}
+            }
 
-        // Cookie check
-        const token = getCookie("accessToken");
-        if (token && mid) {
-            const isValid = await validateAccessToken(token, mid);
-            if (isValid && !isModal) goto("/");
-        }
+            // Cookie check
+            const token = getCookie("accessToken");
+            if (token && WPAY_INTEGRATION.MID) {
+                try {
+                    const res = await fetch("/api/auth/validate", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            token,
+                            mid: WPAY_INTEGRATION.MID,
+                        }),
+                    });
+                    const { isValid } = await res.json();
+                    if (isValid && !isModal) goto("/");
+                } catch {}
+            }
+        };
+
+        checkAuth();
 
         return () => {
             if (authChannel) authChannel.close();
             window.removeEventListener("message", handleWpayMessage);
-            window.removeEventListener("storage", storageHandler);
+            window.removeEventListener("storage", storageHandlerRef);
         };
     });
 
@@ -112,129 +173,125 @@
             return;
 
         const resData = event.data;
-        const keys = MERCHANT_KEYS[mid];
-        if (!keys) return;
 
         const isPinAuth = !resData.userId && !resData.ci;
-        const order = isPinAuth
-            ? ["resultCode", "resultMsg", "mid", "wtid", "wpayUserKey"]
-            : [
-                  "resultCode",
-                  "resultMsg",
-                  "mid",
-                  "wtid",
-                  "userId",
-                  "wpayUserKey",
-                  "ci",
-              ];
 
-        const isSigValid = await wpayAuthService.verifySignature(
-            resData,
-            keys.hashKey,
-            order,
-        );
-        if (!isSigValid) {
-            alert("WPAY Signature Verification Failed!");
-            return;
-        }
+        // Server-Side Verification & Decryption
+        try {
+            const res = await fetch("/api/wpay/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ resData }),
+            });
+            const result = await res.json();
 
-        const decrypted = wpayAuthService.decryptResult(resData, {
-            hashKey: keys.hashKey,
-            seedKey: keys.seedKey,
-            seedIV: keys.seedIV,
-        });
-        const isSuccess =
-            resData.resultCode === "0000" || resData.resultCode === "2006";
-
-        if (isPinAuth) {
-            if (isSuccess && decrypted.wpayUserKey) {
-                handleAccessTokenCreation({
-                    wpayUserKey: decrypted.wpayUserKey,
-                    wtid: decrypted.wtid,
-                    userId,
-                });
+            if (!res.ok || !result.isSigValid) {
+                alert(
+                    "WPAY Signature Verification Failed (Server)! " +
+                        (result.error || ""),
+                );
                 return;
             }
-            validationError = `${decrypted.resultMsg} (${resData.resultCode})`;
-            wpayResultTitle = "WPAY PIN Auth Result";
-            modalNextAction = "CLOSE";
-            wpayResultData = [
-                {
-                    key: "resultCode",
-                    label: "결과 코드",
-                    encrypted: resData.resultCode,
-                    decrypted: "-",
-                },
-                {
-                    key: "resultMsg",
-                    label: "결과 메시지",
-                    encrypted: resData.resultMsg,
-                    decrypted: decrypted.resultMsg,
-                },
-                {
-                    key: "wtid",
-                    label: "WPAY 트랜잭션 ID",
-                    encrypted: decrypted.wtid,
-                    decrypted: "-",
-                },
-                {
-                    key: "wpayUserKey",
-                    label: "WPAY 사용자 키",
-                    encrypted: resData.wpayUserKey,
-                    decrypted: decrypted.wpayUserKey,
-                },
-            ];
-        } else {
-            const isUserIdMatch =
-                decrypted.userId === (userId || "wpayTestUser01");
-            if (isSuccess && isUserIdMatch) {
-                if (isSaveCache) {
-                    const cache = JSON.parse(
-                        localStorage.getItem("sign-in-page") || "{}",
-                    );
-                    cache.wpayUserKey = decrypted.wpayUserKey;
-                    localStorage.setItem("sign-in-page", JSON.stringify(cache));
+
+            const decrypted = result.decrypted;
+            const isSuccess =
+                resData.resultCode === "0000" || resData.resultCode === "2006";
+
+            if (isPinAuth) {
+                if (isSuccess && decrypted.wpayUserKey) {
+                    handleAccessTokenCreation({
+                        wpayUserKey: decrypted.wpayUserKey,
+                        wtid: decrypted.wtid,
+                        userId,
+                    });
+                    return;
                 }
-                handleAccessTokenCreation({
-                    wpayUserKey: decrypted.wpayUserKey,
-                    wtid: decrypted.wtid,
-                    userId,
-                });
-                return;
+                validationError = `${decrypted.resultMsg} (${resData.resultCode})`;
+                wpayResultTitle = "WPAY PIN Auth Result";
+                modalNextAction = "CLOSE";
+                wpayResultData = [
+                    {
+                        key: "resultCode",
+                        label: "결과 코드",
+                        encrypted: resData.resultCode,
+                        decrypted: "-",
+                    },
+                    {
+                        key: "resultMsg",
+                        label: "결과 메시지",
+                        encrypted: resData.resultMsg,
+                        decrypted: decrypted.resultMsg,
+                    },
+                    {
+                        key: "wtid",
+                        label: "WPAY 트랜잭션 ID",
+                        encrypted: decrypted.wtid,
+                        decrypted: "-",
+                    },
+                    {
+                        key: "wpayUserKey",
+                        label: "WPAY 사용자 키",
+                        encrypted: resData.wpayUserKey,
+                        decrypted: decrypted.wpayUserKey,
+                    },
+                ];
+            } else {
+                const isUserIdMatch =
+                    decrypted.userId === (userId || "wpayTestUser01");
+                if (isSuccess && isUserIdMatch) {
+                    if (isSaveCache) {
+                        const cache = JSON.parse(
+                            localStorage.getItem("sign-in-page") || "{}",
+                        );
+                        cache.wpayUserKey = decrypted.wpayUserKey;
+                        localStorage.setItem(
+                            "sign-in-page",
+                            JSON.stringify(cache),
+                        );
+                    }
+                    handleAccessTokenCreation({
+                        wpayUserKey: decrypted.wpayUserKey,
+                        wtid: decrypted.wtid,
+                        userId,
+                    });
+                    return;
+                }
+                validationError = isUserIdMatch
+                    ? `${decrypted.resultMsg} (${decrypted.resultCode})`
+                    : "User ID mismatch";
+                wpayResultTitle = "WPAY Member Sign-up Result";
+                modalNextAction = "CLOSE";
+                wpayResultData = [
+                    {
+                        key: "resultCode",
+                        label: "결과 코드",
+                        encrypted: resData.resultCode,
+                        decrypted: "-",
+                    },
+                    {
+                        key: "resultMsg",
+                        label: "결과 메시지",
+                        encrypted: resData.resultMsg,
+                        decrypted: decrypted.resultMsg,
+                    },
+                    {
+                        key: "userId",
+                        label: "사용자 ID",
+                        encrypted: resData.userId,
+                        decrypted: decrypted.userId || "",
+                    },
+                    {
+                        key: "wpayUserKey",
+                        label: "WPAY 사용자 키",
+                        encrypted: resData.wpayUserKey,
+                        decrypted: decrypted.wpayUserKey,
+                    },
+                ];
             }
-            validationError = isUserIdMatch
-                ? `${decrypted.resultMsg} (${decrypted.resultCode})`
-                : "User ID mismatch";
-            wpayResultTitle = "WPAY Member Sign-up Result";
-            modalNextAction = "CLOSE";
-            wpayResultData = [
-                {
-                    key: "resultCode",
-                    label: "결과 코드",
-                    encrypted: resData.resultCode,
-                    decrypted: "-",
-                },
-                {
-                    key: "resultMsg",
-                    label: "결과 메시지",
-                    encrypted: resData.resultMsg,
-                    decrypted: decrypted.resultMsg,
-                },
-                {
-                    key: "userId",
-                    label: "사용자 ID",
-                    encrypted: resData.userId,
-                    decrypted: decrypted.userId || "",
-                },
-                {
-                    key: "wpayUserKey",
-                    label: "WPAY 사용자 키",
-                    encrypted: resData.wpayUserKey,
-                    decrypted: decrypted.wpayUserKey,
-                },
-            ];
+            showResultModal = true;
+        } catch (e) {
+            alert("Verification Error: " + (e as Error).message);
         }
-        showResultModal = true;
     }
 
     async function handleAccessTokenCreation(data: {
@@ -243,15 +300,20 @@
         userId: string;
     }) {
         try {
-            const token = await createAccessToken({
-                server: "PROD", // Fixed
-                site,
-                service: "wpaystd2", // Implicitly wpaystd2 for logic compatibility
-                wpayUserKey: data.wpayUserKey,
-                wtid: data.wtid,
-                userId: data.userId,
-                mid,
+            const res = await fetch("/api/auth/token", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    wpayUserKey: data.wpayUserKey,
+                    wtid: data.wtid,
+                    userId: data.userId,
+                    mid: WPAY_INTEGRATION.MID,
+                }),
             });
+            if (!res.ok) throw new Error("Failed to create token");
+
+            const { token } = await res.json();
+
             profileStore.updateProfile({
                 id: crypto.randomUUID(),
                 saveDateTime: new Date().toISOString(),
@@ -277,7 +339,7 @@
         }
     }
 
-    function handleNextClick() {
+    async function handleNextClick() {
         if (!userId) userId = "wpayTestUser01";
 
         if (isSaveCache)
@@ -289,57 +351,33 @@
                     isSaveCache,
                 }),
             );
+
         // If either userId or hNum is missing, proceed to Signup
         if (!userId || !hNum) openWpaySignup();
         else handleMembershipCheck();
     }
 
     async function handleMembershipCheck() {
-        const keys = MERCHANT_KEYS[mid];
-        if (!keys) return;
-        const domain = URLS.MEMBER_SEARCH;
-
+        // 1. Background HTTP Check (No Popup)
+        const domain = WPAY_INTEGRATION.URLS.MEMBER_SEARCH;
         console.log("Using Fixed Membership Domain:", domain);
 
         try {
-            // searchWpayMember expects domain to be the base URL (without path?)
-            // The existing function constructs the URL. Let's check if we should pass the full URL or just the domain.
-            // Looking at searchWpayMember usage in original code:
-            // const domain = SERVICE_URLS["wpaystd"].PROD[prodDomain]; // e.g. https://wpay.inicis.com
-            // So we should pass "https://wpay.inicis.com" as domain, OR modify searchWpayMember.
-            // But wpay urls structure is: domain + /stdwpay/apis/schMemRegInfo
-            // The provided URL is: https://wpay.inicis.com/stdwpay/apis/schMemRegInfo
-            // So the domain base is https://wpay.inicis.com.
-
-            // To be safe with existing searchWpayMember, we might need to pass the base.
-            // However, the prompt says "Wpay 회원가입정보 조회 URL = https://wpay.inicis.com/stdwpay/apis/schMemRegInfo"
-            // Let's assume searchWpayMember appends the path. I'll pass the base.
-            // Wait, I should check searchWpayMember implementation to be sure.
-            // But since I'm replacing the file content, I can't check it right now without another tool call.
-            // I'll assume the standard base domain "https://wpay.inicis.com" is what's needed for the `domain` param,
-            // as the previous code was constructing it from SERVICE_URLS.PROD[...].
-
-            const domainBase = "https://wpay.inicis.com";
-
             const resData = await searchWpayMember({
-                domain: domainBase,
-                siteName: site,
-                merchantId: mid,
+                apiUrl: WPAY_INTEGRATION.URLS.MEMBER_SEARCH,
+                merchantId: WPAY_INTEGRATION.MID,
                 userId: userId || "wpayTestUser01",
                 hNum,
             });
-            const decrypted = wpayAuthService.decryptResult(resData, {
-                hashKey: keys.hashKey,
-                seedKey: keys.seedKey,
-                seedIV: keys.seedIV,
-            });
+            const decrypted = resData;
 
             if (
                 resData.resultCode === "0000" &&
                 decrypted.wpayUserKey &&
                 resData.status === "00"
             ) {
-                handlePinAuth(resData.wpayUserKey);
+                // 2. If Success, Open PIN Auth Popup
+                handlePinAuth(decrypted.wpayUserKey);
             } else {
                 wpayResultTitle = "WPAY Member Auth Result";
                 wpayResultButtonText = "Signup";
@@ -372,111 +410,126 @@
     }
 
     async function openWpaySignup() {
-        const url = "https://wpaystd.inicis.com"; // Base URL for Signup?
-        // Original code: `${url}${site ? "/" + site : ""}/auth/joinMemberReq`
-        // Requested URL: "https://wpaystd.inicis.com/stdwpay/std/u/v1/memreg"
-        // Wait, the requested URL path /std/u/v1/memreg seems different from /auth/joinMemberReq.
-        // The endpoint list says: "1.1 Signup (Web UI) -> POST /stdwpay/std/u/v1/memreg"
-        // So the user provided URL is correct for the ACTION url of the form.
-
-        const keys = MERCHANT_KEYS[mid];
-        if (!keys) return;
-
-        const encryptedUserId = encryptSeed(userId, keys.seedKey, keys.seedIV);
-
-        const payload: Record<string, string> = {
-            mid,
-            userId: encryptedUserId,
-            ci: "",
-            userNm: "",
-            hNum: "",
-            hCorp: "",
-            birthDay: "",
-            socialNo2: "",
-            frnrYn: "",
-            returnUrl: encodeURIComponent(
-                window.location.origin + `/callback/wpaystd2/${site}/memreg`,
-            ),
-        };
-        const sigResult = await generateSignature(
-            payload,
-            keys.hashKey,
-            [
-                "mid",
-                "userId",
-                "ci",
-                "userNm",
-                "hNum",
-                "hCorp",
-                "birthDay",
-                "socialNo2",
-                "frnrYn",
-                "returnUrl",
-            ],
-            [], // Already encoded returnUrl in payload
-        );
-        payload.signature = sigResult.signature;
-
-        wpayAuthService.openPopup(
+        // Open popup immediately
+        const popup = wpayAuthService.openPopup(
             WPAY_POPUP_CONFIG.WIDTH,
             WPAY_POPUP_CONFIG.HEIGHT,
         );
-        console.log("WPAY Signup Payload:", payload);
 
-        // Use the exact requested URL
-        wpayAuthService.submitForm(URLS.SIGNUP, "POST", payload);
-        window.addEventListener("message", handleWpayMessage);
+        if (!popup) {
+            alert("Popup blocked.");
+            return;
+        }
+
+        try {
+            const returnUrl = encodeURIComponent(
+                window.location.origin + `/callback/wpay/result`,
+            );
+
+            const res = await fetch("/api/wpay/sign", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    type: "signup",
+                    mid: WPAY_INTEGRATION.MID,
+                    userId: userId || "wpayTestUser01",
+                    returnUrl,
+                }),
+            });
+
+            if (!res.ok) {
+                popup.close();
+                alert("Failed to sign request");
+                return;
+            }
+
+            const payload = await res.json();
+            console.log("WPAY Signup Payload:", payload);
+
+            // 2. Submit form to the updated, already-open popup
+            // Note: Since we reverted wpayAuthService, we use submitForm which targets "wpay-auth-popup"
+            // The popup opened above has the name "wpay-auth-popup", so this should work.
+            wpayAuthService.submitForm(
+                WPAY_INTEGRATION.URLS.SIGNUP,
+                "POST",
+                payload,
+            );
+            window.addEventListener("message", handleWpayMessage);
+        } catch (e) {
+            popup.close();
+            console.error(e);
+            alert("Error initializing signup");
+        }
     }
 
     async function handlePinAuth(directWpayUserKey?: string) {
-        // Requested URL: "https://wpaystd.inicis.com/stdwpay/std/u/v1/pinno/auth"
-
-        const keys = MERCHANT_KEYS[mid];
-
-        let wpayUserKey = directWpayUserKey;
-        if (!wpayUserKey) {
-            const stored = JSON.parse(
-                localStorage.getItem("sign-in-page") || "{}",
-            );
-            wpayUserKey = stored.wpayUserKey;
-        }
-
-        if (!keys || !wpayUserKey) return;
-
-        const payload = {
-            mid,
-            wpayUserKey,
-            ci: "",
-            returnUrl: encodeURIComponent(
-                window.location.origin +
-                    `/callback/wpaystd2/${site}/pinno/auth`,
-            ),
-        };
-        const sigResult = await generateSignature(
-            payload,
-            keys.hashKey,
-            ["mid", "wpayUserKey", "ci", "returnUrl"],
-            [], // Already encoded returnUrl in payload
-        );
-
-        wpayAuthService.openPopup(
+        // Open popup immediately
+        const popup = wpayAuthService.openPopup(
             WPAY_POPUP_CONFIG.WIDTH,
             WPAY_POPUP_CONFIG.HEIGHT,
         );
-        const finalPayload = {
-            ...payload,
-            signature: sigResult.signature,
-        };
-        console.log("WPAY PIN Auth Payload:", finalPayload);
 
-        // Use the exact requested URL
-        wpayAuthService.submitForm(URLS.PIN_AUTH, "POST", finalPayload);
-        window.addEventListener("message", handleWpayMessage);
+        if (!popup) {
+            alert("Popup blocked.");
+            // If blocked here after async membership check, we might need a "Retry" button UI.
+            return;
+        }
+
+        try {
+            let wpayUserKey = directWpayUserKey;
+            if (!wpayUserKey) {
+                const stored = JSON.parse(
+                    localStorage.getItem("sign-in-page") || "{}",
+                );
+                wpayUserKey = stored.wpayUserKey;
+            }
+
+            if (!wpayUserKey) {
+                popup.close();
+                return;
+            }
+
+            const returnUrl = encodeURIComponent(
+                window.location.origin + `/callback/wpay/result`,
+            );
+
+            const res = await fetch("/api/wpay/sign", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    type: "pin_auth",
+                    mid: WPAY_INTEGRATION.MID,
+                    wpayUserKey,
+                    returnUrl,
+                }),
+            });
+
+            if (!res.ok) {
+                popup.close();
+                alert("Failed to sign request");
+                return;
+            }
+
+            const finalPayload = await res.json();
+            console.log("WPAY PIN Auth Payload:", finalPayload);
+
+            // 2. Submit form to the pre-opened popup
+            wpayAuthService.submitForm(
+                WPAY_INTEGRATION.URLS.PIN_AUTH,
+                "POST",
+                finalPayload,
+            );
+            window.addEventListener("message", handleWpayMessage);
+        } catch (e) {
+            popup.close();
+            console.error(e);
+            alert("Error initializing PIN auth");
+        }
     }
 </script>
 
 <div
-    class="w-full max-lg mx-auto bg-white dark:bg-slate-900 shadow-2xl rounded-3xl overflow-hidden border border-slate-100 dark:border-slate-800"
+    class="w-full max-w-md mx-auto bg-white dark:bg-slate-900 shadow-2xl rounded-3xl overflow-hidden border border-slate-100 dark:border-slate-800"
 >
     <!-- Header -->
     <div class="px-8 pt-10 pb-6 text-center">

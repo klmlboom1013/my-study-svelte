@@ -2,7 +2,7 @@
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
     import { page } from "$app/stores";
-    import { endpointService } from "$lib/services/endpointService";
+    import { endpointService } from "$lib/features/endpoints/services/endpointService";
     import type { Endpoint } from "$lib/types/endpoint";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import DataDefinitionTable from "$lib/components/endpoint/DataDefinitionTable.svelte";

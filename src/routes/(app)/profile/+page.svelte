@@ -2,8 +2,11 @@
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
-    import { driveService } from "$lib/services/driveService";
-    import { authStore, loginWithGoogle } from "$lib/services/authService";
+    import { driveService } from "$lib/features/drive/services/driveService";
+    import {
+        authStore,
+        loginWithGoogle,
+    } from "$lib/features/auth/services/authService";
     import { profileStore } from "$lib/stores/profileStore"; // Import store for consistent updates
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
 

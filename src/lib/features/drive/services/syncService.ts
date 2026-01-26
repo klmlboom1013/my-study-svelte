@@ -1,13 +1,13 @@
-import { authStore, disconnectGoogle } from "./authService";
+import { authStore, disconnectGoogle } from "$lib/features/auth/services/authService";
 import { driveService } from "./driveService";
-import { endpointService } from "./endpointService";
+import { endpointService } from "$lib/features/endpoints/services/endpointService";
 import { get } from "svelte/store";
 
 let isSyncing = false;
 let driveFileId: string | null = null;
 let debounceTimer: ReturnType<typeof setTimeout>;
 
-import { executionService } from "./executionService"; // Import added
+import { executionService } from "$lib/features/execution/services/executionService"; // Import added
 
 export const syncService = {
     init: () => {

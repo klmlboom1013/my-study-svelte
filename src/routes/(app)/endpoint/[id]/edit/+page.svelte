@@ -2,16 +2,8 @@
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
     import { page } from "$app/stores";
-    import {
-        SERVICE_OPTIONS,
-        SERVICE_SITE_MAPPING,
-        type ServiceType,
-        type SiteType,
-    } from "$lib/constants/wpayServerType";
-    import {
-        APPLICATION_OPTIONS,
-        type ApplicationType,
-    } from "$lib/constants/application";
+
+    import { profileStore } from "$lib/stores/profileStore";
     import type {
         Endpoint,
         HttpMethod,
@@ -19,36 +11,32 @@
         ResponseDataField,
         RequestType,
     } from "$lib/types/endpoint";
-    import { endpointService } from "$lib/services/endpointService";
+    import { endpointService } from "$lib/features/endpoints/services/endpointService";
     import RequestDataJsonModal from "$lib/components/endpoint/RequestDataJsonModal.svelte";
     import ResponseDataJsonModal from "$lib/components/endpoint/ResponseDataJsonModal.svelte";
     import TypeSelector from "$lib/components/endpoint/TypeSelector.svelte";
     import DataDefinitionTable from "$lib/components/endpoint/DataDefinitionTable.svelte";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
-    import { profileStore } from "$lib/stores/profileStore";
     import DropdownInput from "$lib/components/ui/DropdownInput.svelte";
 
-    let endpointId = $state("");
-    let selectedApplication = $state<ApplicationType>("WPAY");
+    interface Props {
+        data: {
+            id: string;
+        };
+    }
+
+    let { data }: Props = $props();
+
+    let endpointId = $state(data.id);
+    let selectedApplication = $state("WPAY");
 
     // Dynamic Application Options from Profile
     let applicationOptions = $derived.by(() => {
         const apps =
-            $profileStore.myApplications?.map(
-                (app) => app.appName as ApplicationType,
-            ) || [];
-        // Ensure we always have valid ApplicationTypes.
-        // Filter against defined APPLICATION_OPTIONS to be safe, or cast if we trust profile.
-        // For now, let's filter to only show valid ones to avoid type issues,
-        // OR trust the profile and fallback to standard options if empty.
-        const validApps = apps.filter((app) =>
-            APPLICATION_OPTIONS.includes(app),
-        );
+            $profileStore.myApplications?.map((app) => app.appName) || [];
 
-        // If user has no apps configured, fallback to default static options
-        if (validApps.length === 0) return [...APPLICATION_OPTIONS];
-
-        return Array.from(new Set(validApps));
+        if (apps.length === 0) return ["WPAY"];
+        return Array.from(new Set(apps));
     });
 
     let name = $state("");
@@ -56,8 +44,8 @@
     let method = $state<HttpMethod>("POST");
     let uri = $state("");
     let requestType = $state<RequestType>("REST");
-    let selectedService = $state<ServiceType>(SERVICE_OPTIONS[0]);
-    let selectedSite = $state<string>("");
+    let selectedService = $state<string>("wpaystd2");
+    let selectedSite = $state<string>("stdwpay");
     let signatureMethod = $state<string>(""); // Added state
 
     let prevRequestType = $state<RequestType>("REST");
@@ -89,7 +77,9 @@
     let isResponseOpen = $state(true);
 
     // Derived site options based on selected service
-    let siteOptions = $derived(SERVICE_SITE_MAPPING[selectedService] || []);
+    let siteOptions = $derived(
+        selectedService === "wpaystd2" ? ["stdwpay"] : [],
+    );
 
     onMount(() => {
         endpointId = $page.params.id ?? "";
@@ -101,16 +91,14 @@
         const endpoint = endpointService.getEndpoint(endpointId);
 
         if (endpoint) {
-            selectedApplication =
-                (endpoint.application as ApplicationType) || "WPAY";
+            selectedApplication = endpoint.application || "WPAY";
             name = endpoint.name;
             description = endpoint.description || "";
             method = endpoint.method;
             uri = endpoint.uri;
             requestType = endpoint.requestType;
             prevRequestType = endpoint.requestType;
-            selectedService =
-                (endpoint.scope?.service as ServiceType) || SERVICE_OPTIONS[0];
+            selectedService = endpoint.scope?.service || "wpaystd2";
             selectedSite = endpoint.scope?.site || "";
             signatureMethod = endpoint.signatureMethod || ""; // Load from endpoint
             contentType = endpoint.config?.contentType || "application/json";
@@ -288,7 +276,7 @@
                                     <div class="flex-1">
                                         <DropdownInput
                                             bind:value={selectedService}
-                                            options={[...SERVICE_OPTIONS]}
+                                            options={["wpaystd2"]}
                                             placeholder="Service"
                                         />
                                     </div>

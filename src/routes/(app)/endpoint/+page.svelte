@@ -2,10 +2,13 @@
     import { onMount, untrack } from "svelte";
     import { goto } from "$app/navigation";
     import { page } from "$app/stores";
-    import { endpointService } from "$lib/services/endpointService";
+    import { endpointService } from "$lib/features/endpoints/services/endpointService";
     import type { Endpoint } from "$lib/types/endpoint";
-    import { driveService } from "$lib/services/driveService";
-    import { authStore, loginWithGoogle } from "$lib/services/authService";
+    import { driveService } from "$lib/features/drive/services/driveService";
+    import {
+        authStore,
+        loginWithGoogle,
+    } from "$lib/features/auth/services/authService";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
     import EndpointExecutionModal from "$lib/components/endpoint/EndpointExecutionModal.svelte";

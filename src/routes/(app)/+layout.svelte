@@ -13,8 +13,8 @@
         authStore,
         loginWithGoogle,
         disconnectGoogle,
-    } from "$lib/services/authService";
-    import { driveService } from "$lib/services/driveService";
+    } from "$lib/features/auth/services/authService";
+    import { driveService } from "$lib/features/drive/services/driveService";
     import { get } from "svelte/store";
     import { getCookie } from "$lib/utils/cookie";
     import AlertModal from "$lib/components/ui/AlertModal.svelte";

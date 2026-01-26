@@ -15,8 +15,8 @@
     } from "lucide-svelte";
     import { fade, slide } from "svelte/transition";
     import type { Endpoint } from "$lib/types/endpoint";
-    import type { ExecutionPreset } from "$lib/services/executionService";
-    import { authStore } from "$lib/services/authService";
+    import type { ExecutionPreset } from "$lib/features/execution/services/executionService";
+    import { authStore } from "$lib/features/auth/services/authService";
 
     let {
         endpoint,
@@ -146,6 +146,8 @@
                         </button>
 
                         {#if isPresetDropdownOpen}
+                            <!-- svelte-ignore a11y_click_events_have_key_events -->
+                            <!-- svelte-ignore a11y_no_static_element_interactions -->
                             <div
                                 transition:fade={{ duration: 150 }}
                                 class="absolute right-0 top-full mt-1 w-60 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-800 z-[60] overflow-hidden"
@@ -272,6 +274,8 @@
                         </button>
 
                         {#if isPresetDropdownOpen}
+                            <!-- svelte-ignore a11y_click_events_have_key_events -->
+                            <!-- svelte-ignore a11y_no_static_element_interactions -->
                             <div
                                 transition:fade={{ duration: 150 }}
                                 class="absolute left-0 top-full mt-1 w-60 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-800 z-[70] overflow-hidden"

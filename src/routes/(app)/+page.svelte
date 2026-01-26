@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
-    import { validateAccessToken } from "$lib/utils/auth/accessToken";
+    // import { validateAccessToken } from "$lib/utils/auth/accessToken"; // Removed. used API.
     import { deleteCookie, getCookie } from "$lib/utils/cookie";
     import { decodeJwt } from "jose";
     import Footer from "$lib/components/layout/Footer.svelte";
@@ -29,7 +29,15 @@
                 return;
             }
 
-            const valid = await validateAccessToken(accessToken, mid);
+            // const valid = await validateAccessToken(accessToken, mid);
+            // Replace with API call
+            const res = await fetch("/api/auth/validate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ token: accessToken, mid }),
+            });
+            const { isValid: valid } = await res.json();
+
             if (!valid) {
                 // Invalid token, clear and redirect
                 deleteCookie("accessToken");

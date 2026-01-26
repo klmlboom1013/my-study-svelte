@@ -6,9 +6,12 @@
     import Tooltip from "$lib/components/ui/Tooltip.svelte";
     import UserMenu from "$lib/components/auth/UserMenu.svelte";
     import SelectBox from "$lib/components/ui/SelectBox.svelte";
-    import { initAuth, authStore } from "$lib/services/authService";
+    import {
+        initAuth,
+        authStore,
+    } from "$lib/features/auth/services/authService";
     import { profileStore } from "$lib/stores/profileStore";
-    import { syncService } from "$lib/services/syncService";
+    import { syncService } from "$lib/features/drive/services/syncService";
 
     import type { MouseEventHandler } from "svelte/elements";
 

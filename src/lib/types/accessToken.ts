@@ -1,9 +1,10 @@
-import type { ServerType } from "$lib/constants/wpayServerType";
+export type ServerType = "DEV" | "STG" | "PROD";
+
 import type { JWTPayload } from "jose";
 
 export interface AccessToken extends JWTPayload {
     server: ServerType;
-    site: string;
+    // site: string; // Removed
     service: string;
     wpayUserKey: string;
     wtid: string;

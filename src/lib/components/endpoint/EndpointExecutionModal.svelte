@@ -2,13 +2,16 @@
     import { untrack, tick } from "svelte";
     import Modal from "$lib/components/ui/Modal.svelte";
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
-    import { syncService } from "$lib/services/syncService";
-    import { authStore, disconnectGoogle } from "$lib/services/authService";
+    import { syncService } from "$lib/features/drive/services/syncService";
+    import {
+        authStore,
+        disconnectGoogle,
+    } from "$lib/features/auth/services/authService";
     import {
         executionService,
         type ExecutionPreset,
-    } from "$lib/services/executionService";
-    import { wpayExecutionService } from "$lib/services/wpayExecutionService";
+    } from "$lib/features/execution/services/executionService";
+    import { wpayExecutionService } from "$lib/features/execution/services/wpayExecutionService";
     import { settingsStore } from "$lib/stores/settingsStore";
     import {
         generateSignature,

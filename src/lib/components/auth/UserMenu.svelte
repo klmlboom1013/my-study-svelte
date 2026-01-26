@@ -3,7 +3,7 @@
         authStore,
         loginWithGoogle,
         logout as logoutGoogle,
-    } from "$lib/services/authService";
+    } from "$lib/features/auth/services/authService";
     import { fade } from "svelte/transition";
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
@@ -207,7 +207,8 @@
                                     >refresh</span
                                 >
                             {:else}
-                                <span class="material-symbols-outlined text-[16px]"
+                                <span
+                                    class="material-symbols-outlined text-[16px]"
                                     >sync_problem</span
                                 >
                             {/if}

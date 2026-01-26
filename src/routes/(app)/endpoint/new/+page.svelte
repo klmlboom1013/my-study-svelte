@@ -1,16 +1,8 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
-    import {
-        SERVICE_OPTIONS,
-        SERVICE_SITE_MAPPING,
-        type ServiceType,
-        type SiteType,
-    } from "$lib/constants/wpayServerType";
-    import {
-        APPLICATION_OPTIONS,
-        type ApplicationType,
-    } from "$lib/constants/application";
+
+    import { profileStore } from "$lib/stores/profileStore";
     import type {
         Endpoint,
         HttpMethod,
@@ -18,7 +10,7 @@
         ResponseDataField,
         RequestType,
     } from "$lib/types/endpoint";
-    import { endpointService } from "$lib/services/endpointService";
+    import { endpointService } from "$lib/features/endpoints/services/endpointService";
 
     import RequestDataJsonModal from "$lib/components/endpoint/RequestDataJsonModal.svelte";
     import ResponseDataJsonModal from "$lib/components/endpoint/ResponseDataJsonModal.svelte";
@@ -27,14 +19,14 @@
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import DropdownInput from "$lib/components/ui/DropdownInput.svelte";
 
-    let selectedApplication = $state<ApplicationType>("WPAY");
+    let selectedApplication = $state("WPAY");
     let name = $state("");
     let description = $state("");
     let method = $state<HttpMethod>("POST");
     let uri = $state("");
     let requestType = $state<RequestType>("REST");
-    let selectedService = $state<ServiceType>(SERVICE_OPTIONS[0]);
-    let selectedSite = $state<string>("");
+    let selectedService = $state<string>("wpaystd2");
+    let selectedSite = $state<string>("stdwpay");
 
     let requestData = $state<RequestDataField[]>([]);
     let responseData = $state<ResponseDataField[]>([]);
@@ -54,7 +46,9 @@
     }
 
     // Derived site options based on selected service
-    let siteOptions = $derived(SERVICE_SITE_MAPPING[selectedService] || []);
+    let siteOptions = $derived(
+        selectedService === "wpaystd2" ? ["stdwpay"] : [],
+    );
 
     // Set default site when service changes
     $effect(() => {
@@ -184,7 +178,11 @@
                             </label>
                             <DropdownInput
                                 bind:value={selectedApplication}
-                                options={[...APPLICATION_OPTIONS]}
+                                options={$profileStore.myApplications.length > 0
+                                    ? $profileStore.myApplications.map(
+                                          (app) => app.appName,
+                                      )
+                                    : ["WPAY"]}
                                 placeholder="Select Application"
                             />
                         </div>
@@ -217,7 +215,7 @@
                                     <div class="flex-1">
                                         <DropdownInput
                                             bind:value={selectedService}
-                                            options={[...SERVICE_OPTIONS]}
+                                            options={["wpaystd2"]}
                                             placeholder="Service"
                                         />
                                     </div>

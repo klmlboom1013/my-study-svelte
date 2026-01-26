@@ -2,8 +2,11 @@
     import { page } from "$app/stores";
     import { appStateStore } from "$lib/stores/appStateStore";
     import { profileStore } from "$lib/stores/profileStore";
-    import { authStore, loginWithGoogle } from "$lib/services/authService";
-    import { driveService } from "$lib/services/driveService";
+    import {
+        authStore,
+        loginWithGoogle,
+    } from "$lib/features/auth/services/authService";
+    import { driveService } from "$lib/features/drive/services/driveService";
     import {
         settingsStore,
         type GlobalParameter,
@@ -11,7 +14,8 @@
         type MidContext,
         type SiteContext,
     } from "$lib/stores/settingsStore";
-    import { SERVICE_OPTIONS } from "$lib/constants/wpayServerType";
+    // Fixed WPAY service options
+    const SERVICE_OPTIONS = ["wpaystd2"];
     import { onMount, tick } from "svelte";
     import { get } from "svelte/store";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
@@ -2043,14 +2047,15 @@
                                                         class="block text-xs font-semibold text-slate-500 uppercase mb-1"
                                                         >Service Name</label
                                                     >
+                                                    <!-- svelte-ignore a11y_autofocus -->
                                                     <input
-                                                        id="service-name-{service.id}"
                                                         type="text"
-                                                        placeholder="e.g. wpaystd"
-                                                        class="w-full px-2 py-1.5 text-sm border border-slate-300 dark:border-slate-700 rounded bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:outline-none focus:border-primary"
                                                         bind:value={
                                                             service.name
                                                         }
+                                                        placeholder="e.g. wpaystd"
+                                                        class="w-full px-2 py-1.5 text-sm border border-slate-300 dark:border-slate-700 rounded bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:outline-none focus:border-primary"
+                                                        autofocus
                                                     />
                                                 </div>
 
@@ -2422,6 +2427,7 @@
                                             <div
                                                 class="mt-2 flex gap-2 animate-in fade-in zoom-in-95 duration-200"
                                             >
+                                                <!-- svelte-ignore a11y_autofocus -->
                                                 <input
                                                     type="text"
                                                     class="flex-1 px-2 py-1 text-xs border border-slate-300 dark:border-slate-700 rounded bg-white dark:bg-slate-800 focus:outline-none focus:border-primary dark:text-white dark:placeholder-slate-400"
