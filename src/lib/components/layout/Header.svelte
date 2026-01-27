@@ -9,6 +9,7 @@
     import {
         initAuth,
         authStore,
+        loginWithGoogle,
     } from "$lib/features/auth/services/authService";
     import { profileStore } from "$lib/stores/profileStore";
     import { syncService } from "$lib/features/drive/services/syncService";
@@ -109,6 +110,14 @@
     function clearSearch() {
         headerSearchTerm = "";
         updateUrl();
+    }
+
+    async function handleGoogleLogin() {
+        try {
+            await loginWithGoogle();
+        } catch (e) {
+            console.error("Google login failed", e);
+        }
     }
 
     // Watch selectedApp change (Local State Change)
@@ -291,15 +300,16 @@
                         <span class="text-xs font-bold">Synced</span>
                     </div>
                 {:else}
-                    <div
-                        class="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
-                        title="Google Drive Sync Inactive"
+                    <button
+                        onclick={handleGoogleLogin}
+                        class="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                        title="Click to Connect Google Drive"
                     >
                         <span class="material-symbols-outlined text-[16px]"
                             >cloud_off</span
                         >
                         <span class="text-xs font-bold">Not Synced</span>
-                    </div>
+                    </button>
                 {/if}
 
                 <div

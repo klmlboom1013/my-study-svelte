@@ -253,6 +253,13 @@
         ) {
             selectedService = [...SERVICE_OPTIONS];
         }
+
+        // Scroll to form
+        tick().then(() => {
+            document
+                .getElementById("global-param-form")
+                ?.scrollIntoView({ behavior: "smooth" });
+        });
     }
 
     function cancelGlobalEdit() {
@@ -926,6 +933,7 @@
                     {#if activeSubTab === "global"}
                         <!-- Global Parameters Content -->
                         <div
+                            id="global-param-form"
                             class="mb-8 bg-slate-50 dark:bg-background-dark p-6 rounded-xl border border-slate-200 dark:border-border-dark"
                         >
                             <h3
