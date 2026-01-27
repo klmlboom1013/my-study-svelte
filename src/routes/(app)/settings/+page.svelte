@@ -277,7 +277,8 @@
             !apiCategoryForm.application ||
             !apiCategoryForm.name ||
             (apiCategoryForm.application === "WPAY" &&
-                (!apiCategoryForm.service || apiCategoryForm.service.length === 0))
+                (!apiCategoryForm.service ||
+                    apiCategoryForm.service.length === 0))
         ) {
             showAlert("Error", "Please fill in all required fields.");
             return;
@@ -2650,6 +2651,7 @@
                                 </label>
 
                                 <!-- Service (Conditional) -->
+                                {#if apiCategoryForm.application === "WPAY" || getServicesForApp(apiCategoryForm.application).length > 0}
                                     <label
                                         class="flex flex-col gap-1 w-full md:w-1/3"
                                     >
@@ -2661,7 +2663,9 @@
                                         >
                                         <MultiSelectBox
                                             bind:value={apiCategoryForm.service}
-                                            options={getServicesForApp(apiCategoryForm.application)}
+                                            options={getServicesForApp(
+                                                apiCategoryForm.application,
+                                            )}
                                             placeholder="Select Service"
                                         />
                                     </label>
@@ -2800,7 +2804,9 @@
                                                     class="px-6 py-4 text-slate-600 dark:text-slate-400"
                                                 >
                                                     {#if cat.service && Array.isArray(cat.service) && cat.service.length > 0}
-                                                        <div class="flex flex-wrap gap-1">
+                                                        <div
+                                                            class="flex flex-wrap gap-1"
+                                                        >
                                                             {#each cat.service as s}
                                                                 <span
                                                                     class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-[10px] text-slate-500 dark:text-slate-400"
