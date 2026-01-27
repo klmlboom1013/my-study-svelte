@@ -143,7 +143,7 @@
             <div
                 class="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 border border-slate-200 dark:border-slate-800 mb-4"
             >
-                <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-3 mb-3">
                     <span
                         class="text-sm font-semibold text-slate-700 dark:text-slate-300"
                         >Signature Verification</span
@@ -161,8 +161,28 @@
 
                 <div class="space-y-3">
                     <div>
-                        <div class="text-xs text-slate-500 mb-1">
-                            Source String
+                        <div class="flex justify-between items-center mb-1">
+                            <div class="text-xs text-slate-500">
+                                Source String
+                            </div>
+                            <button
+                                onclick={() =>
+                                    handleCopy(
+                                        responseSignatureRawString,
+                                        "val_source",
+                                    )}
+                                class="p-0.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded transition-colors text-slate-500"
+                                title="Copy to clipboard"
+                            >
+                                {#if copiedSection === "val_source"}
+                                    <CopyCheck
+                                        size={12}
+                                        class="text-green-500"
+                                    />
+                                {:else}
+                                    <Copy size={12} />
+                                {/if}
+                            </button>
                         </div>
                         <div
                             class="bg-white dark:bg-slate-950 p-2 rounded border border-slate-200 dark:border-slate-800 text-xs font-mono break-all text-slate-600 dark:text-slate-400"
@@ -171,8 +191,28 @@
                         </div>
                     </div>
                     <div>
-                        <div class="text-xs text-slate-500 mb-1">
-                            Generated Signature
+                        <div class="flex justify-between items-center mb-1">
+                            <div class="text-xs text-slate-500">
+                                Generated Signature
+                            </div>
+                            <button
+                                onclick={() =>
+                                    handleCopy(
+                                        responseCalculatedSignature,
+                                        "val_sig",
+                                    )}
+                                class="p-0.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded transition-colors text-slate-500"
+                                title="Copy to clipboard"
+                            >
+                                {#if copiedSection === "val_sig"}
+                                    <CopyCheck
+                                        size={12}
+                                        class="text-green-500"
+                                    />
+                                {:else}
+                                    <Copy size={12} />
+                                {/if}
+                            </button>
                         </div>
                         <div
                             class="bg-white dark:bg-slate-950 p-2 rounded border border-slate-200 dark:border-slate-800 text-xs font-mono break-all text-slate-600 dark:text-slate-400"
