@@ -27,7 +27,8 @@
 
     let { data }: Props = $props();
 
-    let endpointId = $state(data.id);
+    // Fix: Use derived to keep in sync with data prop (navigation)
+    let endpointId = $derived(data.id);
     let selectedApplication = $state("WPAY");
 
     // Dynamic Application Options from Profile
@@ -81,13 +82,13 @@
         selectedService === "wpaystd2" ? ["stdwpay"] : [],
     );
 
-    onMount(() => {
-        endpointId = $page.params.id ?? "";
+    // Load data when endpointId changes
+    $effect(() => {
         if (!endpointId) {
-            alert("Invalid Endpoint ID");
-            goto("/endpoint");
+            // Should not happen if route params are correct, but valid check
             return;
         }
+
         const endpoint = endpointService.getEndpoint(endpointId);
 
         if (endpoint) {
@@ -110,6 +111,9 @@
             responseData = endpoint.responseData || [];
             createdAt = endpoint.createdAt;
         } else {
+            // Avoid infinite loop if alerting/navigating inside effect immediately?
+            // Use untracked or just careful logic.
+            // Since we navigate away, it should be fine.
             alert("Endpoint not found");
             goto("/endpoint");
         }

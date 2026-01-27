@@ -81,37 +81,24 @@
         }
     }
 
-    // API Categories Data (for Mobile View)
-    let categories = [
-        {
-            name: "Member Token",
-            endpoint: "/v2/auth",
-            icon: "badge",
-            iconColor: "text-blue-500",
-            iconBg: "bg-blue-500/10",
-        },
-        {
-            name: "PIN Management",
-            endpoint: "/v2/security",
-            icon: "pin",
-            iconColor: "text-purple-500",
-            iconBg: "bg-purple-500/10",
-        },
-        {
-            name: "Payment Token",
-            endpoint: "/v1/tokens",
-            icon: "token",
-            iconColor: "text-amber-500",
-            iconBg: "bg-amber-500/10",
-        },
-        {
-            name: "Payment Processing",
-            endpoint: "/v1/charges",
-            icon: "payments",
-            iconColor: "text-emerald-500",
-            iconBg: "bg-emerald-500/10",
-        },
-    ];
+    import { appStateStore } from "$lib/stores/appStateStore";
+
+    // Dynamic API Categories filtering based on selected app (for Mobile View)
+    let filteredCategories = $derived.by(() => {
+        const allApps = $settingsStore.applications || [];
+        const headerApp = $appStateStore.selectedApp;
+        const isAll = !headerApp || headerApp === "All";
+
+        let categories: any[] = [];
+        for (const app of allApps) {
+            if (app.apiCategories) {
+                if (isAll || app.appName === headerApp) {
+                    categories = [...categories, ...app.apiCategories];
+                }
+            }
+        }
+        return categories;
+    });
 </script>
 
 {#if isValid}
@@ -163,16 +150,21 @@
                 class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 flex flex-col gap-3"
             >
                 <div class="flex flex-col gap-1">
-                    {#each categories as category}
+                    {#each filteredCategories as category}
                         <button
+                            onclick={() =>
+                                goto(`/endpoint?category=${category.id}`)}
                             class="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700/50 text-left group transition-colors"
                         >
                             <div
-                                class="size-6 rounded-md {category.iconBg} flex items-center justify-center {category.iconColor} shrink-0"
+                                class="size-6 rounded-md bg-primary/10 flex items-center justify-center text-primary shrink-0 transition-colors"
+                                style={category.color
+                                    ? `background-color: ${category.color}15; color: ${category.color}`
+                                    : ""}
                             >
                                 <span
                                     class="material-symbols-outlined text-[16px]"
-                                    >{category.icon}</span
+                                    >{category.icon || "category"}</span
                                 >
                             </div>
                             <span

@@ -37,6 +37,8 @@ export interface ApiCategory {
     service?: string[]; // Optional, strict for 'WPAY'
     name: string;
     description: string;
+    icon?: string; // Material Symbol name
+    color?: string; // Hex color code
 }
 
 
@@ -84,6 +86,8 @@ export interface Application {
     useServiceDistinction?: boolean;
     domains?: ApplicationDomain;
     services?: ApplicationService[];
+    siteContexts?: SiteContext[]; // Moved here
+    apiCategories?: ApiCategory[]; // Moved here
 }
 
 export interface EndpointParameters {
@@ -91,13 +95,14 @@ export interface EndpointParameters {
     parameterOptions: ParameterOption[];
 
     midContexts: MidContext[];
-    siteContexts: SiteContext[];
-    apiCategories: ApiCategory[];
+    // siteContexts: SiteContext[]; // Removed
+    // apiCategories: ApiCategory[]; // Removed
 }
 
 export interface SettingsStoreData {
     endpoint_parameters: EndpointParameters;
     interface: InterfaceSettings;
+    // apiCategories: ApiCategory[]; // Removed from root
     applications: Application[];
 }
 
@@ -107,8 +112,8 @@ const defaultSettings: SettingsStoreData = {
         parameterOptions: [],
 
         midContexts: [],
-        siteContexts: [],
-        apiCategories: []
+        // siteContexts: [], // Removed
+        // apiCategories: [] // Removed from endpoint_parameters
     },
     interface: {
         sidebar: {
@@ -124,6 +129,7 @@ const defaultSettings: SettingsStoreData = {
             showRecentActivity: true
         }
     },
+    // apiCategories: [], // Removed from root
     applications: []
 };
 
@@ -148,6 +154,33 @@ function createSettingsStore() {
                 // Check if old structure (flat) or new structure (nested in endpoint_parameters)
                 const sourceParams = parsedOld.endpoint_parameters || parsedOld;
 
+                // Get old siteContexts to migrate
+                const oldSiteContexts = (sourceParams.siteContexts || sourceParams.serviceContexts || []).map((ctx: any) => ({
+                    ...ctx,
+                    id: ctx.id || crypto.randomUUID(),
+                    sites: ctx.sites || []
+                }));
+
+                // Get old apiCategories to migrate
+                const oldCategories = (parsedOld.apiCategories || sourceParams.apiCategories || []).map((cat: any) => ({
+                    ...cat,
+                    id: cat.id || crypto.randomUUID()
+                }));
+
+                const migratedApplications = (parsedOld.applications || []).map((app: any) => ({
+                    ...app,
+                    // Migrate siteContexts into app if they match appName
+                    siteContexts: [
+                        ...(app.siteContexts || []),
+                        ...oldSiteContexts.filter((ctx: any) => ctx.application === app.appName)
+                    ],
+                    // Migrate apiCategories into app if they match appName
+                    apiCategories: [
+                        ...(app.apiCategories || []),
+                        ...oldCategories.filter((cat: any) => cat.application === app.appName)
+                    ]
+                }));
+
                 initialValue = {
                     ...defaultSettings,
                     endpoint_parameters: {
@@ -155,21 +188,15 @@ function createSettingsStore() {
                         parameterOptions: (sourceParams.parameterOptions || []).map(migrateService),
 
                         midContexts: (sourceParams.midContexts || []).map(migrateService),
-                        siteContexts: (sourceParams.siteContexts || sourceParams.serviceContexts || []).map((ctx: any) => ({
-                            ...ctx,
-                            id: ctx.id || crypto.randomUUID(),
-                            sites: ctx.sites || []
-                        })),
-                        apiCategories: (sourceParams.apiCategories || []).map((cat: any) => ({
-                            ...cat,
-                            id: cat.id || crypto.randomUUID()
-                        }))
+                        // siteContexts removed from here
+                        // apiCategories removed from here
                     },
                     interface: {
                         ...defaultSettings.interface,
                         ...(parsedOld.interface || {})
                     },
-                    applications: parsedOld.applications || []
+                    // apiCategories moved to applications
+                    applications: migratedApplications
                 };
 
                 // Remove legacy keys if exist in structure during runtime usage
@@ -270,70 +297,87 @@ function createSettingsStore() {
         })),
 
         // Site Contexts
+        // Site Contexts methods now operate on Applications
         addSiteContext: (ctx: Omit<SiteContext, 'id'>) => update(s => {
             const newContext = { ...ctx, id: crypto.randomUUID() };
             return {
                 ...s,
-                endpoint_parameters: {
-                    ...s.endpoint_parameters,
-                    siteContexts: [...(s.endpoint_parameters.siteContexts || []), newContext]
-                }
+                applications: (s.applications || []).map(app => {
+                    if (app.appName === ctx.application) {
+                        return {
+                            ...app,
+                            siteContexts: [...(app.siteContexts || []), newContext]
+                        };
+                    }
+                    return app;
+                })
             };
         }),
         removeSiteContext: (id: string) => update(s => ({
             ...s,
-            endpoint_parameters: {
-                ...s.endpoint_parameters,
-                siteContexts: (s.endpoint_parameters.siteContexts || []).filter(c => c.id !== id)
-            }
+            applications: (s.applications || []).map(app => ({
+                ...app,
+                siteContexts: (app.siteContexts || []).filter(c => c.id !== id)
+            }))
         })),
         addSiteToContext: (contextId: string, siteName: string) => update(s => ({
             ...s,
-            endpoint_parameters: {
-                ...s.endpoint_parameters,
-                siteContexts: (s.endpoint_parameters.siteContexts || []).map(c =>
+            applications: (s.applications || []).map(app => ({
+                ...app,
+                siteContexts: (app.siteContexts || []).map(c =>
                     c.id === contextId
                         ? { ...c, sites: [...c.sites, siteName] }
                         : c
                 )
-            }
+            }))
         })),
         removeSiteFromContext: (contextId: string, siteName: string) => update(s => ({
             ...s,
-            endpoint_parameters: {
-                ...s.endpoint_parameters,
-                siteContexts: (s.endpoint_parameters.siteContexts || []).map(c =>
+            applications: (s.applications || []).map(app => ({
+                ...app,
+                siteContexts: (app.siteContexts || []).map(c =>
                     c.id === contextId
                         ? { ...c, sites: c.sites.filter(site => site !== siteName) }
                         : c
                 )
-            }
+            }))
         })),
 
+        // API Categories
         // API Categories
         addApiCategory: (category: Omit<ApiCategory, 'id'>) => update(s => {
             const newCategory = { ...category, id: crypto.randomUUID() };
             return {
                 ...s,
-                endpoint_parameters: {
-                    ...s.endpoint_parameters,
-                    apiCategories: [...(s.endpoint_parameters.apiCategories || []), newCategory]
-                }
+                applications: (s.applications || []).map(app => {
+                    if (app.appName === category.application) {
+                        return {
+                            ...app,
+                            apiCategories: [...(app.apiCategories || []), newCategory]
+                        };
+                    }
+                    return app;
+                })
             };
         }),
         updateApiCategory: (category: ApiCategory) => update(s => ({
             ...s,
-            endpoint_parameters: {
-                ...s.endpoint_parameters,
-                apiCategories: (s.endpoint_parameters.apiCategories || []).map(c => c.id === category.id ? category : c)
-            }
+            applications: (s.applications || []).map(app => {
+                if (app.appName === category.application) {
+                    return {
+                        ...app,
+                        apiCategories: (app.apiCategories || []).map(c => c.id === category.id ? category : c)
+                    };
+                }
+                return app;
+            })
         })),
         removeApiCategory: (id: string) => update(s => ({
             ...s,
-            endpoint_parameters: {
-                ...s.endpoint_parameters,
-                apiCategories: (s.endpoint_parameters.apiCategories || []).filter(c => c.id !== id)
-            }
+            applications: (s.applications || []).map(app => ({
+                ...app,
+                apiCategories: (app.apiCategories || []).filter(c => c.id !== id)
+            }))
         })),
 
 

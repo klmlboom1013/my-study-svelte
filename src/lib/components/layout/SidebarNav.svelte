@@ -23,7 +23,8 @@
     }: Props = $props();
 
     import { goto } from "$app/navigation";
-    import { settingsStore } from "$lib/stores/settingsStore";
+    import { appStateStore } from "$lib/stores/appStateStore";
+    import { settingsStore, type ApiCategory } from "$lib/stores/settingsStore";
 
     // Primary Navigation Data (Top Level)
     let primaryNav = [
@@ -36,42 +37,22 @@
         { name: "Settings", icon: "settings", path: "/settings" },
     ];
 
-    // API Categories Data (Moved from Dashboard)
-    // ... items ...
-    let categories = [
-        {
-            id: "auth",
-            name: "Member Token",
-            endpoint: "/v2/auth",
-            icon: "badge",
-            iconColor: "text-blue-500",
-            iconBg: "bg-blue-500/10",
-        },
-        {
-            id: "security",
-            name: "PIN Management",
-            endpoint: "/v2/security",
-            icon: "pin",
-            iconColor: "text-purple-500",
-            iconBg: "bg-purple-500/10",
-        },
-        {
-            id: "tokens",
-            name: "Payment Token",
-            endpoint: "/v1/tokens",
-            icon: "token",
-            iconColor: "text-amber-500",
-            iconBg: "bg-amber-500/10",
-        },
-        {
-            id: "charges",
-            name: "Payment Processing",
-            endpoint: "/v1/charges",
-            icon: "payments",
-            iconColor: "text-emerald-500",
-            iconBg: "bg-emerald-500/10",
-        },
-    ];
+    // Dynamic API Categories filtering based on selected app
+    let filteredCategories = $derived.by(() => {
+        const allApps = $settingsStore.applications || [];
+        const headerApp = $appStateStore.selectedApp;
+        const isAll = !headerApp || headerApp === "All";
+
+        let categories: ApiCategory[] = [];
+        for (const app of allApps) {
+            if (app.apiCategories) {
+                if (isAll || app.appName === headerApp) {
+                    categories = [...categories, ...app.apiCategories];
+                }
+            }
+        }
+        return categories;
+    });
 </script>
 
 <div class="flex h-full flex-col p-4 gap-6">
@@ -170,15 +151,19 @@
         </div>
 
         <div class="flex flex-col gap-1">
-            {#each categories as category}
+            {#each filteredCategories as category}
                 <button
+                    onclick={() => goto(`/endpoint?category=${category.id}`)}
                     class="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-border-dark text-left group transition-colors"
                 >
                     <div
-                        class="size-8 rounded-lg {category.iconBg} flex items-center justify-center {category.iconColor} shrink-0"
+                        class="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0 transition-colors"
+                        style={category.color
+                            ? `background-color: ${category.color}15; color: ${category.color}`
+                            : ""}
                     >
                         <span class="material-symbols-outlined text-[18px]"
-                            >{category.icon}</span
+                            >{category.icon || "category"}</span
                         >
                     </div>
                     <div class="flex flex-col flex-1 min-w-0">
