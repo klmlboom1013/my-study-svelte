@@ -8,8 +8,6 @@
     import { WPAY_POPUP_CONFIG, WPAY_INTEGRATION } from "$lib/types/wpay";
     import { AVATARS } from "$lib/features/auth/constants/avatars";
     import { searchWpayMember } from "$lib/utils/wpay/membershipService";
-    // import { generateSignature } from "$lib/utils/wpay/signature"; // Handled by Server
-    // import { encryptSeed } from "$lib/utils/encryption/cryptoSeed"; // Handled by Server
     import WpayResultModal from "$lib/components/wpay/WpayResultModal.svelte";
 
     // Sub-components
@@ -49,68 +47,12 @@
     let authChannel: BroadcastChannel;
 
     onMount(() => {
-        const init = async () => {
-            authChannel = new BroadcastChannel("wpay_channel");
-            authChannel.onmessage = (event) =>
-                handleWpayMessage({ data: event.data } as MessageEvent);
-
-            const storageHandler = (event: StorageEvent) => {
-                if (event.key === "wpay_auth_result" && event.newValue) {
-                    try {
-                        handleWpayMessage({
-                            data: JSON.parse(event.newValue),
-                        } as MessageEvent);
-                        localStorage.removeItem("wpay_auth_result");
-                    } catch {}
-                }
-            };
-            window.addEventListener("storage", storageHandler);
-
-            // Load Cache
-            const stored = localStorage.getItem("sign-in-page");
-            if (stored) {
-                try {
-                    const parsed = JSON.parse(stored);
-                    isSaveCache = parsed.isSaveCache;
-                    if (isSaveCache) {
-                        userId = parsed.userId || "wpayTestUser01";
-                        hNum = parsed.hNum || "";
-                    }
-                } catch {}
-            }
-
-            // Cookie check
-            const token = getCookie("accessToken");
-            if (token && WPAY_INTEGRATION.MID) {
-                try {
-                    const res = await fetch("/api/auth/validate", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            token,
-                            mid: WPAY_INTEGRATION.MID,
-                        }),
-                    });
-                    const { isValid } = await res.json();
-                    if (isValid && !isModal) goto("/");
-                } catch {}
-            }
-
-            // Cleanup function for internal listeners if needed,
-            // but we need to return the cleanup from the outer scope.
-            // Wait, I need access to storageHandler for cleanup.
-            // So storageHandler definition must be outside async or shared.
-        };
-
-        // Define cleanup-relevant vars here?
-        let storageHandler: (event: StorageEvent) => void;
-
-        // Actually, let's restructure:
-
+        // BroadcastChannel Setup
         authChannel = new BroadcastChannel("wpay_channel");
         authChannel.onmessage = (event) =>
             handleWpayMessage({ data: event.data } as MessageEvent);
 
+        // Storage Event Handler (Cross-tab/Window communication fallback)
         const storageHandlerRef = (event: StorageEvent) => {
             if (event.key === "wpay_auth_result" && event.newValue) {
                 try {
