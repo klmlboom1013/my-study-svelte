@@ -2652,7 +2652,7 @@
 
                                 <!-- Service (Conditional) -->
                                 {#if apiCategoryForm.application === "WPAY" || getServicesForApp(apiCategoryForm.application).length > 0}
-                                    <label
+                                    <div
                                         class="flex flex-col gap-1 w-full md:w-1/3"
                                     >
                                         <span
@@ -2668,7 +2668,7 @@
                                             )}
                                             placeholder="Select Service"
                                         />
-                                    </label>
+                                    </div>
                                 {/if}
                             </div>
 
