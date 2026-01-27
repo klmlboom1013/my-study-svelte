@@ -31,6 +31,14 @@ export interface MidContext {
     hashKey: string;
 }
 
+export interface ApiCategory {
+    id: string;
+    application: string;
+    service?: string[]; // Optional, strict for 'WPAY'
+    name: string;
+    description: string;
+}
+
 
 export interface SiteContext {
     id: string;
@@ -84,6 +92,7 @@ export interface EndpointParameters {
 
     midContexts: MidContext[];
     siteContexts: SiteContext[];
+    apiCategories: ApiCategory[];
 }
 
 export interface SettingsStoreData {
@@ -98,7 +107,8 @@ const defaultSettings: SettingsStoreData = {
         parameterOptions: [],
 
         midContexts: [],
-        siteContexts: []
+        siteContexts: [],
+        apiCategories: []
     },
     interface: {
         sidebar: {
@@ -149,6 +159,10 @@ function createSettingsStore() {
                             ...ctx,
                             id: ctx.id || crypto.randomUUID(),
                             sites: ctx.sites || []
+                        })),
+                        apiCategories: (sourceParams.apiCategories || []).map((cat: any) => ({
+                            ...cat,
+                            id: cat.id || crypto.randomUUID()
                         }))
                     },
                     interface: {
@@ -295,6 +309,33 @@ function createSettingsStore() {
                 )
             }
         })),
+
+        // API Categories
+        addApiCategory: (category: Omit<ApiCategory, 'id'>) => update(s => {
+            const newCategory = { ...category, id: crypto.randomUUID() };
+            return {
+                ...s,
+                endpoint_parameters: {
+                    ...s.endpoint_parameters,
+                    apiCategories: [...(s.endpoint_parameters.apiCategories || []), newCategory]
+                }
+            };
+        }),
+        updateApiCategory: (category: ApiCategory) => update(s => ({
+            ...s,
+            endpoint_parameters: {
+                ...s.endpoint_parameters,
+                apiCategories: (s.endpoint_parameters.apiCategories || []).map(c => c.id === category.id ? category : c)
+            }
+        })),
+        removeApiCategory: (id: string) => update(s => ({
+            ...s,
+            endpoint_parameters: {
+                ...s.endpoint_parameters,
+                apiCategories: (s.endpoint_parameters.apiCategories || []).filter(c => c.id !== id)
+            }
+        })),
+
 
         // Applications
         setApplications: (apps: Application[]) => update(s => ({

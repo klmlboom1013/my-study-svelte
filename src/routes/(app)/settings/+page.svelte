@@ -13,6 +13,7 @@
         type ParameterOption,
         type MidContext,
         type SiteContext,
+        type ApiCategory,
     } from "$lib/stores/settingsStore";
     // Fixed WPAY service options
     const SERVICE_OPTIONS = ["wpaystd2"];
@@ -57,6 +58,16 @@
     });
     let selectedMidService = $state<string[]>([]);
     let listFilterMidServiceOptions = $state("");
+
+    // --- API Category State ---
+    let apiCategoryForm = $state({
+        application: "",
+        service: [] as string[],
+        name: "",
+        description: "",
+    });
+    let editingApiCategoryId = $state<string | null>(null);
+    let listFilterApiCategoryService = $state("");
 
     // --- Site Context State ---
     let siteContext = $state<{
@@ -204,6 +215,34 @@
         });
     });
 
+    let filteredApiCategories = $derived.by(() => {
+        const headerApp = $appStateStore.selectedApp;
+        const isAll = !headerApp || headerApp === "All";
+
+        return ($settingsStore.endpoint_parameters.apiCategories || []).filter(
+            (cat) => {
+                // 1. Primary Filter: Application
+                if (!isAll && cat.application !== headerApp) {
+                    return false;
+                }
+                // 2. Secondary Filter: Service (Only if App is WPAY)
+                if (
+                    headerApp === "WPAY" &&
+                    listFilterApiCategoryService &&
+                    listFilterApiCategoryService !== "All"
+                ) {
+                    // Check if the filtered service is in the category's service list
+                    return (
+                        cat.service &&
+                        Array.isArray(cat.service) &&
+                        cat.service.includes(listFilterApiCategoryService)
+                    );
+                }
+                return true;
+            },
+        );
+    });
+
     function addGlobalParam() {
         if (!globalParam.application || !globalParam.key || !globalParam.value)
             return;
@@ -230,6 +269,72 @@
             globalParam.key = "";
             globalParam.value = "";
         }
+    }
+
+    // --- API Categories Methods ---
+    function addApiCategory() {
+        if (
+            !apiCategoryForm.application ||
+            !apiCategoryForm.name ||
+            (apiCategoryForm.application === "WPAY" &&
+                (!apiCategoryForm.service || apiCategoryForm.service.length === 0))
+        ) {
+            showAlert("Error", "Please fill in all required fields.");
+            return;
+        }
+
+        if (editingApiCategoryId) {
+            settingsStore.updateApiCategory({
+                id: editingApiCategoryId,
+                ...apiCategoryForm,
+            });
+            showAlert("Success", "API Category updated successfully.");
+            cancelApiCategoryEdit();
+        } else {
+            settingsStore.addApiCategory(apiCategoryForm);
+            apiCategoryForm.name = "";
+            apiCategoryForm.description = "";
+            // Keep App and Service for continuous entry
+        }
+    }
+
+    function editApiCategory(cat: ApiCategory) {
+        editingApiCategoryId = cat.id;
+        apiCategoryForm = {
+            application: cat.application,
+            service: cat.service || [],
+            name: cat.name,
+            description: cat.description,
+        };
+        // Scroll to form if needed
+        const formElement = document.getElementById("api-category-form");
+        if (formElement) {
+            formElement.scrollIntoView({ behavior: "smooth" });
+        }
+    }
+
+    function deleteApiCategory(id: string) {
+        showAlert(
+            "Confirm Delete",
+            "Are you sure you want to delete this API Category?",
+            "confirm",
+            () => {
+                settingsStore.removeApiCategory(id);
+                if (editingApiCategoryId === id) {
+                    cancelApiCategoryEdit();
+                }
+            },
+        );
+    }
+
+    function cancelApiCategoryEdit() {
+        editingApiCategoryId = null;
+        apiCategoryForm = {
+            application: "",
+            service: [],
+            name: "",
+            description: "",
+        };
     }
 
     function editGlobalParameter(param: any) {
@@ -720,17 +825,19 @@
     }
 
     const categories = [
-        { id: "endpoint", label: "Endpoint Parameters", icon: "tune" },
         { id: "interface", label: "Interface", icon: "web_asset" },
         { id: "application", label: "Applications", icon: "apps" },
+        { id: "endpoint", label: "Endpoint Parameters", icon: "tune" },
+        { id: "api-categories", label: "API Categories", icon: "category" },
     ];
 
-    const APP_OPTIONS = [
+    const APP_SUGGESTIONS = [
         { name: "WPAY", description: "Simple Payment Service" },
         { name: "Express", description: "Create Payment Button" },
         { name: "Smart", description: "SMS Payment Link" },
         { name: "sbuckwpay", description: "Starbucks Simple Payment" },
     ];
+
     function addSiteContext() {
         if (!siteContext.service) return;
 
@@ -1949,7 +2056,7 @@
                                             bind:value={appForm.appName}
                                         />
                                         <datalist id="app-suggestions">
-                                            {#each APP_OPTIONS as opt}
+                                            {#each APP_SUGGESTIONS as opt}
                                                 <option value={opt.name}
                                                     >{opt.description}</option
                                                 >
@@ -2486,6 +2593,280 @@
                         </div>
                     </div>
                 {/if}
+            {:else if activeCategory === "api-categories"}
+                <div class="p-6">
+                    <h2
+                        class="text-xl font-bold text-slate-900 dark:text-white mb-6"
+                    >
+                        API Categories Settings
+                    </h2>
+
+                    <!-- API Category Form -->
+                    <div
+                        id="api-category-form"
+                        class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-lg mb-8 border border-slate-200 dark:border-border-dark"
+                    >
+                        <h3
+                            class="text-base font-bold text-slate-800 dark:text-white mb-4"
+                        >
+                            {editingApiCategoryId ? "Edit" : "Add"} API Category
+                        </h3>
+
+                        <div class="flex flex-col gap-4">
+                            <!-- Row 1: Application & Service -->
+                            <div
+                                class="flex flex-col md:flex-row gap-4 items-end"
+                            >
+                                <!-- Application -->
+                                <label
+                                    class="flex flex-col gap-1 w-full md:w-1/3"
+                                >
+                                    <span
+                                        class="text-xs font-semibold text-slate-500 uppercase"
+                                        >Application <span class="text-red-500"
+                                            >*</span
+                                        ></span
+                                    >
+                                    <div class="flex gap-2">
+                                        <select
+                                            id="api-cat-app"
+                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all w-full"
+                                            bind:value={
+                                                apiCategoryForm.application
+                                            }
+                                            onchange={() =>
+                                                (apiCategoryForm.service = [])}
+                                        >
+                                            <option value="" disabled
+                                                >Select Application</option
+                                            >
+                                            {#each $profileStore.myApplications as app}
+                                                <option value={app.appName}
+                                                    >{app.appName}</option
+                                                >
+                                            {/each}
+                                        </select>
+                                    </div>
+                                </label>
+
+                                <!-- Service (Conditional) -->
+                                    <label
+                                        class="flex flex-col gap-1 w-full md:w-1/3"
+                                    >
+                                        <span
+                                            class="text-xs font-semibold text-slate-500 uppercase"
+                                            >Service {#if apiCategoryForm.application === "WPAY"}<span
+                                                    class="text-red-500">*</span
+                                                >{/if}</span
+                                        >
+                                        <MultiSelectBox
+                                            bind:value={apiCategoryForm.service}
+                                            options={getServicesForApp(apiCategoryForm.application)}
+                                            placeholder="Select Service"
+                                        />
+                                    </label>
+                                {/if}
+                            </div>
+
+                            <!-- Row 2: Name & Description & Action -->
+                            <div
+                                class="flex flex-col md:flex-row gap-4 items-end"
+                            >
+                                <!-- Name -->
+                                <label
+                                    class="flex flex-col gap-1 w-full md:w-1/3"
+                                >
+                                    <span
+                                        class="text-xs font-semibold text-slate-500 uppercase"
+                                        >Category Name <span
+                                            class="text-red-500">*</span
+                                        ></span
+                                    >
+                                    <input
+                                        type="text"
+                                        id="api-cat-name"
+                                        placeholder="e.g., Payment Ops"
+                                        class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
+                                        bind:value={apiCategoryForm.name}
+                                    />
+                                </label>
+
+                                <!-- Description -->
+                                <label class="flex flex-col gap-1 flex-1">
+                                    <span
+                                        class="text-xs font-semibold text-slate-500 uppercase"
+                                        >Description</span
+                                    >
+                                    <input
+                                        type="text"
+                                        id="api-cat-desc"
+                                        placeholder="Optional description"
+                                        class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
+                                        bind:value={apiCategoryForm.description}
+                                    />
+                                </label>
+
+                                <!-- Actions -->
+                                <div class="flex items-end gap-2">
+                                    {#if editingApiCategoryId}
+                                        <button
+                                            class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm w-full md:w-auto whitespace-nowrap"
+                                            onclick={cancelApiCategoryEdit}
+                                        >
+                                            Cancel
+                                        </button>
+                                    {/if}
+                                    <button
+                                        class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm w-full md:w-auto whitespace-nowrap flex items-center gap-2"
+                                        onclick={addApiCategory}
+                                    >
+                                        {#if editingApiCategoryId}
+                                            Update
+                                        {:else}
+                                            <span
+                                                class="material-symbols-outlined text-sm"
+                                                >add</span
+                                            > Add
+                                        {/if}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filter for List -->
+                    {#if $appStateStore.selectedApp === "WPAY"}
+                        <div class="mb-4 flex justify-end items-center gap-3">
+                            <label
+                                for="list-filter-api-cat-service"
+                                class="text-sm font-medium text-slate-700 dark:text-slate-300"
+                                >Filter by Service:</label
+                            >
+                            <select
+                                id="list-filter-api-cat-service"
+                                bind:value={listFilterApiCategoryService}
+                                class="px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary"
+                            >
+                                <option value="All">All Services</option>
+                                {#each SERVICE_OPTIONS as service}
+                                    <option value={service}>{service}</option>
+                                {/each}
+                            </select>
+                        </div>
+                    {/if}
+
+                    <!-- API Category List -->
+                    <div
+                        class="bg-white dark:bg-card-dark rounded-lg border border-slate-200 dark:border-border-dark overflow-hidden shadow-sm"
+                    >
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left">
+                                <thead
+                                    class="bg-slate-50 dark:bg-slate-800/50 text-slate-500 uppercase font-semibold border-b border-slate-200 dark:border-border-dark"
+                                >
+                                    <tr>
+                                        <th class="px-6 py-4">Application</th>
+                                        <th class="px-6 py-4">Service</th>
+                                        <th class="px-6 py-4">Name</th>
+                                        <th class="px-6 py-4">Description</th>
+                                        <th class="px-6 py-4 text-right"
+                                            >Actions</th
+                                        >
+                                    </tr>
+                                </thead>
+                                <tbody
+                                    class="divide-y divide-slate-200 dark:divide-slate-700"
+                                >
+                                    {#if filteredApiCategories.length === 0}
+                                        <tr>
+                                            <td
+                                                colspan="5"
+                                                class="px-6 py-8 text-center text-slate-500 dark:text-slate-400"
+                                            >
+                                                No API Categories found for the
+                                                selected filters.
+                                            </td>
+                                        </tr>
+                                    {:else}
+                                        {#each filteredApiCategories as cat (cat.id)}
+                                            <tr
+                                                class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                                            >
+                                                <td
+                                                    class="px-6 py-4 font-medium text-slate-900 dark:text-white"
+                                                    >{cat.application}</td
+                                                >
+                                                <td
+                                                    class="px-6 py-4 text-slate-600 dark:text-slate-400"
+                                                >
+                                                    {#if cat.service && Array.isArray(cat.service) && cat.service.length > 0}
+                                                        <div class="flex flex-wrap gap-1">
+                                                            {#each cat.service as s}
+                                                                <span
+                                                                    class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-[10px] text-slate-500 dark:text-slate-400"
+                                                                    >{s}</span
+                                                                >
+                                                            {/each}
+                                                        </div>
+                                                    {:else if cat.service && !Array.isArray(cat.service)}
+                                                        <span
+                                                            class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-[10px] text-slate-500 dark:text-slate-400"
+                                                            >{cat.service}</span
+                                                        >
+                                                    {:else}
+                                                        -
+                                                    {/if}
+                                                </td>
+                                                <td
+                                                    class="px-6 py-4 text-slate-900 dark:text-white"
+                                                    >{cat.name}</td
+                                                >
+                                                <td
+                                                    class="px-6 py-4 text-slate-600 dark:text-slate-400"
+                                                    >{cat.description}</td
+                                                >
+                                                <td
+                                                    class="px-6 py-4 text-right"
+                                                >
+                                                    <div
+                                                        class="flex items-center justify-end gap-2"
+                                                    >
+                                                        <button
+                                                            class="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-full transition-colors"
+                                                            title="Edit"
+                                                            onclick={() =>
+                                                                editApiCategory(
+                                                                    cat,
+                                                                )}
+                                                        >
+                                                            <span
+                                                                class="material-symbols-outlined text-lg"
+                                                                >edit</span
+                                                            >
+                                                        </button>
+                                                        <button
+                                                            class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-full transition-colors"
+                                                            title="Delete"
+                                                            onclick={() =>
+                                                                deleteApiCategory(
+                                                                    cat.id,
+                                                                )}
+                                                        >
+                                                            <span
+                                                                class="material-symbols-outlined text-lg"
+                                                                >delete</span
+                                                            >
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        {/each}
+                                    {/if}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             {/if}
         </main>
     </div>
