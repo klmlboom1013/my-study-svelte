@@ -165,3 +165,29 @@ export function urlDecodeData(
 
     return processed;
 }
+
+export function decryptString(
+    value: string,
+    context: SecurityContext
+): string {
+    if (!value) return value;
+    if (context.encKey && context.encIV) {
+        try {
+            return decryptSeed(value, context.encKey, context.encIV);
+        } catch (e) {
+            console.error(`Single Decryption failed`, e);
+            return value;
+        }
+    }
+    return value;
+}
+
+export function urlDecodeString(value: string): string {
+    if (!value) return value;
+    try {
+        return decodeURIComponent(value);
+    } catch (e) {
+        console.error(`Single Decoding failed`, e);
+        return value;
+    }
+}

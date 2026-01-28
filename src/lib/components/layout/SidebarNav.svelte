@@ -39,19 +39,12 @@
 
     // Dynamic API Categories filtering based on selected app
     let filteredCategories = $derived.by(() => {
-        const allApps = $settingsStore.applications || [];
+        const allCategories = $settingsStore.apiCategories || [];
         const headerApp = $appStateStore.selectedApp;
         const isAll = !headerApp || headerApp === "All";
 
-        let categories: ApiCategory[] = [];
-        for (const app of allApps) {
-            if (app.apiCategories) {
-                if (isAll || app.appName === headerApp) {
-                    categories = [...categories, ...app.apiCategories];
-                }
-            }
-        }
-        return categories;
+        if (isAll) return allCategories;
+        return allCategories.filter((cat) => cat.application === headerApp);
     });
 </script>
 
@@ -153,7 +146,8 @@
         <div class="flex flex-col gap-1">
             {#each filteredCategories as category}
                 <button
-                    onclick={() => goto(`/endpoint?category=${category.id}`)}
+                    onclick={() =>
+                        goto(`/endpoint?category=${category.id}&readonly=true`)}
                     class="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-border-dark text-left group transition-colors"
                 >
                     <div

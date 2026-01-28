@@ -87,7 +87,7 @@ export interface Application {
     domains?: ApplicationDomain;
     services?: ApplicationService[];
     siteContexts?: SiteContext[]; // Moved here
-    apiCategories?: ApiCategory[]; // Moved here
+    apiCategories?: ApiCategory[]; // Still keep for backward compatibility during load, but root is source of truth
 }
 
 export interface EndpointParameters {
@@ -95,14 +95,12 @@ export interface EndpointParameters {
     parameterOptions: ParameterOption[];
 
     midContexts: MidContext[];
-    // siteContexts: SiteContext[]; // Removed
-    // apiCategories: ApiCategory[]; // Removed
 }
 
 export interface SettingsStoreData {
     endpoint_parameters: EndpointParameters;
     interface: InterfaceSettings;
-    // apiCategories: ApiCategory[]; // Removed from root
+    apiCategories: ApiCategory[];
     applications: Application[];
 }
 
@@ -110,10 +108,7 @@ const defaultSettings: SettingsStoreData = {
     endpoint_parameters: {
         globalParameters: [],
         parameterOptions: [],
-
         midContexts: [],
-        // siteContexts: [], // Removed
-        // apiCategories: [] // Removed from endpoint_parameters
     },
     interface: {
         sidebar: {
@@ -129,7 +124,7 @@ const defaultSettings: SettingsStoreData = {
             showRecentActivity: true
         }
     },
-    // apiCategories: [], // Removed from root
+    apiCategories: [],
     applications: []
 };
 
@@ -138,46 +133,69 @@ function createSettingsStore() {
 
     if (browser) {
         const STORE_KEY = 'settings_store';
-        const oldStored = localStorage.getItem('settings_store');
-        if (oldStored) {
-            try {
-                const parsedOld = JSON.parse(oldStored);
+        const CATEGORIES_KEY = 'api_categories';
 
-                // Migrate Service string to array if needed (from previous logic)
-                const migrateService = (item: any) => {
-                    if (typeof item.service === 'string') {
-                        return { ...item, service: [item.service] };
+        const oldStored = localStorage.getItem(STORE_KEY);
+        const storedCategories = localStorage.getItem(CATEGORIES_KEY);
+
+        if (oldStored || storedCategories) {
+            try {
+                const parsedOld = oldStored ? JSON.parse(oldStored) : {};
+
+                // 1. 카테고리 로드 및 마이그레이션
+                let finalCategories: ApiCategory[] = [];
+                if (storedCategories) {
+                    finalCategories = JSON.parse(storedCategories);
+                } else {
+                    // 기성 키(settings_store) 혹은 이전 위치들로부터 수집
+                    const collectedCategories: ApiCategory[] = [];
+                    if (Array.isArray(parsedOld.apiCategories)) collectedCategories.push(...parsedOld.apiCategories);
+
+                    const sourceParams = parsedOld.endpoint_parameters || parsedOld;
+                    if (sourceParams.apiCategories && Array.isArray(sourceParams.apiCategories)) {
+                        collectedCategories.push(...sourceParams.apiCategories);
                     }
+
+                    if (Array.isArray(parsedOld.applications)) {
+                        parsedOld.applications.forEach((app: any) => {
+                            if (Array.isArray(app.apiCategories)) collectedCategories.push(...app.apiCategories);
+                        });
+                    }
+
+                    // 중복 제거 및 ID 부여
+                    const categoryMap = new Map();
+                    collectedCategories.forEach(cat => {
+                        const id = cat.id || crypto.randomUUID();
+                        if (!categoryMap.has(id)) {
+                            categoryMap.set(id, { ...cat, id });
+                        }
+                    });
+                    finalCategories = Array.from(categoryMap.values());
+
+                    // 마이그레이션 후 독립 키에 저장
+                    if (finalCategories.length > 0) {
+                        localStorage.setItem(CATEGORIES_KEY, JSON.stringify(finalCategories));
+                    }
+                }
+
+                // 2. 나머지 설정 마이그레이션
+                const sourceParams = parsedOld.endpoint_parameters || parsedOld;
+                const migrateService = (item: any) => {
+                    if (typeof item.service === 'string') return { ...item, service: [item.service] };
                     return item;
                 };
 
-                // Check if old structure (flat) or new structure (nested in endpoint_parameters)
-                const sourceParams = parsedOld.endpoint_parameters || parsedOld;
-
-                // Get old siteContexts to migrate
                 const oldSiteContexts = (sourceParams.siteContexts || sourceParams.serviceContexts || []).map((ctx: any) => ({
                     ...ctx,
                     id: ctx.id || crypto.randomUUID(),
                     sites: ctx.sites || []
                 }));
 
-                // Get old apiCategories to migrate
-                const oldCategories = (parsedOld.apiCategories || sourceParams.apiCategories || []).map((cat: any) => ({
-                    ...cat,
-                    id: cat.id || crypto.randomUUID()
-                }));
-
                 const migratedApplications = (parsedOld.applications || []).map((app: any) => ({
                     ...app,
-                    // Migrate siteContexts into app if they match appName
                     siteContexts: [
                         ...(app.siteContexts || []),
                         ...oldSiteContexts.filter((ctx: any) => ctx.application === app.appName)
-                    ],
-                    // Migrate apiCategories into app if they match appName
-                    apiCategories: [
-                        ...(app.apiCategories || []),
-                        ...oldCategories.filter((cat: any) => cat.application === app.appName)
                     ]
                 }));
 
@@ -186,22 +204,17 @@ function createSettingsStore() {
                     endpoint_parameters: {
                         globalParameters: (sourceParams.globalParameters || []).map(migrateService),
                         parameterOptions: (sourceParams.parameterOptions || []).map(migrateService),
-
                         midContexts: (sourceParams.midContexts || []).map(migrateService),
-                        // siteContexts removed from here
-                        // apiCategories removed from here
                     },
                     interface: {
                         ...defaultSettings.interface,
                         ...(parsedOld.interface || {})
                     },
-                    // apiCategories moved to applications
+                    apiCategories: finalCategories,
                     applications: migratedApplications
                 };
-
-                // Remove legacy keys if exist in structure during runtime usage
             } catch (e) {
-                console.error("Failed to parse settings store", e);
+                console.error("Failed to parse stores", e);
             }
         }
     }
@@ -210,7 +223,9 @@ function createSettingsStore() {
 
     if (browser) {
         subscribe(val => {
-            localStorage.setItem('settings_store', JSON.stringify(val));
+            const { apiCategories, ...rest } = val;
+            localStorage.setItem('settings_store', JSON.stringify(rest));
+            localStorage.setItem('api_categories', JSON.stringify(apiCategories || []));
         });
     }
 
@@ -297,7 +312,6 @@ function createSettingsStore() {
         })),
 
         // Site Contexts
-        // Site Contexts methods now operate on Applications
         addSiteContext: (ctx: Omit<SiteContext, 'id'>) => update(s => {
             const newContext = { ...ctx, id: crypto.randomUUID() };
             return {
@@ -343,43 +357,22 @@ function createSettingsStore() {
             }))
         })),
 
-        // API Categories
-        // API Categories
+        // API Categories (Back to Root)
         addApiCategory: (category: Omit<ApiCategory, 'id'>) => update(s => {
             const newCategory = { ...category, id: crypto.randomUUID() };
             return {
                 ...s,
-                applications: (s.applications || []).map(app => {
-                    if (app.appName === category.application) {
-                        return {
-                            ...app,
-                            apiCategories: [...(app.apiCategories || []), newCategory]
-                        };
-                    }
-                    return app;
-                })
+                apiCategories: [...(s.apiCategories || []), newCategory]
             };
         }),
         updateApiCategory: (category: ApiCategory) => update(s => ({
             ...s,
-            applications: (s.applications || []).map(app => {
-                if (app.appName === category.application) {
-                    return {
-                        ...app,
-                        apiCategories: (app.apiCategories || []).map(c => c.id === category.id ? category : c)
-                    };
-                }
-                return app;
-            })
+            apiCategories: (s.apiCategories || []).map(c => c.id === category.id ? category : c)
         })),
         removeApiCategory: (id: string) => update(s => ({
             ...s,
-            applications: (s.applications || []).map(app => ({
-                ...app,
-                apiCategories: (app.apiCategories || []).filter(c => c.id !== id)
-            }))
+            apiCategories: (s.apiCategories || []).filter(c => c.id !== id)
         })),
-
 
         // Applications
         setApplications: (apps: Application[]) => update(s => ({

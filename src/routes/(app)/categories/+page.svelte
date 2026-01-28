@@ -9,7 +9,21 @@
         loginWithGoogle,
     } from "$lib/features/auth/services/authService";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
+    import Modal from "$lib/components/ui/Modal.svelte";
+    import ApiCategoryForm from "./ApiCategoryForm.svelte";
     import { get } from "svelte/store";
+
+    // Create Modal State
+    let isCreateModalOpen = $state(false);
+
+    // Edit Modal State
+    let isEditModalOpen = $state(false);
+    let selectedCategory = $state<any>(null);
+
+    function openEditModal(category: any) {
+        selectedCategory = category;
+        isEditModalOpen = true;
+    }
 
     // Alert Modal State
     let isAlertOpen = $state(false);
@@ -63,10 +77,13 @@
             );
         } catch (error: any) {
             console.error(error);
-            if (error.message.includes("401")) {
+            if (
+                error.message.includes("[401]") ||
+                error.message.includes("401")
+            ) {
                 showAlert(
                     "Authentication Expired",
-                    "Authentication expired. Do you want to login again and retry?",
+                    "Google Drive session has expired. Would you like to reconnect and retry?",
                     "confirm",
                     async () => {
                         try {
@@ -78,10 +95,7 @@
                                     result.token,
                                     dataToSave,
                                 );
-                                showAlert(
-                                    "Success",
-                                    "Backup successful! (Saved to Google Drive App Data)",
-                                );
+                                showAlert("Success", "Backup successful!");
                             }
                         } catch (retryError) {
                             console.error("Retry failed:", retryError);
@@ -107,11 +121,10 @@
 
         showAlert(
             "Restore Settings",
-            "This will overwrite your current local settings including API Categories. Continue?",
+            "This will overwrite your local settings. Continue?",
             "confirm",
             async () => {
                 let token = $authStore.accessToken;
-
                 if (!token) {
                     try {
                         const result = await loginWithGoogle();
@@ -121,7 +134,6 @@
                         return;
                     }
                 }
-
                 if (!token) return;
 
                 try {
@@ -131,14 +143,17 @@
                         settingsStore.load(data);
                         showAlert("Success", "Restore successful!");
                     } else {
-                        showAlert("Info", "No backup found in Google Drive.");
+                        showAlert("Info", "No backup found.");
                     }
                 } catch (error: any) {
                     console.error(error);
-                    if (error.message.includes("401")) {
+                    if (
+                        error.message.includes("[401]") ||
+                        error.message.includes("401")
+                    ) {
                         showAlert(
                             "Authentication Expired",
-                            "Authentication expired. Do you want to login again and retry?",
+                            "Google Drive session has expired. Would you like to reconnect and retry?",
                             "confirm",
                             async () => {
                                 try {
@@ -155,19 +170,11 @@
                                                 "Success",
                                                 "Restore successful!",
                                             );
-                                        } else {
-                                            showAlert(
-                                                "Info",
-                                                "No backup found in Google Drive.",
-                                            );
                                         }
                                     }
                                 } catch (retryError) {
                                     console.error("Retry failed:", retryError);
-                                    showAlert(
-                                        "Error",
-                                        "Retry failed. Please try again later.",
-                                    );
+                                    showAlert("Error", "Retry failed.");
                                 } finally {
                                     syncState = "idle";
                                 }
@@ -185,24 +192,26 @@
 
     // Filtering logic similar to settings page
     let filteredApiCategories = $derived.by(() => {
-        const allApps = $settingsStore.applications || [];
+        const categories = $settingsStore.apiCategories || [];
         const headerApp = $appStateStore.selectedApp;
 
-        let categories: any[] = [];
-        for (const app of allApps) {
-            if (app.apiCategories) {
-                if (headerApp === "All" || app.appName === headerApp) {
-                    categories = [...categories, ...app.apiCategories];
-                }
-            }
+        if (headerApp === "All") {
+            return categories;
         }
-        return categories;
+
+        return categories.filter((cat) => cat.application === headerApp);
     });
 
     function handleDelete(id: string) {
-        if (confirm("Are you sure you want to delete this category?")) {
-            settingsStore.removeApiCategory(id);
-        }
+        showAlert(
+            "Delete Category",
+            "Are you sure you want to delete this category?",
+            "confirm",
+            () => {
+                settingsStore.removeApiCategory(id);
+                showAlert("Success", "Category deleted successfully!");
+            },
+        );
     }
 </script>
 
@@ -259,15 +268,15 @@
                 {/if}
             </button>
             {#if !mobile}
-                <a
-                    href="/categories/new"
+                <button
+                    onclick={() => (isCreateModalOpen = true)}
                     class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all shrink-0"
                 >
                     <span class="material-symbols-outlined text-[18px]"
                         >add</span
                     >
                     <span>New Category</span>
-                </a>
+                </button>
             {/if}
         {/snippet}
 
@@ -316,13 +325,13 @@
             <p class="text-slate-500 dark:text-slate-400 mb-6">
                 Get started by creating your first API category.
             </p>
-            <a
-                href="/categories/new"
+            <button
+                onclick={() => (isCreateModalOpen = true)}
                 class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all"
             >
                 <span class="material-symbols-outlined text-[18px]">add</span>
                 <span>Create Category</span>
-            </a>
+            </button>
         </div>
     {:else}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -340,8 +349,21 @@
                         <div
                             class="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex gap-1"
                         >
-                            <a
-                                href={`/categories/${cat.id}`}
+                            <button
+                                onclick={() =>
+                                    goto(
+                                        `/endpoint?category=${cat.id}&readonly=true`,
+                                    )}
+                                class="p-1.5 text-slate-400 hover:text-green-500 hover:bg-green-500/10 rounded-md transition-colors"
+                                title="Run Category Endpoints"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-[18px]"
+                                    >play_arrow</span
+                                >
+                            </button>
+                            <button
+                                onclick={() => openEditModal(cat)}
                                 class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
                                 title="Edit"
                             >
@@ -349,7 +371,7 @@
                                     class="material-symbols-outlined text-[18px]"
                                     >edit</span
                                 >
-                            </a>
+                            </button>
                             <button
                                 class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
                                 title="Delete"
@@ -377,11 +399,16 @@
                                 {cat.icon || "category"}
                             </span>
                         </div>
-                        <h3
-                            class="text-lg font-semibold text-slate-900 dark:text-white group-hover:text-primary transition-colors truncate"
+                        <a
+                            href={`/categories/${cat.id}`}
+                            class="block min-w-0 flex-1 group/link"
                         >
-                            {cat.name}
-                        </h3>
+                            <h3
+                                class="text-lg font-semibold text-slate-900 dark:text-white group-hover/link:text-primary transition-colors truncate"
+                            >
+                                {cat.name}
+                            </h3>
+                        </a>
                     </div>
 
                     <p
@@ -418,3 +445,36 @@
         </div>
     {/if}
 </div>
+
+<Modal
+    bind:isOpen={isCreateModalOpen}
+    title="Create API Category"
+    width="max-w-2xl"
+>
+    <ApiCategoryForm
+        useCardStyle={false}
+        onSuccess={() => {
+            isCreateModalOpen = false;
+            showAlert("Success", "Category created successfully!");
+        }}
+        onCancel={() => (isCreateModalOpen = false)}
+    />
+</Modal>
+
+<Modal
+    bind:isOpen={isEditModalOpen}
+    title="Edit API Category"
+    width="max-w-2xl"
+>
+    {#if selectedCategory}
+        <ApiCategoryForm
+            category={selectedCategory}
+            useCardStyle={false}
+            onSuccess={() => {
+                isEditModalOpen = false;
+                showAlert("Success", "Category updated successfully!");
+            }}
+            onCancel={() => (isEditModalOpen = false)}
+        />
+    {/if}
+</Modal>

@@ -20,9 +20,15 @@
         decryptData,
         urlDecodeData,
         urlEncodeData,
+        decryptString,
+        urlDecodeString,
         type SecurityContext,
     } from "$lib/utils/security";
-    import type { Endpoint, RequestDataField } from "$lib/types/endpoint";
+    import type {
+        Endpoint,
+        RequestDataField,
+        ResponseDataField,
+    } from "$lib/types/endpoint";
     import {
         Code,
         Loader2,
@@ -521,6 +527,70 @@
         }
     }
 
+    function processResponseData(
+        data: any,
+        fields: ResponseDataField[],
+        context: SecurityContext,
+        prefix = "",
+    ): { name: string; value: string; original: string; type: string }[] {
+        let results: {
+            name: string;
+            value: string;
+            original: string;
+            type: string;
+        }[] = [];
+
+        if (!data || typeof data !== "object") return results;
+
+        for (const field of fields) {
+            const val = data[field.name];
+            const currentName = prefix ? `${prefix}.${field.name}` : field.name;
+
+            if (val === undefined || val === null) continue;
+
+            if (
+                field.type === "List" &&
+                field.subFields &&
+                Array.isArray(val)
+            ) {
+                val.forEach((item, idx) => {
+                    results.push(
+                        ...processResponseData(
+                            item,
+                            field.subFields!,
+                            context,
+                            `${currentName}[${idx}]`,
+                        ),
+                    );
+                });
+            } else if (field.decoded || field.encrypt) {
+                let processed = String(val);
+                const types: string[] = [];
+
+                if (field.decoded) {
+                    processed = urlDecodeString(processed);
+                    types.push("URL Decoded");
+                }
+
+                if (field.encrypt) {
+                    processed = decryptString(processed, context);
+                    types.push("Decrypted");
+                }
+
+                if (types.length > 0) {
+                    results.push({
+                        name: currentName,
+                        original: String(val),
+                        value: processed,
+                        type: types.join(" + "),
+                    });
+                }
+            }
+        }
+
+        return results;
+    }
+
     async function validateResponse(
         data: Record<string, any>,
         context: SecurityContext,
@@ -543,27 +613,11 @@
             responseValidationSuccess = signature === receivedSignature;
         }
 
-        const fieldsToProcess = endpoint.responseData.filter(
-            (f) => (f.decoded || f.encrypt) && data[f.name],
+        responseDecryptedData = processResponseData(
+            data,
+            endpoint.responseData,
+            context,
         );
-        if (fieldsToProcess.length > 0) {
-            const decodedMap = urlDecodeData(data, fieldsToProcess);
-            const decryptedMap = decryptData(
-                decodedMap,
-                fieldsToProcess,
-                context,
-            );
-            responseDecryptedData = fieldsToProcess.map((f) => ({
-                name: f.name,
-                original: String(data[f.name]),
-                value: String(decryptedMap[f.name]),
-                type: [f.decoded && "URL Decoded", f.encrypt && "Decrypted"]
-                    .filter(Boolean)
-                    .join(" + "),
-            }));
-        } else {
-            responseDecryptedData = [];
-        }
     }
 
     // Sync Handlers

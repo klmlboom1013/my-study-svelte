@@ -30,6 +30,7 @@ export interface Endpoint {
     name: string;
     description?: string;
     application: string; // "WPAY" | "Express" | "Smart"
+    categoryId?: string;
     method: HttpMethod;
     uri: string;
     requestType: RequestType;

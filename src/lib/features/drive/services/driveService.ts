@@ -6,7 +6,7 @@ interface DriveFile {
 const handleResponse = async (response: Response, context: string) => {
     if (!response.ok) {
         if (response.status === 401) {
-            throw new Error("Unauthorized: Google Drive session expired. Please re-connect.");
+            throw new Error("[401] Unauthorized: Google Drive session expired. Please re-connect.");
         }
         let errorBody = "";
         try {
@@ -52,7 +52,7 @@ export const driveService = {
 
         if (!response.ok) {
             if (response.status === 401) {
-                throw new Error("Unauthorized: Google Drive session expired. Please re-connect.");
+                throw new Error("[401] Unauthorized: Google Drive session expired. Please re-connect.");
             }
             throw new Error(`Drive Download Error: ${response.status} ${response.statusText}`);
         }

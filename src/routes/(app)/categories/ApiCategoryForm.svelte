@@ -8,9 +8,17 @@
 
     interface Props {
         category?: ApiCategory; // If provided, we are in EDIT mode
+        onSuccess?: () => void;
+        onCancel?: () => void;
+        useCardStyle?: boolean;
     }
 
-    let { category }: Props = $props();
+    let {
+        category,
+        onSuccess,
+        onCancel,
+        useCardStyle = true,
+    }: Props = $props();
 
     let isEditMode = $derived(!!category);
     let form = $state({
@@ -114,16 +122,26 @@
             settingsStore.addApiCategory(categoryData);
         }
 
-        goto("/categories");
+        if (onSuccess) {
+            onSuccess();
+        } else {
+            goto("/categories");
+        }
     }
 
     function handleCancel() {
-        goto("/categories");
+        if (onCancel) {
+            onCancel();
+        } else {
+            goto("/categories");
+        }
     }
 </script>
 
 <div
-    class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6 shadow-sm"
+    class={useCardStyle
+        ? "bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6 shadow-sm"
+        : ""}
 >
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <!-- Application -->
