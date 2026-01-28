@@ -614,28 +614,60 @@
                                     </div>
 
                                     <div
-                                        class="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400 pt-3 border-t border-slate-100 dark:border-border-dark/50"
+                                        class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-border-dark/50"
                                     >
-                                        <div class="flex flex-col">
-                                            <span
-                                                class="text-[10px] uppercase tracking-wider text-slate-400"
-                                                >Service</span
-                                            >
-                                            <span
-                                                class="font-medium text-slate-700 dark:text-slate-300"
-                                                >{endpoint.scope?.service}</span
-                                            >
+                                        <div
+                                            class="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400"
+                                        >
+                                            <div class="flex flex-col">
+                                                <span
+                                                    class="text-[10px] uppercase tracking-wider text-slate-400"
+                                                    >Service</span
+                                                >
+                                                <span
+                                                    class="font-medium text-slate-700 dark:text-slate-300"
+                                                    >{endpoint.scope
+                                                        ?.service}</span
+                                                >
+                                            </div>
+                                            <div class="flex flex-col">
+                                                <span
+                                                    class="text-[10px] uppercase tracking-wider text-slate-400"
+                                                    >Site</span
+                                                >
+                                                <span
+                                                    class="font-medium text-slate-700 dark:text-slate-300"
+                                                    >{endpoint.scope
+                                                        ?.site}</span
+                                                >
+                                            </div>
                                         </div>
-                                        <div class="flex flex-col">
+
+                                        <button
+                                            onclick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                settingsStore.toggleEndpointBookmark(
+                                                    endpoint.id,
+                                                );
+                                            }}
+                                            class="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none"
+                                            title={$settingsStore.interface.starredEndpointIds?.includes(
+                                                endpoint.id,
+                                            )
+                                                ? "Remove from bookmarks"
+                                                : "Add to bookmarks"}
+                                        >
                                             <span
-                                                class="text-[10px] uppercase tracking-wider text-slate-400"
-                                                >Site</span
+                                                class="material-symbols-outlined text-[20px] transition-colors {$settingsStore.interface.starredEndpointIds?.includes(
+                                                    endpoint.id,
+                                                )
+                                                    ? 'text-yellow-400 fill-current icon-filled'
+                                                    : 'text-slate-400 hover:text-yellow-400'}"
                                             >
-                                            <span
-                                                class="font-medium text-slate-700 dark:text-slate-300"
-                                                >{endpoint.scope?.site}</span
-                                            >
-                                        </div>
+                                                grade
+                                            </span>
+                                        </button>
                                     </div>
                                 </div>
                             {/each}
@@ -724,31 +756,71 @@
                     </div>
 
                     <div
-                        class="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400 pt-3 border-t border-slate-100 dark:border-border-dark/50"
+                        class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-border-dark/50"
                     >
-                        <div class="flex flex-col">
-                            <span
-                                class="text-[10px] uppercase tracking-wider text-slate-400"
-                                >Service</span
-                            >
-                            <span
-                                class="font-medium text-slate-700 dark:text-slate-300"
-                                >{endpoint.scope?.service}</span
-                            >
+                        <div
+                            class="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400"
+                        >
+                            <div class="flex flex-col">
+                                <span
+                                    class="text-[10px] uppercase tracking-wider text-slate-400"
+                                    >Service</span
+                                >
+                                <span
+                                    class="font-medium text-slate-700 dark:text-slate-300"
+                                    >{endpoint.scope?.service}</span
+                                >
+                            </div>
+                            <div class="flex flex-col">
+                                <span
+                                    class="text-[10px] uppercase tracking-wider text-slate-400"
+                                    >Site</span
+                                >
+                                <span
+                                    class="font-medium text-slate-700 dark:text-slate-300"
+                                    >{endpoint.scope?.site}</span
+                                >
+                            </div>
                         </div>
-                        <div class="flex flex-col">
+
+                        <button
+                            onclick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                settingsStore.toggleEndpointBookmark(
+                                    endpoint.id,
+                                );
+                            }}
+                            class="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none"
+                            title={$settingsStore.interface.starredEndpointIds?.includes(
+                                endpoint.id,
+                            )
+                                ? "Remove from bookmarks"
+                                : "Add to bookmarks"}
+                        >
                             <span
-                                class="text-[10px] uppercase tracking-wider text-slate-400"
-                                >Site</span
+                                class="material-symbols-outlined text-[20px] transition-colors {$settingsStore.interface.starredEndpointIds?.includes(
+                                    endpoint.id,
+                                )
+                                    ? 'text-yellow-400 fill-current icon-filled'
+                                    : 'text-slate-400 hover:text-yellow-400'}"
                             >
-                            <span
-                                class="font-medium text-slate-700 dark:text-slate-300"
-                                >{endpoint.scope?.site}</span
-                            >
-                        </div>
+                                grade
+                            </span>
+                        </button>
                     </div>
                 </div>
             {/each}
         </div>
     {/if}
 </div>
+
+<style>
+    .icon-filled {
+        font-variation-settings:
+            "FILL" 1,
+            "wght" 400,
+            "GRAD" 0,
+            "opsz" 24;
+    }
+</style>

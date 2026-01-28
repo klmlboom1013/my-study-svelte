@@ -39,6 +39,7 @@ export interface ApiCategory {
     description: string;
     icon?: string; // Material Symbol name
     color?: string; // Hex color code
+    isBookmarked?: boolean;
 }
 
 
@@ -62,6 +63,18 @@ export interface InterfaceSettings {
         showStats: boolean;
         showRecentActivity: boolean;
     };
+    starredEndpointIds?: string[];
+    bookmarks?: BookmarkSetting[];
+}
+
+export interface BookmarkSetting {
+    id: string;
+    name: string;
+    icon: string;
+    path: string;
+    isEnabled: boolean;
+    showNewButton: boolean;
+    listLimit: number; // 0 for unlimited
 }
 
 // Reuse Application interfaces matching ProfileStore structure
@@ -127,6 +140,12 @@ const defaultSettings: SettingsStoreData = {
     apiCategories: [],
     applications: []
 };
+
+// Default Bookmarks Initializer
+const defaultBookmarks: BookmarkSetting[] = [
+    { id: "api-categories", name: "Api Categories", icon: "category", path: "/categories", isEnabled: true, showNewButton: true, listLimit: 5 },
+    { id: "test-endpoint", name: "Test Endpoint", icon: "science", path: "/endpoint", isEnabled: true, showNewButton: true, listLimit: 5 },
+];
 
 function createSettingsStore() {
     let initialValue = defaultSettings;
@@ -213,6 +232,11 @@ function createSettingsStore() {
                     apiCategories: finalCategories,
                     applications: migratedApplications
                 };
+
+                // Ensure bookmarks exist if missing (migration)
+                if (!initialValue.interface.bookmarks || initialValue.interface.bookmarks.length === 0) {
+                    initialValue.interface.bookmarks = defaultBookmarks;
+                }
             } catch (e) {
                 console.error("Failed to parse stores", e);
             }
@@ -380,8 +404,88 @@ function createSettingsStore() {
             applications: apps
         })),
 
+        // Bookmarks
+        updateBookmark: (id: string, updates: Partial<BookmarkSetting>) => update(s => {
+            const currentBookmarks = s.interface.bookmarks || defaultBookmarks;
+            const newBookmarks = currentBookmarks.map(b => b.id === id ? { ...b, ...updates } : b);
+            return {
+                ...s,
+                interface: {
+                    ...s.interface,
+                    bookmarks: newBookmarks
+                }
+            };
+        }),
+        resetBookmarks: () => update(s => ({
+            ...s,
+            interface: {
+                ...s.interface,
+                bookmarks: defaultBookmarks
+            }
+        })),
+
         // Load entire settings (for restore)
-        load: (data: SettingsStoreData) => set(data)
+        load: (data: SettingsStoreData) => set(data),
+
+        // Bookmark Toggle Actions
+        toggleApiCategoryBookmark: (id: string) => update(s => {
+            const categories = s.apiCategories || [];
+            const category = categories.find(c => c.id === id);
+            if (!category) return s;
+
+            // Check if disabling
+            if (category.isBookmarked) {
+                return {
+                    ...s,
+                    apiCategories: categories.map(c => c.id === id ? { ...c, isBookmarked: false } : c)
+                };
+            }
+
+            // Check limit if enabling
+            const bookmarkSetting = (s.interface.bookmarks || defaultBookmarks).find(b => b.id === "api-categories");
+            const limit = bookmarkSetting ? bookmarkSetting.listLimit : 5;
+            const currentCount = categories.filter(c => c.isBookmarked).length;
+
+            if (currentCount >= limit) {
+                alert(`Bookmark limit reached (${limit}). Please manage your limits in Settings.`);
+                return s;
+            }
+
+            return {
+                ...s,
+                apiCategories: categories.map(c => c.id === id ? { ...c, isBookmarked: true } : c)
+            };
+        }),
+
+        toggleEndpointBookmark: (id: string) => update(s => {
+            const starred = s.interface.starredEndpointIds || [];
+            if (starred.includes(id)) {
+                return {
+                    ...s,
+                    interface: {
+                        ...s.interface,
+                        starredEndpointIds: starred.filter(sid => sid !== id)
+                    }
+                };
+            }
+
+            // Check limit
+            const bookmarkSetting = (s.interface.bookmarks || defaultBookmarks).find(b => b.id === "test-endpoint");
+            const limit = bookmarkSetting ? bookmarkSetting.listLimit : 5;
+
+            if (starred.length >= limit) {
+                alert(`Bookmark limit reached (${limit}). Please manage your limits in Settings.`);
+                return s;
+            }
+
+            return {
+                ...s,
+                interface: {
+                    ...s.interface,
+                    starredEndpointIds: [...starred, id]
+                }
+            };
+        })
     };
 }
 

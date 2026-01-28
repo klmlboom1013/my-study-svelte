@@ -25,6 +25,9 @@
     import { goto } from "$app/navigation";
     import { appStateStore } from "$lib/stores/appStateStore";
     import { settingsStore, type ApiCategory } from "$lib/stores/settingsStore";
+    import { endpointService } from "$lib/features/endpoints/services/endpointService";
+    import type { Endpoint } from "$lib/types/endpoint";
+    import { onMount } from "svelte";
 
     // Primary Navigation Data (Top Level)
     let primaryNav = [
@@ -45,6 +48,15 @@
 
         if (isAll) return allCategories;
         return allCategories.filter((cat) => cat.application === headerApp);
+    });
+
+    let storedEndpoints = $state<Endpoint[]>([]);
+
+    onMount(() => {
+        storedEndpoints = endpointService.getEndpoints();
+        endpointService.onChange(() => {
+            storedEndpoints = endpointService.getEndpoints();
+        });
     });
 </script>
 
@@ -79,6 +91,7 @@
         </button>
 
         {#if showCollections}
+            <!-- Top Section: Interface Settings -->
             {#each primaryNav as item}
                 {@const showItem =
                     ignoreSettings ||
@@ -117,62 +130,188 @@
                     </button>
                 {/if}
             {/each}
-        {/if}
-    </div>
 
-    {#if showCollections}
-        <!-- Separator -->
-        <div class="h-px bg-slate-200 dark:bg-border-dark my-2"></div>
-    {/if}
-
-    <!-- API Categories Section -->
-    <div class="flex flex-col gap-2 mt-2">
-        <div class="flex items-center justify-between px-2">
-            <h3 class="text-sm font-bold text-slate-900 dark:text-white">
-                API Categories
-            </h3>
-            {#if showNewButton}
-                <button
-                    class="flex items-center gap-2 bg-[#238636] hover:bg-[#2ea043] text-white px-3 py-0.5 rounded-md text-xs font-bold transition-colors shadow-sm"
-                >
-                    <span class="material-symbols-outlined text-[16px]"
-                        >book</span
-                    >
-                    <span>New</span>
-                </button>
-            {/if}
-        </div>
-
-        <div class="flex flex-col gap-1">
-            {#each filteredCategories as category}
-                <button
-                    onclick={() =>
-                        goto(`/endpoint?category=${category.id}&readonly=true`)}
-                    class="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-border-dark text-left group transition-colors"
-                >
+            <!-- Bottom Section: Bookmarks -->
+            {#if $settingsStore.interface.bookmarks}
+                <!-- Separator if there are enabled bookmarks (excluding duplicates if any, though we rely on visual separation) -->
+                {#if $settingsStore.interface.bookmarks.some((b) => b.isEnabled)}
                     <div
-                        class="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0 transition-colors"
-                        style={category.color
-                            ? `background-color: ${category.color}15; color: ${category.color}`
-                            : ""}
-                    >
-                        <span class="material-symbols-outlined text-[18px]"
-                            >{category.icon || "category"}</span
-                        >
-                    </div>
-                    <div class="flex flex-col flex-1 min-w-0">
-                        <div class="flex items-center justify-between">
-                            <span
-                                class="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors {allowTextWrap
-                                    ? 'whitespace-normal break-words'
-                                    : 'truncate'}"
+                        class="h-px bg-slate-200 dark:bg-border-dark my-2"
+                    ></div>
+                {/if}
+
+                {#each $settingsStore.interface.bookmarks as bookmark (bookmark.id)}
+                    {#if bookmark.isEnabled}
+                        {#if bookmark.id === "api-categories"}
+                            <!-- Special rendering for Api Categories (Header + List) -->
+                            <div class="flex flex-col gap-2 mt-2">
+                                <div
+                                    class="flex items-center justify-between px-2"
+                                >
+                                    <button
+                                        onclick={() => goto(bookmark.path)}
+                                        class="text-sm font-bold text-slate-900 dark:text-white hover:text-primary transition-colors"
+                                    >
+                                        {bookmark.name}
+                                    </button>
+                                    {#if bookmark.showNewButton && !$appStateStore.isPageLocked}
+                                        <button
+                                            onclick={() =>
+                                                goto("/categories?new=true")}
+                                            class="flex items-center gap-2 bg-[#238636] hover:bg-[#2ea043] text-white px-3 py-0.5 rounded-md text-xs font-bold transition-colors shadow-sm"
+                                        >
+                                            <span
+                                                class="material-symbols-outlined text-[16px]"
+                                                >book</span
+                                            >
+                                            <span>New</span>
+                                        </button>
+                                    {/if}
+                                </div>
+
+                                <div class="flex flex-col gap-1">
+                                    {#each ($settingsStore.apiCategories || [])
+                                        .filter((c) => c.isBookmarked)
+                                        .slice(0, bookmark.listLimit || 5) as category (category.id)}
+                                        <button
+                                            onclick={() =>
+                                                goto(
+                                                    `/endpoint?category=${category.id}&readonly=true`,
+                                                )}
+                                            class="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-border-dark text-left group transition-colors"
+                                        >
+                                            <div
+                                                class="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0 transition-colors"
+                                                style={category.color
+                                                    ? `background-color: ${category.color}15; color: ${category.color}`
+                                                    : ""}
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-[18px]"
+                                                    >{category.icon ||
+                                                        "category"}</span
+                                                >
+                                            </div>
+                                            <div
+                                                class="flex flex-col flex-1 min-w-0"
+                                            >
+                                                <div
+                                                    class="flex items-center justify-between"
+                                                >
+                                                    <span
+                                                        class="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors {allowTextWrap
+                                                            ? 'whitespace-normal break-words'
+                                                            : 'truncate'}"
+                                                    >
+                                                        {category.name}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    {/each}
+                                </div>
+                            </div>
+                        {:else if bookmark.id === "test-endpoint"}
+                            <!-- Special rendering for Test Endpoint (Header + List) -->
+                            <div class="flex flex-col gap-2 mt-2">
+                                <div
+                                    class="flex items-center justify-between px-2"
+                                >
+                                    <button
+                                        onclick={() => goto(bookmark.path)}
+                                        class="text-sm font-bold text-slate-900 dark:text-white hover:text-primary transition-colors"
+                                    >
+                                        {bookmark.name}
+                                    </button>
+                                    {#if bookmark.showNewButton && !$appStateStore.isPageLocked}
+                                        <button
+                                            onclick={() =>
+                                                goto("/endpoint/new")}
+                                            class="flex items-center gap-2 bg-[#238636] hover:bg-[#2ea043] text-white px-3 py-0.5 rounded-md text-xs font-bold transition-colors shadow-sm"
+                                        >
+                                            <span
+                                                class="material-symbols-outlined text-[16px]"
+                                                >add</span
+                                            >
+                                            <span>New</span>
+                                        </button>
+                                    {/if}
+                                </div>
+
+                                <div class="flex flex-col gap-1">
+                                    {#each storedEndpoints
+                                        .filter( (e) => ($settingsStore.interface.starredEndpointIds || []).includes(e.id), )
+                                        .slice(0, bookmark.listLimit || 5) as endpoint (endpoint.id)}
+                                        <button
+                                            onclick={() =>
+                                                goto(
+                                                    `/endpoint/${endpoint.id}`,
+                                                )}
+                                            class="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-border-dark text-left group transition-colors"
+                                        >
+                                            <div
+                                                class="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0 transition-colors"
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-[18px]"
+                                                    >api</span
+                                                >
+                                            </div>
+                                            <div
+                                                class="flex flex-col flex-1 min-w-0"
+                                            >
+                                                <div
+                                                    class="flex items-center justify-between"
+                                                >
+                                                    <span
+                                                        class="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors {allowTextWrap
+                                                            ? 'whitespace-normal break-words'
+                                                            : 'truncate'}"
+                                                    >
+                                                        {endpoint.name ||
+                                                            endpoint.uri ||
+                                                            "Untitled Endpoint"}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    {/each}
+                                </div>
+                            </div>
+                        {:else}
+                            <!-- Standard Bookmark Item (Styled like Header: Bold, No Icon) -->
+                            <div
+                                class="flex items-center justify-between px-2 py-1 mt-1"
                             >
-                                {category.name}
-                            </span>
-                        </div>
-                    </div>
-                </button>
-            {/each}
-        </div>
+                                <button
+                                    onclick={() =>
+                                        bookmark.path && goto(bookmark.path)}
+                                    class="text-left group transition-colors"
+                                >
+                                    <span
+                                        class="text-sm font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors {allowTextWrap
+                                            ? 'whitespace-normal break-words'
+                                            : 'truncate'}"
+                                    >
+                                        {bookmark.name}
+                                    </span>
+                                </button>
+                                {#if bookmark.showNewButton && !$appStateStore.isPageLocked}
+                                    <button
+                                        class="flex items-center gap-2 bg-[#238636] hover:bg-[#2ea043] text-white px-3 py-0.5 rounded-md text-xs font-bold transition-colors shadow-sm"
+                                    >
+                                        <span
+                                            class="material-symbols-outlined text-[16px]"
+                                            >book</span
+                                        >
+                                        <span>New</span>
+                                    </button>
+                                {/if}
+                            </div>
+                        {/if}
+                    {/if}
+                {/each}
+            {/if}
+        {/if}
     </div>
 </div>

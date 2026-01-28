@@ -727,6 +727,7 @@
 
     const categories = [
         { id: "interface", label: "Interface", icon: "web_asset" },
+        { id: "bookmarks", label: "Bookmarks", icon: "bookmarks" },
         { id: "application", label: "Applications", icon: "apps" },
         { id: "endpoint", label: "Endpoint Parameters", icon: "tune" },
     ];
@@ -839,7 +840,9 @@
             <button
                 class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors"
                 onclick={backupSettings}
-                disabled={isBackupLoading || isRestoreLoading}
+                disabled={isBackupLoading ||
+                    isRestoreLoading ||
+                    $appStateStore.isPageLocked}
             >
                 {#if isBackupLoading}
                     <span
@@ -857,7 +860,9 @@
             <button
                 class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors"
                 onclick={restoreSettings}
-                disabled={isBackupLoading || isRestoreLoading}
+                disabled={isBackupLoading ||
+                    isRestoreLoading ||
+                    $appStateStore.isPageLocked}
             >
                 {#if isRestoreLoading}
                     <span
@@ -2576,6 +2581,157 @@
                         </div>
                     </div>
                 {/if}
+            {:else if activeCategory === "bookmarks"}
+                <div class="p-6">
+                    <h2
+                        class="text-xl font-bold text-slate-900 dark:text-white mb-6"
+                    >
+                        Bookmarks Management
+                    </h2>
+                    <div
+                        class="bg-slate-50 dark:bg-background-dark rounded-xl border border-slate-200 dark:border-border-dark p-1"
+                    >
+                        <div
+                            class="grid grid-cols-1 divide-y divide-slate-200 dark:divide-slate-800"
+                        >
+                            {#if $settingsStore.interface.bookmarks}
+                                {#each $settingsStore.interface.bookmarks as bookmark (bookmark.id)}
+                                    <div
+                                        class="p-4 flex flex-col gap-4 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                                    >
+                                        <div
+                                            class="flex items-center justify-between"
+                                        >
+                                            <div
+                                                class="flex items-center gap-3"
+                                            >
+                                                <div
+                                                    class="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined"
+                                                        >{bookmark.icon}</span
+                                                    >
+                                                </div>
+                                                <div class="flex flex-col">
+                                                    <span
+                                                        class="font-medium text-slate-900 dark:text-slate-100"
+                                                        >{bookmark.name}</span
+                                                    >
+                                                    <span
+                                                        class="text-xs text-slate-500 dark:text-slate-400"
+                                                        >{bookmark.path}</span
+                                                    >
+                                                </div>
+                                            </div>
+                                            <label
+                                                class="relative inline-flex items-center cursor-pointer"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    class="sr-only peer"
+                                                    checked={bookmark.isEnabled}
+                                                    onchange={(e) =>
+                                                        settingsStore.updateBookmark(
+                                                            bookmark.id,
+                                                            {
+                                                                isEnabled:
+                                                                    e
+                                                                        .currentTarget
+                                                                        .checked,
+                                                            },
+                                                        )}
+                                                    disabled={$appStateStore.isPageLocked}
+                                                />
+                                                <div
+                                                    class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
+                                                ></div>
+                                            </label>
+                                        </div>
+
+                                        {#if bookmark.isEnabled}
+                                            <div
+                                                class="pl-13 flex flex-wrap gap-6 mt-2 ml-13"
+                                            >
+                                                <label
+                                                    class="flex items-center gap-2 cursor-pointer"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        class="rounded border-slate-300 text-primary focus:ring-primary dark:border-slate-600 dark:bg-slate-700"
+                                                        checked={bookmark.showNewButton}
+                                                        onchange={(e) =>
+                                                            settingsStore.updateBookmark(
+                                                                bookmark.id,
+                                                                {
+                                                                    showNewButton:
+                                                                        e
+                                                                            .currentTarget
+                                                                            .checked,
+                                                                },
+                                                            )}
+                                                        disabled={$appStateStore.isPageLocked}
+                                                    />
+                                                    <span
+                                                        class="text-sm text-slate-700 dark:text-slate-300"
+                                                        >Show 'New' Button</span
+                                                    >
+                                                </label>
+
+                                                <label
+                                                    class="flex items-center gap-2"
+                                                >
+                                                    <span
+                                                        class="text-sm text-slate-700 dark:text-slate-300"
+                                                        >List Limit:</span
+                                                    >
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        max="5"
+                                                        class="w-20 px-2 py-1 text-sm border border-slate-300 dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary disabled:opacity-50"
+                                                        value={bookmark.listLimit}
+                                                        oninput={(e) => {
+                                                            let val =
+                                                                parseInt(
+                                                                    e
+                                                                        .currentTarget
+                                                                        .value,
+                                                                ) || 0;
+                                                            if (val < 1)
+                                                                val = 1;
+                                                            if (val > 5)
+                                                                val = 5;
+                                                            // Force update input value if modified
+                                                            if (
+                                                                parseInt(
+                                                                    e
+                                                                        .currentTarget
+                                                                        .value,
+                                                                ) !== val
+                                                            ) {
+                                                                e.currentTarget.value =
+                                                                    val.toString();
+                                                            }
+                                                            settingsStore.updateBookmark(
+                                                                bookmark.id,
+                                                                {
+                                                                    listLimit:
+                                                                        val,
+                                                                },
+                                                            );
+                                                        }}
+                                                        disabled={$appStateStore.isPageLocked}
+                                                    />
+                                                </label>
+                                            </div>
+                                        {/if}
+                                    </div>
+                                {/each}
+                            {/if}
+                        </div>
+                    </div>
+                </div>
             {/if}
         </main>
     </div>

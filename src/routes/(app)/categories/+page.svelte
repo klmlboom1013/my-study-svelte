@@ -2,6 +2,7 @@
     import { settingsStore } from "$lib/stores/settingsStore";
     import { appStateStore } from "$lib/stores/appStateStore";
     import { goto } from "$app/navigation";
+    import { page } from "$app/stores";
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
     import { driveService } from "$lib/features/drive/services/driveService";
     import {
@@ -19,6 +20,15 @@
     // Edit Modal State
     let isEditModalOpen = $state(false);
     let selectedCategory = $state<any>(null);
+
+    // Watch for ?new=true query param
+    $effect(() => {
+        if ($page.url.searchParams.get("new") === "true") {
+            isCreateModalOpen = true;
+            // Optionally clear the param to avoid re-opening on manual refresh if desired,
+            // but usually SvelteKit filters keep it. Let's just open it.
+        }
+    });
 
     function openEditModal(category: any) {
         selectedCategory = category;
@@ -422,27 +432,49 @@
                     </p>
 
                     <div
-                        class="flex flex-wrap gap-1 pt-4 border-t border-slate-100 dark:border-border-dark/50 mt-auto"
+                        class="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-border-dark/50 mt-auto"
                     >
-                        {#if Array.isArray(cat.service)}
-                            {#each cat.service as svc}
+                        <div class="flex flex-wrap gap-1">
+                            {#if Array.isArray(cat.service)}
+                                {#each cat.service as svc}
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                                    >
+                                        {svc}
+                                    </span>
+                                {/each}
+                            {:else if cat.service}
                                 <span
                                     class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
                                 >
-                                    {svc}
+                                    {cat.service}
                                 </span>
-                            {/each}
-                        {:else if cat.service}
+                            {:else}
+                                <span class="text-xs text-slate-400 italic"
+                                    >No services linked</span
+                                >
+                            {/if}
+                        </div>
+
+                        <button
+                            onclick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                settingsStore.toggleApiCategoryBookmark(cat.id);
+                            }}
+                            class="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none"
+                            title={cat.isBookmarked
+                                ? "Remove from bookmarks"
+                                : "Add to bookmarks"}
+                        >
                             <span
-                                class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                                class="material-symbols-outlined text-[20px] transition-colors {cat.isBookmarked
+                                    ? 'text-yellow-400 fill-current icon-filled'
+                                    : 'text-slate-400 hover:text-yellow-400'}"
                             >
-                                {cat.service}
+                                grade
                             </span>
-                        {:else}
-                            <span class="text-xs text-slate-400 italic"
-                                >No services linked</span
-                            >
-                        {/if}
+                        </button>
                     </div>
                 </div>
             {/each}
@@ -482,3 +514,13 @@
         />
     {/if}
 </Modal>
+
+<style>
+    .icon-filled {
+        font-variation-settings:
+            "FILL" 1,
+            "wght" 400,
+            "GRAD" 0,
+            "opsz" 24;
+    }
+</style>

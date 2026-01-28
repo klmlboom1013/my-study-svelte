@@ -266,7 +266,8 @@
                     <Tooltip text="new Endpoint" delay={100}>
                         <button
                             onclick={() => goto("/endpoint/new")}
-                            class="flex items-center justify-center rounded-lg size-8 hover:bg-slate-100 dark:hover:bg-border-dark text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer"
+                            class="flex items-center justify-center rounded-lg size-8 hover:bg-slate-100 dark:hover:bg-border-dark text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={$appStateStore.isPageLocked}
                         >
                             <span class="material-symbols-outlined text-[20px]"
                                 >add</span

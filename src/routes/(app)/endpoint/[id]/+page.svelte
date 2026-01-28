@@ -1,28 +1,37 @@
 <script lang="ts">
-    import { onMount } from "svelte";
     import { goto } from "$app/navigation";
     import { page } from "$app/stores";
     import { endpointService } from "$lib/features/endpoints/services/endpointService";
     import type { Endpoint } from "$lib/types/endpoint";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import DataDefinitionTable from "$lib/components/endpoint/DataDefinitionTable.svelte";
+    import EndpointExecutionModal from "$lib/components/endpoint/EndpointExecutionModal.svelte";
     import { appStateStore } from "$lib/stores/appStateStore";
 
     let endpointId = $state("");
     let endpoint = $state<Endpoint | null>(null);
 
-    onMount(() => {
-        endpointId = $page.params.id ?? "";
-        if (!endpointId) {
-            alert("Invalid Endpoint ID");
-            goto("/endpoint");
-            return;
-        }
-        endpoint = endpointService.getEndpoint(endpointId) || null;
+    // Execution Modal State
+    let isExecutionModalOpen = $state(false);
 
-        if (!endpoint) {
-            alert("Endpoint not found");
-            goto("/endpoint");
+    function openExecutionModal() {
+        if (endpoint) {
+            isExecutionModalOpen = true;
+        }
+    }
+
+    $effect(() => {
+        const id = $page.params.id;
+        if (id && id !== endpointId) {
+            endpointId = id;
+            endpoint = endpointService.getEndpoint(id) || null;
+
+            if (!endpoint) {
+                alert("Endpoint not found");
+                goto("/endpoint");
+            }
+            // Reset modal state on navigation
+            isExecutionModalOpen = false;
         }
     });
 
@@ -67,28 +76,40 @@
                     {endpoint.description || "No description provided."}
                 </p>
             </div>
-            {#if !$appStateStore.isPageLocked}
-                <div class="hidden md:flex gap-2 w-full md:w-auto">
-                    <button
-                        onclick={() => goto(`/endpoint/${endpointId}/edit`)}
-                        class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium shadow-sm shadow-primary/20"
+            <div class="flex gap-2 w-full md:w-auto">
+                <button
+                    onclick={openExecutionModal}
+                    class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium shadow-sm shadow-green-600/20"
+                >
+                    <span class="material-symbols-outlined text-[20px]"
+                        >play_arrow</span
                     >
-                        <span class="material-symbols-outlined text-[20px]"
-                            >edit</span
+                    Execute
+                </button>
+
+                {#if !$appStateStore.isPageLocked}
+                    <div class="hidden md:flex gap-2">
+                        <button
+                            onclick={() => goto(`/endpoint/${endpointId}/edit`)}
+                            class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium shadow-sm shadow-primary/20"
                         >
-                        Edit
-                    </button>
-                    <button
-                        onclick={handleDelete}
-                        class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-card-dark text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium"
-                    >
-                        <span class="material-symbols-outlined text-[20px]"
-                            >delete</span
+                            <span class="material-symbols-outlined text-[20px]"
+                                >edit</span
+                            >
+                            Edit
+                        </button>
+                        <button
+                            onclick={handleDelete}
+                            class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-card-dark text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium"
                         >
-                        Delete
-                    </button>
-                </div>
-            {/if}
+                            <span class="material-symbols-outlined text-[20px]"
+                                >delete</span
+                            >
+                            Delete
+                        </button>
+                    </div>
+                {/if}
+            </div>
         </div>
 
         <div
@@ -284,5 +305,12 @@
                 {/if}
             </div>
         </div>
+
+        {#if isExecutionModalOpen && endpoint}
+            <EndpointExecutionModal
+                bind:isOpen={isExecutionModalOpen}
+                {endpoint}
+            />
+        {/if}
     {/if}
 </div>
