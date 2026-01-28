@@ -21,6 +21,7 @@
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
     import MultiSelectBox from "$lib/components/ui/MultiSelectBox.svelte";
+    import Modal from "$lib/components/ui/Modal.svelte";
 
     let activeCategory = $state("interface"); // 'endpoint', 'interface', 'application'
     let activeSubTab = $state("global"); // for endpoint: 'global', 'options', 'mid'
@@ -105,6 +106,91 @@
         alertModalState.type = type;
         alertModalState.onConfirm = onConfirm;
         alertModalState.isOpen = true;
+    }
+
+    // --- LocalStorage Management State ---
+    let localStorageItems = $state<{ key: string; value: string | null }[]>([]);
+    let isInjectModalOpen = $state(false);
+    let targetInjectKey = $state("");
+    let injectValue = $state("");
+    let injectError = $state("");
+
+    $effect(() => {
+        if (typeof window !== "undefined") {
+            // Initial load
+            localStorageItems = Object.keys(localStorage).map((key) => ({
+                key,
+                value: localStorage.getItem(key),
+            }));
+        }
+    });
+
+    function formatJSON(val: string | null) {
+        if (!val) return "-";
+        try {
+            const parsed = JSON.parse(val);
+            return JSON.stringify(parsed, null, 2);
+        } catch (e) {
+            return val;
+        }
+    }
+
+    async function handleCopyValue(val: string | null) {
+        if (!val) return;
+        try {
+            await navigator.clipboard.writeText(val);
+            // We could show a tiny toast, but alert is also fine for now
+            showAlert("Copied", "JSON value copied to clipboard.");
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    function openInjectModal(key: string) {
+        targetInjectKey = key;
+        injectValue = localStorage.getItem(key) || "";
+        injectError = "";
+        isInjectModalOpen = true;
+    }
+
+    function handleInject() {
+        injectError = "";
+        if (!injectValue.trim()) {
+            injectError = "Value cannot be empty.";
+            return;
+        }
+
+        try {
+            const parsed = JSON.parse(injectValue);
+
+            // Structure Validation (Safety Check)
+            if (targetInjectKey === "settings" && typeof parsed !== "object") {
+                injectError =
+                    "Invalid structure for 'settings'. Expected an Object.";
+                return;
+            }
+            if (
+                (targetInjectKey === "apiCategories" ||
+                    targetInjectKey === "endpoints") &&
+                !Array.isArray(parsed)
+            ) {
+                injectError = `Invalid structure for '${targetInjectKey}'. Expected an Array.`;
+                return;
+            }
+
+            localStorage.setItem(targetInjectKey, JSON.stringify(parsed));
+            isInjectModalOpen = false;
+            showAlert(
+                "Injected Successfully",
+                "Data has been forced into LocalStorage. Please refresh the page to apply changes fully.",
+                "alert",
+                () => {
+                    window.location.reload();
+                },
+            );
+        } catch (e) {
+            injectError = "Invalid JSON format.";
+        }
     }
 
     async function handleConnectGoogle() {
@@ -730,6 +816,7 @@
         { id: "bookmarks", label: "Bookmarks", icon: "bookmarks" },
         { id: "application", label: "Applications", icon: "apps" },
         { id: "endpoint", label: "Endpoint Parameters", icon: "tune" },
+        { id: "localstorage", label: "LocalStorage", icon: "database" },
     ];
 
     const APP_SUGGESTIONS = [
@@ -2732,6 +2819,164 @@
                         </div>
                     </div>
                 </div>
+            {:else if activeCategory === "localstorage"}
+                <div class="p-6">
+                    <h2
+                        class="text-xl font-bold text-slate-900 dark:text-white mb-6"
+                    >
+                        LocalStorage Management
+                    </h2>
+                    <p
+                        class="text-sm text-slate-500 dark:text-slate-400 mb-6 -mt-4"
+                    >
+                        View, copy, and inject data into browser's LocalStorage.
+                    </p>
+
+                    <div
+                        class="bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden"
+                    >
+                        <div
+                            class="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-800/50 flex items-center justify-between"
+                        >
+                            <h3
+                                class="text-sm font-semibold text-slate-700 dark:text-slate-200"
+                            >
+                                Stored Items
+                            </h3>
+                            <button
+                                onclick={() => {
+                                    // Logic to refresh items if needed, though they are usually reactive through variables
+                                    localStorageItems = Object.keys(
+                                        localStorage,
+                                    ).map((key) => ({
+                                        key,
+                                        value: localStorage.getItem(key),
+                                    }));
+                                }}
+                                class="text-xs text-primary hover:underline flex items-center gap-1"
+                            >
+                                <span class="material-symbols-outlined text-xs"
+                                    >refresh</span
+                                >
+                                Refresh
+                            </button>
+                        </div>
+                        <div
+                            class="divide-y divide-slate-100 dark:divide-slate-700"
+                        >
+                            {#if localStorageItems.length === 0}
+                                <div
+                                    class="p-8 text-center text-slate-500 dark:text-slate-400"
+                                >
+                                    No items found in LocalStorage.
+                                </div>
+                            {:else}
+                                {#each localStorageItems as item}
+                                    <div class="p-4 space-y-3">
+                                        <div
+                                            class="flex items-center justify-between"
+                                        >
+                                            <span
+                                                class="text-sm font-mono font-bold text-primary px-2 py-0.5 bg-primary/5 rounded"
+                                            >
+                                                {item.key}
+                                            </span>
+                                            <div
+                                                class="flex items-center gap-2"
+                                            >
+                                                <button
+                                                    onclick={() =>
+                                                        handleCopyValue(
+                                                            item.value,
+                                                        )}
+                                                    class="p-1.5 text-slate-400 hover:text-primary transition-colors rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"
+                                                    title="Copy JSON"
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined text-[18px]"
+                                                        >content_copy</span
+                                                    >
+                                                </button>
+                                                <button
+                                                    onclick={() =>
+                                                        openInjectModal(
+                                                            item.key,
+                                                        )}
+                                                    class="p-1.5 text-slate-400 hover:text-green-500 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-slate-400 transition-colors rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"
+                                                    title="Inject / Edit Data"
+                                                    disabled={$appStateStore.isPageLocked}
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined text-[18px]"
+                                                        >edit_square</span
+                                                    >
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div
+                                            class="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-3 border border-slate-100 dark:border-slate-800"
+                                        >
+                                            <pre
+                                                class="text-xs font-mono text-slate-600 dark:text-slate-300 overflow-x-auto max-h-40 whitespace-pre-wrap">{formatJSON(
+                                                    item.value,
+                                                )}</pre>
+                                        </div>
+                                    </div>
+                                {/each}
+                            {/if}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inject Modal -->
+                {#if isInjectModalOpen}
+                    <Modal
+                        bind:isOpen={isInjectModalOpen}
+                        title="Inject Data: {targetInjectKey}"
+                        onClose={() => (isInjectModalOpen = false)}
+                    >
+                        <div class="space-y-4 p-4">
+                            <div>
+                                <label
+                                    class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2"
+                                >
+                                    JSON Value
+                                </label>
+                                <textarea
+                                    bind:value={injectValue}
+                                    rows="10"
+                                    class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                    placeholder="Paste JSON here..."
+                                ></textarea>
+                                {#if injectError}
+                                    <p
+                                        class="mt-2 text-xs text-red-500 flex items-center gap-1"
+                                    >
+                                        <span
+                                            class="material-symbols-outlined text-xs"
+                                            >error</span
+                                        >
+                                        {injectError}
+                                    </p>
+                                {/if}
+                            </div>
+                            <div class="flex justify-end gap-3 pt-2">
+                                <button
+                                    onclick={() => (isInjectModalOpen = false)}
+                                    class="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onclick={handleInject}
+                                    class="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"
+                                >
+                                    Inject & Save
+                                </button>
+                            </div>
+                        </div>
+                    </Modal>
+                {/if}
             {/if}
         </main>
     </div>
