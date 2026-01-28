@@ -276,15 +276,29 @@
                     </Tooltip>
                 </div>
 
-                <!-- History Button -->
-                <Tooltip text="Recent Activity" delay={100}>
+                <!-- Lock Button -->
+                <Tooltip
+                    text={$appStateStore.isPageLocked ? "Unlock" : "Lock"}
+                    delay={100}
+                >
                     <button
-                        class="flex items-center justify-center rounded-lg size-8 hover:bg-slate-100 dark:hover:bg-border-dark text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer"
+                        onclick={() =>
+                            appStateStore.update((s) => ({
+                                ...s,
+                                isPageLocked: !s.isPageLocked,
+                            }))}
+                        class="flex items-center justify-center rounded-lg size-8 transition-colors cursor-pointer {$appStateStore.isPageLocked
+                            ? 'bg-amber-50 text-amber-600 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 border border-amber-200 dark:border-amber-800/30'
+                            : 'hover:bg-slate-100 dark:hover:bg-border-dark text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-transparent'}"
                     >
-                        <span class="material-symbols-outlined text-[18px]"
-                            >history</span
+                        <span class="material-symbols-outlined text-[18px]">
+                            {$appStateStore.isPageLocked ? "lock" : "lock_open"}
+                        </span>
+                        <span class="sr-only"
+                            >{$appStateStore.isPageLocked
+                                ? "Unlock"
+                                : "Lock"}</span
                         >
-                        <span class="sr-only">History</span>
                     </button>
                 </Tooltip>
 

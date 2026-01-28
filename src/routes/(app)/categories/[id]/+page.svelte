@@ -7,6 +7,7 @@
     import type { Endpoint } from "$lib/types/endpoint";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
+    import { appStateStore } from "$lib/stores/appStateStore";
 
     // Get Category ID from params
     const categoryId = $page.params.id;
@@ -211,15 +212,17 @@
                     </p>
                 </div>
                 <div class="flex gap-2">
-                    <button
-                        onclick={handleSave}
-                        class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all"
-                    >
-                        <span class="material-symbols-outlined text-[20px]"
-                            >save</span
+                    {#if !$appStateStore.isPageLocked}
+                        <button
+                            onclick={handleSave}
+                            class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm shadow-blue-200"
                         >
-                        <span>Save Changes</span>
-                    </button>
+                            <span class="material-symbols-outlined text-[18px]"
+                                >save</span
+                            >
+                            Assign Endpoints
+                        </button>
+                    {/if}
                 </div>
             </div>
         </div>
@@ -248,6 +251,7 @@
                             type="checkbox"
                             bind:checked={hideAssignedToOthers}
                             class="rounded border-slate-300 text-primary focus:ring-primary shadow-sm"
+                            disabled={$appStateStore.isPageLocked}
                         />
                         Hide assigned to others
                     </label>
@@ -285,6 +289,7 @@
                             selectedEndpointIds.size < filteredEndpoints.length}
                         onclick={toggleAll}
                         class="rounded border-slate-300 text-primary focus:ring-primary"
+                        disabled={$appStateStore.isPageLocked}
                     />
                 </div>
                 <div>Endpoint Name / URI</div>
@@ -320,8 +325,10 @@
                                     checked={selectedEndpointIds.has(
                                         endpoint.id,
                                     )}
-                                    onclick={() => toggleSelection(endpoint.id)}
-                                    class="rounded border-slate-300 text-primary focus:ring-primary"
+                                    onchange={() =>
+                                        toggleSelection(endpoint.id)}
+                                    class="size-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+                                    disabled={$appStateStore.isPageLocked}
                                 />
                             </div>
                             <div class="min-w-0">

@@ -26,6 +26,8 @@
     let activeSubTab = $state("global"); // for endpoint: 'global', 'options', 'mid'
     let activeAppSubTab = $state("settings"); // for application: 'settings', 'site'
 
+    // Lock State
+
     // Form states
     let globalParam = $state({
         application: "",
@@ -50,6 +52,7 @@
     let midContext = $state({
         application: "",
         service: [] as string[],
+        name: "",
         mid: "",
         encKey: "",
         encIV: "",
@@ -476,6 +479,7 @@
 
         const newContext = {
             ...midContext,
+            name: midContext.name,
             service: selectedMidService,
         };
 
@@ -498,6 +502,7 @@
         midContext = {
             application: ctx.application,
             service: ctx.service,
+            name: ctx.name,
             mid: ctx.mid,
             encKey: ctx.encKey,
             encIV: ctx.encIV,
@@ -519,6 +524,7 @@
         midContext = {
             application: "",
             service: [],
+            name: "",
             mid: "",
             encKey: "",
             encIV: "",
@@ -967,16 +973,17 @@
                                         >
                                         <div class="flex gap-2">
                                             <select
-                                                class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all w-full"
+                                                class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all w-full disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-900"
                                                 bind:value={
                                                     globalParam.application
                                                 }
                                                 onchange={() =>
                                                     (selectedService = [])}
+                                                disabled={$appStateStore.isPageLocked}
                                             >
                                                 <option
                                                     value=""
-                                                    disabled
+                                                    disabled={true}
                                                     selected
                                                     >Select Application</option
                                                 >
@@ -996,6 +1003,7 @@
                                                     globalParam.application,
                                                 )}
                                                 placeholder="Select Service"
+                                                disabled={$appStateStore.isPageLocked}
                                             />
                                         </div>
                                     {/if}
@@ -1011,8 +1019,9 @@
                                         <input
                                             type="text"
                                             placeholder="Parameter Key"
-                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
+                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-900"
                                             bind:value={globalParam.key}
+                                            disabled={$appStateStore.isPageLocked}
                                         />
                                     </label>
                                     <label class="flex flex-col gap-1 flex-1">
@@ -1023,36 +1032,39 @@
                                         <input
                                             type="text"
                                             placeholder="Parameter Value"
-                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
+                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-900"
                                             bind:value={globalParam.value}
+                                            disabled={$appStateStore.isPageLocked}
                                         />
                                     </label>
-                                    <div
-                                        class="flex items-end w-full md:w-auto gap-2"
-                                    >
-                                        {#if editingGlobalParamId}
-                                            <button
-                                                class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm w-full md:w-auto whitespace-nowrap"
-                                                onclick={cancelGlobalEdit}
-                                                >Cancel</button
-                                            >
-                                        {/if}
-                                        <button
-                                            class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto whitespace-nowrap"
-                                            disabled={!globalParam.application ||
-                                                !globalParam.key ||
-                                                !globalParam.value ||
-                                                (globalParam.application ===
-                                                    "WPAY" &&
-                                                    selectedService.length ===
-                                                        0)}
-                                            onclick={addGlobalParam}
+                                    {#if !$appStateStore.isPageLocked}
+                                        <div
+                                            class="flex items-end w-full md:w-auto gap-2"
                                         >
-                                            {editingGlobalParamId
-                                                ? "Update"
-                                                : "Add"}
-                                        </button>
-                                    </div>
+                                            {#if editingGlobalParamId}
+                                                <button
+                                                    class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm w-full md:w-auto whitespace-nowrap"
+                                                    onclick={cancelGlobalEdit}
+                                                    >Cancel</button
+                                                >
+                                            {/if}
+                                            <button
+                                                class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto whitespace-nowrap"
+                                                disabled={!globalParam.application ||
+                                                    !globalParam.key ||
+                                                    !globalParam.value ||
+                                                    (globalParam.application ===
+                                                        "WPAY" &&
+                                                        selectedService.length ===
+                                                            0)}
+                                                onclick={addGlobalParam}
+                                            >
+                                                {editingGlobalParamId
+                                                    ? "Update"
+                                                    : "Add"}
+                                            </button>
+                                        </div>
+                                    {/if}
                                 </div>
                             </div>
                         </div>
@@ -1162,28 +1174,30 @@
                                                     <div
                                                         class="flex items-center justify-end"
                                                     >
-                                                        <button
-                                                            class="p-1 text-slate-400 hover:text-blue-500 transition-colors mr-1"
-                                                            onclick={() =>
-                                                                editGlobalParameter(
-                                                                    param,
-                                                                )}
-                                                            ><span
-                                                                class="material-symbols-outlined text-[18px]"
-                                                                >edit</span
-                                                            ></button
-                                                        >
-                                                        <button
-                                                            class="p-1 text-slate-400 hover:text-red-500 transition-colors"
-                                                            onclick={() =>
-                                                                settingsStore.removeGlobalParameter(
-                                                                    param.id,
-                                                                )}
-                                                            ><span
-                                                                class="material-symbols-outlined text-[18px]"
-                                                                >delete</span
-                                                            ></button
-                                                        >
+                                                        {#if !$appStateStore.isPageLocked}
+                                                            <button
+                                                                class="p-1 text-slate-400 hover:text-blue-500 transition-colors mr-1"
+                                                                onclick={() =>
+                                                                    editGlobalParameter(
+                                                                        param,
+                                                                    )}
+                                                                ><span
+                                                                    class="material-symbols-outlined text-[18px]"
+                                                                    >edit</span
+                                                                ></button
+                                                            >
+                                                            <button
+                                                                class="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                                                                onclick={() =>
+                                                                    settingsStore.removeGlobalParameter(
+                                                                        param.id,
+                                                                    )}
+                                                                ><span
+                                                                    class="material-symbols-outlined text-[18px]"
+                                                                    >delete</span
+                                                                ></button
+                                                            >
+                                                        {/if}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -1216,10 +1230,11 @@
                                             >Application</span
                                         >
                                         <select
-                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all w-full"
+                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all w-full disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-900"
                                             bind:value={paramOption.application}
                                             onchange={() =>
                                                 (selectedOptionService = [])}
+                                            disabled={$appStateStore.isPageLocked}
                                         >
                                             <option value="" disabled selected
                                                 >Select Application</option
@@ -1248,6 +1263,7 @@
                                                         paramOption.application,
                                                     )}
                                                     placeholder="Select Service"
+                                                    disabled={$appStateStore.isPageLocked}
                                                 />
                                             </div>
                                         </div>
@@ -1262,8 +1278,9 @@
                                     <input
                                         type="text"
                                         placeholder="e.g. payMethod"
-                                        class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
+                                        class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-900"
                                         bind:value={paramOption.name}
+                                        disabled={$appStateStore.isPageLocked}
                                     />
                                 </label>
                                 <div
@@ -1273,34 +1290,38 @@
                                         <input
                                             type="text"
                                             placeholder="Code"
-                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all flex-1"
+                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all flex-1 disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-900"
                                             bind:value={paramOption.code}
+                                            disabled={$appStateStore.isPageLocked}
                                         />
                                         <input
                                             type="text"
                                             placeholder="Value"
-                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all flex-1"
+                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all flex-1 disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-900"
                                             bind:value={paramOption.value}
+                                            disabled={$appStateStore.isPageLocked}
                                         />
-                                        <button
-                                            class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-200 dark:border-slate-600 min-w-[100px]"
-                                            onclick={addOptionToCurrent}
-                                        >
-                                            {editingOptionIndex !== null
-                                                ? "Update"
-                                                : "Add Value"}
-                                        </button>
-                                        {#if editingOptionIndex !== null}
+                                        {#if !$appStateStore.isPageLocked}
                                             <button
-                                                class="bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-red-500 dark:text-slate-400 px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-200 dark:border-slate-600"
-                                                onclick={cancelOptionValueEdit}
-                                                title="Cancel Edit"
+                                                class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-200 dark:border-slate-600 min-w-[100px]"
+                                                onclick={addOptionToCurrent}
                                             >
-                                                <span
-                                                    class="material-symbols-outlined text-[18px]"
-                                                    >close</span
-                                                >
+                                                {editingOptionIndex !== null
+                                                    ? "Update"
+                                                    : "Add Value"}
                                             </button>
+                                            {#if editingOptionIndex !== null}
+                                                <button
+                                                    class="bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-red-500 dark:text-slate-400 px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-200 dark:border-slate-600"
+                                                    onclick={cancelOptionValueEdit}
+                                                    title="Cancel Edit"
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined text-[18px]"
+                                                        >close</span
+                                                    >
+                                                </button>
+                                            {/if}
                                         {/if}
                                     </div>
                                     <div class="flex flex-wrap gap-2">
@@ -1317,38 +1338,13 @@
                                                 <span class="font-bold"
                                                     >{opt.code}</span
                                                 >: {opt.value}
-                                                <span
-                                                    role="button"
-                                                    tabindex="0"
-                                                    aria-label="Remove option"
-                                                    class="ml-1 hover:text-red-500 p-0.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors flex items-center justify-center outline-none focus:ring-2 focus:ring-red-500/50"
-                                                    onclick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (
-                                                            editingOptionIndex ===
-                                                            i
-                                                        ) {
-                                                            cancelOptionValueEdit();
-                                                        } else if (
-                                                            editingOptionIndex !==
-                                                                null &&
-                                                            i <
-                                                                editingOptionIndex
-                                                        ) {
-                                                            editingOptionIndex--;
-                                                        }
-                                                        currentOptions =
-                                                            currentOptions.filter(
-                                                                (_, idx) =>
-                                                                    idx !== i,
-                                                            );
-                                                    }}
-                                                    onkeydown={(e) => {
-                                                        if (
-                                                            e.key === "Enter" ||
-                                                            e.key === " "
-                                                        ) {
-                                                            e.preventDefault();
+                                                {#if !$appStateStore.isPageLocked}
+                                                    <span
+                                                        role="button"
+                                                        tabindex="0"
+                                                        aria-label="Remove option"
+                                                        class="ml-1 hover:text-red-500 p-0.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors flex items-center justify-center outline-none focus:ring-2 focus:ring-red-500/50"
+                                                        onclick={(e) => {
                                                             e.stopPropagation();
                                                             if (
                                                                 editingOptionIndex ===
@@ -1369,36 +1365,70 @@
                                                                         idx !==
                                                                         i,
                                                                 );
-                                                        }
-                                                    }}>×</span
-                                                >
+                                                        }}
+                                                        onkeydown={(e) => {
+                                                            if (
+                                                                e.key ===
+                                                                    "Enter" ||
+                                                                e.key === " "
+                                                            ) {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                if (
+                                                                    editingOptionIndex ===
+                                                                    i
+                                                                ) {
+                                                                    cancelOptionValueEdit();
+                                                                } else if (
+                                                                    editingOptionIndex !==
+                                                                        null &&
+                                                                    i <
+                                                                        editingOptionIndex
+                                                                ) {
+                                                                    editingOptionIndex--;
+                                                                }
+                                                                currentOptions =
+                                                                    currentOptions.filter(
+                                                                        (
+                                                                            _,
+                                                                            idx,
+                                                                        ) =>
+                                                                            idx !==
+                                                                            i,
+                                                                    );
+                                                            }
+                                                        }}>×</span
+                                                    >
+                                                {/if}
                                             </button>
                                         {/each}
                                     </div>
                                 </div>
-                                <div class="flex justify-end gap-2">
-                                    {#if editingId}
+                                {#if !$appStateStore.isPageLocked}
+                                    <div class="flex justify-end gap-2">
+                                        {#if editingId}
+                                            <button
+                                                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                                onclick={cancelEdit}
+                                            >
+                                                Cancel
+                                            </button>
+                                        {/if}
                                         <button
-                                            class="px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                                            onclick={cancelEdit}
+                                            class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                            disabled={!paramOption.application ||
+                                                !paramOption.name ||
+                                                currentOptions.length === 0 ||
+                                                (paramOption.application ===
+                                                    "WPAY" &&
+                                                    !selectedOptionService)}
+                                            onclick={saveParameterOption}
+                                            >{editingId
+                                                ? "Update Option Set"
+                                                : "Save Option Set"}</button
                                         >
-                                            Cancel
-                                        </button>
-                                    {/if}
-                                    <button
-                                        class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                        disabled={!paramOption.application ||
-                                            !paramOption.name ||
-                                            currentOptions.length === 0 ||
-                                            (paramOption.application ===
-                                                "WPAY" &&
-                                                !selectedOptionService)}
-                                        onclick={saveParameterOption}
-                                        >{editingId
-                                            ? "Update Option Set"
-                                            : "Save Option Set"}</button
-                                    >
-                                </div>
+                                    </div>
+                                {/if}
                             </div>
                         </div>
 
@@ -1452,33 +1482,37 @@
                                                 {opt.name}
                                             </h4>
                                         </div>
-                                        <div
-                                            class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            <button
-                                                class="p-1 text-slate-400 hover:text-blue-500 transition-colors"
-                                                onclick={() =>
-                                                    editParameterOption(opt)}
-                                                title="Edit"
+                                        {#if !$appStateStore.isPageLocked}
+                                            <div
+                                                class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
                                             >
-                                                <span
-                                                    class="material-symbols-outlined text-[18px]"
-                                                    >edit</span
+                                                <button
+                                                    class="p-1 text-slate-400 hover:text-blue-500 transition-colors"
+                                                    onclick={() =>
+                                                        editParameterOption(
+                                                            opt,
+                                                        )}
+                                                    title="Edit"
                                                 >
-                                            </button>
-                                            <button
-                                                class="p-1 text-slate-400 hover:text-red-500 transition-colors"
-                                                onclick={() =>
-                                                    settingsStore.removeParameterOption(
-                                                        opt.id,
-                                                    )}
-                                                title="Delete"
-                                                ><span
-                                                    class="material-symbols-outlined text-[18px]"
-                                                    >delete</span
-                                                ></button
-                                            >
-                                        </div>
+                                                    <span
+                                                        class="material-symbols-outlined text-[18px]"
+                                                        >edit</span
+                                                    >
+                                                </button>
+                                                <button
+                                                    class="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                                                    onclick={() =>
+                                                        settingsStore.removeParameterOption(
+                                                            opt.id,
+                                                        )}
+                                                    title="Delete"
+                                                    ><span
+                                                        class="material-symbols-outlined text-[18px]"
+                                                        >delete</span
+                                                    ></button
+                                                >
+                                            </div>
+                                        {/if}
                                     </div>
                                     <div class="space-y-1">
                                         {#each opt.options as val}
@@ -1521,10 +1555,11 @@
                                             >Application</span
                                         >
                                         <select
-                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all w-full"
+                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all w-full disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-900"
                                             bind:value={midContext.application}
                                             onchange={() =>
                                                 (selectedMidService = [])}
+                                            disabled={$appStateStore.isPageLocked}
                                         >
                                             <option value="" disabled selected
                                                 >Select Application</option
@@ -1549,15 +1584,29 @@
                                                     bind:value={
                                                         selectedMidService
                                                     }
-                                                    options={[
-                                                        ...SERVICE_OPTIONS,
-                                                    ]}
+                                                    options={getServicesForApp(
+                                                        midContext.application,
+                                                    )}
                                                     placeholder="Select Service"
+                                                    disabled={$appStateStore.isPageLocked}
                                                 />
                                             </div>
                                         </div>
                                     {/if}
                                 </div>
+                                <label class="flex flex-col gap-1">
+                                    <span
+                                        class="text-xs font-semibold text-slate-500 uppercase"
+                                        >Description</span
+                                    >
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Test Merchant"
+                                        class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-900"
+                                        bind:value={midContext.name}
+                                        disabled={$appStateStore.isPageLocked}
+                                    />
+                                </label>
                                 <div
                                     class="grid grid-cols-1 md:grid-cols-2 gap-4"
                                 >
@@ -1567,8 +1616,9 @@
                                             >MID</span
                                         ><input
                                             type="text"
-                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-mono"
+                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-mono disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-900"
                                             bind:value={midContext.mid}
+                                            disabled={$appStateStore.isPageLocked}
                                         />
                                     </label>
                                     <label class="flex flex-col gap-1">
@@ -1577,8 +1627,9 @@
                                             >Hash Key</span
                                         ><input
                                             type="text"
-                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-mono"
+                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-mono disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-900"
                                             bind:value={midContext.hashKey}
+                                            disabled={$appStateStore.isPageLocked}
                                         />
                                     </label>
                                 </div>
@@ -1591,8 +1642,9 @@
                                             >Enc Key</span
                                         ><input
                                             type="text"
-                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-mono"
+                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-mono disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-900"
                                             bind:value={midContext.encKey}
+                                            disabled={$appStateStore.isPageLocked}
                                         />
                                     </label>
                                     <label class="flex flex-col gap-1">
@@ -1601,33 +1653,37 @@
                                             >Enc IV</span
                                         ><input
                                             type="text"
-                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-mono"
+                                            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-mono disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-900"
                                             bind:value={midContext.encIV}
+                                            disabled={$appStateStore.isPageLocked}
                                         />
                                     </label>
                                 </div>
-                                <div class="flex justify-end gap-2">
-                                    {#if editingMidId}
+                                {#if !$appStateStore.isPageLocked}
+                                    <div class="flex justify-end gap-2">
+                                        {#if editingMidId}
+                                            <button
+                                                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                                onclick={cancelMidEdit}
+                                            >
+                                                Cancel
+                                            </button>
+                                        {/if}
                                         <button
-                                            class="px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                                            onclick={cancelMidEdit}
+                                            class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                            onclick={addMidContext}
+                                            disabled={!midContext.application ||
+                                                !midContext.name ||
+                                                !midContext.mid ||
+                                                (midContext.application ===
+                                                    "WPAY" &&
+                                                    !selectedMidService)}
+                                            >{editingMidId
+                                                ? "Update Context"
+                                                : "Add Context"}</button
                                         >
-                                            Cancel
-                                        </button>
-                                    {/if}
-                                    <button
-                                        class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                        onclick={addMidContext}
-                                        disabled={!midContext.application ||
-                                            !midContext.mid ||
-                                            (midContext.application ===
-                                                "WPAY" &&
-                                                !selectedMidService)}
-                                        >{editingMidId
-                                            ? "Update Context"
-                                            : "Add Context"}</button
-                                    >
-                                </div>
+                                    </div>
+                                {/if}
                             </div>
                         </div>
 
@@ -1738,33 +1794,38 @@
                                                 </div>
                                             </td>
                                             <td class="px-6 py-4 text-right">
-                                                <div
-                                                    class="flex justify-end gap-1"
-                                                >
-                                                    <button
-                                                        class="p-1 text-slate-400 hover:text-blue-500 transition-colors"
-                                                        onclick={() =>
-                                                            editMidContext(ctx)}
-                                                        title="Edit"
+                                                {#if !$appStateStore.isPageLocked}
+                                                    <div
+                                                        class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
                                                     >
-                                                        <span
-                                                            class="material-symbols-outlined text-[18px]"
-                                                            >edit</span
+                                                        <button
+                                                            class="p-1 text-slate-400 hover:text-blue-500 transition-colors"
+                                                            onclick={() =>
+                                                                editMidContext(
+                                                                    ctx,
+                                                                )}
+                                                            title="Edit"
                                                         >
-                                                    </button>
-                                                    <button
-                                                        class="p-1 text-slate-400 hover:text-red-500 transition-colors"
-                                                        onclick={() =>
-                                                            settingsStore.removeMidContext(
-                                                                ctx.id,
-                                                            )}
-                                                    >
-                                                        <span
-                                                            class="material-symbols-outlined text-[18px]"
-                                                            >delete</span
+                                                            <span
+                                                                class="material-symbols-outlined text-[18px]"
+                                                                >edit</span
+                                                            >
+                                                        </button>
+                                                        <button
+                                                            class="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                                                            onclick={() =>
+                                                                settingsStore.removeMidContext(
+                                                                    ctx.id,
+                                                                )}
+                                                            title="Delete"
                                                         >
-                                                    </button>
-                                                </div>
+                                                            <span
+                                                                class="material-symbols-outlined text-[18px]"
+                                                                >delete</span
+                                                            >
+                                                        </button>
+                                                    </div>
+                                                {/if}
                                             </td>
                                         </tr>
                                     {/each}
@@ -1829,6 +1890,7 @@
                                                         key,
                                                         e.currentTarget.checked,
                                                     )}
+                                                disabled={$appStateStore.isPageLocked}
                                             />
                                             <div
                                                 class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
@@ -1888,6 +1950,7 @@
                                                         key,
                                                         e.currentTarget.checked,
                                                     )}
+                                                disabled={$appStateStore.isPageLocked}
                                             />
                                             <div
                                                 class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
@@ -1960,6 +2023,7 @@
                                             list="app-suggestions"
                                             class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-medium"
                                             bind:value={appForm.appName}
+                                            disabled={$appStateStore.isPageLocked}
                                         />
                                         <datalist id="app-suggestions">
                                             {#each APP_SUGGESTIONS as opt}
@@ -1979,6 +2043,7 @@
                                             placeholder="Brief description"
                                             class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
                                             bind:value={appForm.description}
+                                            disabled={$appStateStore.isPageLocked}
                                         />
                                     </label>
                                 </div>
@@ -1994,6 +2059,7 @@
                                             bind:checked={
                                                 appForm.useServiceDistinction
                                             }
+                                            disabled={$appStateStore.isPageLocked}
                                         />
                                         <div
                                             class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
@@ -2017,16 +2083,18 @@
                                             >
                                                 Services List
                                             </h4>
-                                            <button
-                                                class="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-                                                onclick={addAppService}
-                                            >
-                                                <span
-                                                    class="material-symbols-outlined text-[16px]"
-                                                    >add_circle</span
+                                            {#if !$appStateStore.isPageLocked}
+                                                <button
+                                                    class="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                                                    onclick={addAppService}
                                                 >
-                                                Add Service
-                                            </button>
+                                                    <span
+                                                        class="material-symbols-outlined text-[16px]"
+                                                        >add_circle</span
+                                                    >
+                                                    Add Service
+                                                </button>
+                                            {/if}
                                         </div>
 
                                         {#if appForm.services.length === 0}
@@ -2048,19 +2116,21 @@
                                             <div
                                                 class="bg-white dark:bg-card-dark p-4 rounded-lg border border-slate-200 dark:border-slate-700 relative group"
                                             >
-                                                <button
-                                                    class="absolute top-2 right-2 text-slate-400 hover:text-red-500 transition-colors"
-                                                    onclick={() =>
-                                                        removeAppService(
-                                                            service.id,
-                                                        )}
-                                                    tabindex="-1"
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-[18px]"
-                                                        >close</span
+                                                {#if !$appStateStore.isPageLocked}
+                                                    <button
+                                                        class="absolute top-2 right-2 text-slate-400 hover:text-red-500 transition-colors"
+                                                        onclick={() =>
+                                                            removeAppService(
+                                                                service.id,
+                                                            )}
+                                                        tabindex="-1"
                                                     >
-                                                </button>
+                                                        <span
+                                                            class="material-symbols-outlined text-[18px]"
+                                                            >close</span
+                                                        >
+                                                    </button>
+                                                {/if}
 
                                                 <div class="mb-3 w-1/3">
                                                     <label
@@ -2075,8 +2145,9 @@
                                                             service.name
                                                         }
                                                         placeholder="e.g. wpaystd"
-                                                        class="w-full px-2 py-1.5 text-sm border border-slate-300 dark:border-slate-700 rounded bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:outline-none focus:border-primary"
+                                                        class="w-full px-2 py-1.5 text-sm border border-slate-300 dark:border-slate-700 rounded bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:outline-none focus:border-primary disabled:opacity-50"
                                                         autofocus
+                                                        disabled={$appStateStore.isPageLocked}
                                                     />
                                                 </div>
 
@@ -2100,6 +2171,7 @@
                                                                         service.domains as any
                                                                     )[domainKey]
                                                                 }
+                                                                disabled={$appStateStore.isPageLocked}
                                                             />
                                                         </div>
                                                     {/each}
@@ -2127,32 +2199,35 @@
                                                             appForm.domains as any
                                                         )[domainKey]
                                                     }
+                                                    disabled={$appStateStore.isPageLocked}
                                                 />
                                             </div>
                                         {/each}
                                     </div>
                                 {/if}
 
-                                <div
-                                    class="flex items-center justify-end gap-2 mt-2"
-                                >
-                                    {#if editingAppId}
-                                        <button
-                                            class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
-                                            onclick={cancelAppEdit}
-                                            >Cancel</button
-                                        >
-                                    {/if}
-                                    <button
-                                        class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                        onclick={saveApplication}
-                                        disabled={!appForm.appName}
+                                {#if !$appStateStore.isPageLocked}
+                                    <div
+                                        class="flex items-center justify-end gap-2 mt-2"
                                     >
-                                        {editingAppId
-                                            ? "Update App"
-                                            : "Add App"}
-                                    </button>
-                                </div>
+                                        {#if editingAppId}
+                                            <button
+                                                class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
+                                                onclick={cancelAppEdit}
+                                                >Cancel</button
+                                            >
+                                        {/if}
+                                        <button
+                                            class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                            onclick={saveApplication}
+                                            disabled={!appForm.appName}
+                                        >
+                                            {editingAppId
+                                                ? "Update App"
+                                                : "Add App"}
+                                        </button>
+                                    </div>
+                                {/if}
                             </div>
                         </div>
 
@@ -2265,34 +2340,36 @@
                                                 <td
                                                     class="px-6 py-4 text-right"
                                                 >
-                                                    <div
-                                                        class="flex justify-end gap-1"
-                                                    >
-                                                        <button
-                                                            class="p-1 text-slate-400 hover:text-blue-500 transition-colors"
-                                                            onclick={() =>
-                                                                editApplication(
-                                                                    app,
-                                                                )}
+                                                    {#if !$appStateStore.isPageLocked}
+                                                        <div
+                                                            class="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
                                                         >
-                                                            <span
-                                                                class="material-symbols-outlined text-[18px]"
-                                                                >edit</span
+                                                            <button
+                                                                class="p-1 text-slate-400 hover:text-blue-500 transition-colors"
+                                                                onclick={() =>
+                                                                    editApplication(
+                                                                        app,
+                                                                    )}
                                                             >
-                                                        </button>
-                                                        <button
-                                                            class="p-1 text-slate-400 hover:text-red-500 transition-colors"
-                                                            onclick={() =>
-                                                                deleteApplication(
-                                                                    app.id,
-                                                                )}
-                                                        >
-                                                            <span
-                                                                class="material-symbols-outlined text-[18px]"
-                                                                >delete</span
+                                                                <span
+                                                                    class="material-symbols-outlined text-[18px]"
+                                                                    >edit</span
+                                                                >
+                                                            </button>
+                                                            <button
+                                                                class="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                                                                onclick={() =>
+                                                                    deleteApplication(
+                                                                        app.id,
+                                                                    )}
                                                             >
-                                                        </button>
-                                                    </div>
+                                                                <span
+                                                                    class="material-symbols-outlined text-[18px]"
+                                                                    >delete</span
+                                                                >
+                                                            </button>
+                                                        </div>
+                                                    {/if}
                                                 </td>
                                             </tr>
                                         {/each}

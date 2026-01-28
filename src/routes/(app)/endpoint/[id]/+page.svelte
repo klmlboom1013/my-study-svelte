@@ -6,6 +6,7 @@
     import type { Endpoint } from "$lib/types/endpoint";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import DataDefinitionTable from "$lib/components/endpoint/DataDefinitionTable.svelte";
+    import { appStateStore } from "$lib/stores/appStateStore";
 
     let endpointId = $state("");
     let endpoint = $state<Endpoint | null>(null);
@@ -66,26 +67,28 @@
                     {endpoint.description || "No description provided."}
                 </p>
             </div>
-            <div class="hidden md:flex gap-2 w-full md:w-auto">
-                <button
-                    onclick={() => goto(`/endpoint/${endpointId}/edit`)}
-                    class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium shadow-sm shadow-primary/20"
-                >
-                    <span class="material-symbols-outlined text-[20px]"
-                        >edit</span
+            {#if !$appStateStore.isPageLocked}
+                <div class="hidden md:flex gap-2 w-full md:w-auto">
+                    <button
+                        onclick={() => goto(`/endpoint/${endpointId}/edit`)}
+                        class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium shadow-sm shadow-primary/20"
                     >
-                    Edit
-                </button>
-                <button
-                    onclick={handleDelete}
-                    class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-card-dark text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium"
-                >
-                    <span class="material-symbols-outlined text-[20px]"
-                        >delete</span
+                        <span class="material-symbols-outlined text-[20px]"
+                            >edit</span
+                        >
+                        Edit
+                    </button>
+                    <button
+                        onclick={handleDelete}
+                        class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-card-dark text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium"
                     >
-                    Delete
-                </button>
-            </div>
+                        <span class="material-symbols-outlined text-[20px]"
+                            >delete</span
+                        >
+                        Delete
+                    </button>
+                </div>
+            {/if}
         </div>
 
         <div

@@ -18,6 +18,7 @@
     import DataDefinitionTable from "$lib/components/endpoint/DataDefinitionTable.svelte";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import DropdownInput from "$lib/components/ui/DropdownInput.svelte";
+    import { appStateStore } from "$lib/stores/appStateStore";
 
     interface Props {
         data: {
@@ -249,6 +250,7 @@
                                 bind:value={selectedApplication}
                                 options={applicationOptions}
                                 placeholder="Select Application"
+                                disabled={$appStateStore.isPageLocked}
                             />
                         </div>
                         <div class="flex flex-col gap-2">
@@ -265,6 +267,7 @@
                                 bind:value={name}
                                 placeholder="e.g. Member Registration"
                                 class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-background-dark/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
+                                disabled={$appStateStore.isPageLocked}
                             />
                         </div>
 
@@ -282,6 +285,7 @@
                                             bind:value={selectedService}
                                             options={["wpaystd2"]}
                                             placeholder="Service"
+                                            disabled={$appStateStore.isPageLocked}
                                         />
                                     </div>
                                     <div class="flex-1">
@@ -289,7 +293,9 @@
                                             bind:value={selectedSite}
                                             options={siteOptions}
                                             placeholder="Site"
-                                            disabled={siteOptions.length === 0}
+                                            disabled={siteOptions.length ===
+                                                0 ||
+                                                $appStateStore.isPageLocked}
                                         />
                                     </div>
                                 </div>
@@ -310,6 +316,7 @@
                                 rows="2"
                                 placeholder="Briefly describe what this endpoint does..."
                                 class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-background-dark/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none resize-none"
+                                disabled={$appStateStore.isPageLocked}
                             ></textarea>
                         </div>
                     </div>
@@ -351,6 +358,7 @@
                                 <select
                                     bind:value={method}
                                     class="w-32 px-4 py-2.5 rounded-l-lg border border-slate-200 dark:border-border-dark bg-slate-100 dark:bg-background-dark text-slate-900 dark:text-white font-bold focus:z-10 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none appearance-none cursor-pointer text-center"
+                                    disabled={$appStateStore.isPageLocked}
                                 >
                                     <option value="GET">GET</option>
                                     <option value="POST">POST</option>
@@ -363,6 +371,7 @@
                                     bind:value={uri}
                                     placeholder="/v1/api/..."
                                     class="flex-1 px-4 py-2.5 rounded-r-lg border-y border-r border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-background-dark/50 text-slate-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
+                                    disabled={$appStateStore.isPageLocked}
                                 />
                             </div>
                         </div>
@@ -384,8 +393,10 @@
                                                 ? 'bg-white dark:bg-border-dark text-primary shadow-sm'
                                                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}"
                                             onclick={() =>
+                                                !$appStateStore.isPageLocked &&
                                                 (requestType =
                                                     type as RequestType)}
+                                            disabled={$appStateStore.isPageLocked}
                                         >
                                             {type}
                                         </button>
@@ -423,6 +434,7 @@
                                                         "text/plain",
                                                     ]}
                                                     placeholder="Content-Type"
+                                                    disabled={$appStateStore.isPageLocked}
                                                 />
                                             </div>
                                             <div class="w-40">
@@ -434,6 +446,7 @@
                                                         "ISO-8859-1",
                                                     ]}
                                                     placeholder="Charset"
+                                                    disabled={$appStateStore.isPageLocked}
                                                 />
                                             </div>
                                         </div>
@@ -453,35 +466,41 @@
                                                     placeholder="Key"
                                                     bind:value={header.key}
                                                     class="flex-1 px-4 py-2 rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
+                                                    disabled={$appStateStore.isPageLocked}
                                                 />
                                                 <input
                                                     type="text"
                                                     placeholder="Value"
                                                     bind:value={header.value}
                                                     class="flex-1 px-4 py-2 rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
+                                                    disabled={$appStateStore.isPageLocked}
                                                 />
-                                                <button
-                                                    onclick={() =>
-                                                        removeHeader(i)}
-                                                    class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                                                    title="Remove Header"
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-[20px]"
-                                                        >delete</span
+                                                {#if !$appStateStore.isPageLocked}
+                                                    <button
+                                                        onclick={() =>
+                                                            removeHeader(i)}
+                                                        class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                                        title="Remove Header"
                                                     >
-                                                </button>
+                                                        <span
+                                                            class="material-symbols-outlined text-[20px]"
+                                                            >delete</span
+                                                        >
+                                                    </button>
+                                                {/if}
                                             </div>
                                         {/each}
-                                        <button
-                                            onclick={addHeader}
-                                            class="self-start px-3 py-1.5 text-xs font-bold text-primary hover:text-primary/80 hover:bg-primary/5 rounded-lg transition-colors flex items-center gap-1"
-                                        >
-                                            <span
-                                                class="material-symbols-outlined text-[16px]"
-                                                >add</span
-                                            > Add Custom Header
-                                        </button>
+                                        {#if !$appStateStore.isPageLocked}
+                                            <button
+                                                onclick={addHeader}
+                                                class="self-start px-3 py-1.5 text-xs font-bold text-primary hover:text-primary/80 hover:bg-primary/5 rounded-lg transition-colors flex items-center gap-1"
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-[16px]"
+                                                    >add</span
+                                                > Add Custom Header
+                                            </button>
+                                        {/if}
                                     </div>
                                 </div>
                             {/if}
@@ -501,6 +520,7 @@
                     <select
                         bind:value={signatureMethod}
                         class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-background-dark/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none appearance-none cursor-pointer"
+                        disabled={$appStateStore.isPageLocked}
                     >
                         <option value="">선택</option>
                         <option value="HMAC_SHA256_KV"
@@ -543,17 +563,20 @@
                         <DataDefinitionTable
                             bind:data={requestData}
                             dataType="Request"
+                            isReadOnly={$appStateStore.isPageLocked}
                         >
                             {#snippet extraActions()}
-                                <button
-                                    onclick={() => (isJsonModalOpen = true)}
-                                    class="px-3 py-1.5 text-xs font-bold text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-500 dark:hover:text-green-400 dark:hover:bg-green-900/20 rounded-lg transition-colors flex items-center gap-1"
-                                >
-                                    <span
-                                        class="material-symbols-outlined text-[16px]"
-                                        >data_object</span
-                                    > JSON
-                                </button>
+                                {#if !$appStateStore.isPageLocked}
+                                    <button
+                                        onclick={() => (isJsonModalOpen = true)}
+                                        class="px-3 py-1.5 text-xs font-bold text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-500 dark:hover:text-green-400 dark:hover:bg-green-900/20 rounded-lg transition-colors flex items-center gap-1"
+                                    >
+                                        <span
+                                            class="material-symbols-outlined text-[16px]"
+                                            >data_object</span
+                                        > JSON
+                                    </button>
+                                {/if}
                             {/snippet}
                         </DataDefinitionTable>
                     </div>
@@ -592,18 +615,21 @@
                         <DataDefinitionTable
                             bind:data={responseData}
                             dataType="Response"
+                            isReadOnly={$appStateStore.isPageLocked}
                         >
                             {#snippet extraActions()}
-                                <button
-                                    onclick={() =>
-                                        (isResponseJsonModalOpen = true)}
-                                    class="px-3 py-1.5 text-xs font-bold text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-500 dark:hover:text-green-400 dark:hover:bg-green-900/20 rounded-lg transition-colors flex items-center gap-1"
-                                >
-                                    <span
-                                        class="material-symbols-outlined text-[16px]"
-                                        >data_object</span
-                                    > JSON
-                                </button>
+                                {#if !$appStateStore.isPageLocked}
+                                    <button
+                                        onclick={() =>
+                                            (isResponseJsonModalOpen = true)}
+                                        class="px-3 py-1.5 text-xs font-bold text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-500 dark:hover:text-green-400 dark:hover:bg-green-900/20 rounded-lg transition-colors flex items-center gap-1"
+                                    >
+                                        <span
+                                            class="material-symbols-outlined text-[16px]"
+                                            >data_object</span
+                                        > JSON
+                                    </button>
+                                {/if}
                             {/snippet}
                         </DataDefinitionTable>
                     </div>
@@ -627,7 +653,7 @@
                 </button>
                 <button
                     onclick={handleSave}
-                    disabled={!name || !uri}
+                    disabled={!name || !uri || $appStateStore.isPageLocked}
                     class="px-5 py-2.5 rounded-lg text-sm font-bold text-white bg-primary hover:bg-primary/90 shadow-md shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
                 >
                     Update Endpoint

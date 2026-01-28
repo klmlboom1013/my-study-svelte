@@ -15,6 +15,7 @@
     import { get } from "svelte/store";
 
     import { settingsStore } from "$lib/stores/settingsStore";
+    import { appStateStore } from "$lib/stores/appStateStore";
 
     let endpoints = $state<Endpoint[]>([]);
     let searchTerm = $state("");
@@ -359,7 +360,8 @@
             {#if !isReadOnly}
                 <button
                     onclick={handleDriveBackup}
-                    disabled={syncState !== "idle"}
+                    disabled={syncState !== "idle" ||
+                        $appStateStore.isPageLocked}
                     class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors"
                 >
                     {#if syncState === "backup"}
@@ -377,7 +379,8 @@
                 </button>
                 <button
                     onclick={handleDriveRestore}
-                    disabled={syncState !== "idle"}
+                    disabled={syncState !== "idle" ||
+                        $appStateStore.isPageLocked}
                     class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors"
                 >
                     {#if syncState === "restore"}
@@ -412,7 +415,7 @@
                 <!-- Desktop Buttons -->
                 <div class="hidden md:flex items-center gap-2">
                     {@render syncButtons()}
-                    {#if !isReadOnly}
+                    {#if !isReadOnly && !$appStateStore.isPageLocked}
                         <button
                             onclick={() => goto("/endpoint/new")}
                             class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all shrink-0"
@@ -576,7 +579,7 @@
                                                     >play_arrow</span
                                                 >
                                             </button>
-                                            {#if !isReadOnly}
+                                            {#if !isReadOnly && !$appStateStore.isPageLocked}
                                                 <button
                                                     onclick={() =>
                                                         handleDelete(
@@ -689,7 +692,7 @@
                                 <span class="material-symbols-outlined text-[18px]">edit</span>
                             </button>
                             -->
-                            {#if !isReadOnly}
+                            {#if !isReadOnly && !$appStateStore.isPageLocked}
                                 <button
                                     onclick={() => handleDelete(endpoint.id)}
                                     class="p-1 text-slate-400 hover:text-red-500 transition-colors"

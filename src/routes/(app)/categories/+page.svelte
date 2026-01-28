@@ -233,7 +233,7 @@
         {#snippet buttons(mobile = false)}
             <button
                 onclick={handleDriveBackup}
-                disabled={syncState !== "idle"}
+                disabled={syncState !== "idle" || $appStateStore.isPageLocked}
                 class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors"
             >
                 {#if syncState === "backup"}
@@ -251,7 +251,7 @@
             </button>
             <button
                 onclick={handleDriveRestore}
-                disabled={syncState !== "idle"}
+                disabled={syncState !== "idle" || $appStateStore.isPageLocked}
                 class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors"
             >
                 {#if syncState === "restore"}
@@ -268,15 +268,17 @@
                 {/if}
             </button>
             {#if !mobile}
-                <button
-                    onclick={() => (isCreateModalOpen = true)}
-                    class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all shrink-0"
-                >
-                    <span class="material-symbols-outlined text-[18px]"
-                        >add</span
+                {#if !$appStateStore.isPageLocked}
+                    <button
+                        onclick={() => (isCreateModalOpen = true)}
+                        class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all shrink-0"
                     >
-                    <span>New Category</span>
-                </button>
+                        <span class="material-symbols-outlined text-[18px]"
+                            >add</span
+                        >
+                        <span>New Category</span>
+                    </button>
+                {/if}
             {/if}
         {/snippet}
 
@@ -362,26 +364,28 @@
                                     >play_arrow</span
                                 >
                             </button>
-                            <button
-                                onclick={() => openEditModal(cat)}
-                                class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
-                                title="Edit"
-                            >
-                                <span
-                                    class="material-symbols-outlined text-[18px]"
-                                    >edit</span
+                            {#if !$appStateStore.isPageLocked}
+                                <button
+                                    onclick={() => openEditModal(cat)}
+                                    class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
+                                    title="Edit"
                                 >
-                            </button>
-                            <button
-                                class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
-                                title="Delete"
-                                onclick={() => handleDelete(cat.id)}
-                            >
-                                <span
-                                    class="material-symbols-outlined text-[18px]"
-                                    >delete</span
+                                    <span
+                                        class="material-symbols-outlined text-[18px]"
+                                        >edit</span
+                                    >
+                                </button>
+                                <button
+                                    class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
+                                    title="Delete"
+                                    onclick={() => handleDelete(cat.id)}
                                 >
-                            </button>
+                                    <span
+                                        class="material-symbols-outlined text-[18px]"
+                                        >delete</span
+                                    >
+                                </button>
+                            {/if}
                         </div>
                     </div>
 
