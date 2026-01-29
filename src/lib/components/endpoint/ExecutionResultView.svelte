@@ -6,19 +6,21 @@
         CheckCircle,
         XCircle,
         LockOpen,
+        Play,
     } from "lucide-svelte";
-    import { fade } from "svelte/transition";
+    import { fade, scale } from "svelte/transition";
 
     let {
-        signatureRawString,
-        jsonResult,
-        responseResult,
-        responseStatus,
-        executionStage,
-        responseValidationSuccess,
-        responseSignatureRawString,
-        responseCalculatedSignature,
+        signatureRawString = undefined,
+        jsonResult = undefined,
+        responseResult = undefined,
+        responseStatus = undefined,
+        executionStage = undefined,
+        responseValidationSuccess = null,
+        responseSignatureRawString = undefined,
+        responseCalculatedSignature = undefined,
         responseDecryptedData = [],
+        onExecute = undefined, // New prop for FAB
     } = $props();
 
     let copiedSection = $state<string | null>(null);
@@ -83,8 +85,26 @@
                 {/if}
             </button>
         </div>
-        <pre
-            class="p-4 bg-slate-900 text-slate-50 overflow-x-auto text-sm font-mono scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">{jsonResult}</pre>
+        <div class="relative group/params">
+            <pre
+                class="p-4 bg-slate-900 text-slate-50 overflow-x-auto text-sm font-mono scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent min-h-[60px] whitespace-pre-wrap break-all">{jsonResult}</pre>
+
+            {#if onExecute}
+                <div class="absolute bottom-4 right-4" transition:scale>
+                    <button
+                        onclick={onExecute}
+                        class="h-10 w-10 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/40 flex items-center justify-center transition-all hover:scale-110 active:scale-95 group/fab"
+                        title="Execute this step"
+                    >
+                        <Play
+                            size={18}
+                            fill="currentColor"
+                            class="ml-0.5 group-hover/fab:animate-pulse"
+                        />
+                    </button>
+                </div>
+            {/if}
+        </div>
     </div>
 {/if}
 

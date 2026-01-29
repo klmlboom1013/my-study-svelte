@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { onMount } from "svelte";
     import { page } from "$app/stores";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
 
@@ -8,6 +9,35 @@
     // Merge data from GET or POST
     $: resultData = form?.data || data?.data || {};
     $: method = form?.method || data?.method || "UNKNOWN";
+
+    onMount(() => {
+        // Send result to parent window via BroadcastChannel
+        const bc = new BroadcastChannel("wpay_channel");
+
+        // Ensure resultData is not empty or handle specific success conditions if needed
+        if (Object.keys(resultData).length > 0) {
+            bc.postMessage({
+                type: "WPAY_RESULT",
+                data: resultData,
+            });
+
+            // Fallback for window.opener (if BroadcastChannel is not supported or for wider compatibility)
+            if (window.opener) {
+                window.opener.postMessage(
+                    {
+                        type: "WPAY_RESULT",
+                        data: resultData,
+                    },
+                    "*",
+                );
+            }
+
+            // Close the popup after a short delay to ensure message is sent
+            setTimeout(() => {
+                window.close();
+            }, 300);
+        }
+    });
 </script>
 
 <div class="max-w-screen-2xl mx-auto py-8 px-4">

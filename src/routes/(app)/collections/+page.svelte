@@ -165,19 +165,6 @@
 
     <div class="mb-6">
         {#snippet buttons(mobile = false)}
-            {#if !mobile}
-                {#if !$appStateStore.isPageLocked}
-                    <button
-                        onclick={handleNewCollection}
-                        class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all shrink-0"
-                    >
-                        <span class="material-symbols-outlined text-[18px]"
-                            >add</span
-                        >
-                        <span>New Collection</span>
-                    </button>
-                {/if}
-            {/if}
             <button
                 onclick={handleDriveBackup}
                 disabled={syncState !== "idle" || $appStateStore.isPageLocked}
@@ -214,6 +201,19 @@
                     <span>Restore</span>
                 {/if}
             </button>
+            {#if !mobile}
+                {#if !$appStateStore.isPageLocked}
+                    <button
+                        onclick={handleNewCollection}
+                        class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all shrink-0"
+                    >
+                        <span class="material-symbols-outlined text-[18px]"
+                            >add</span
+                        >
+                        <span>New Collection</span>
+                    </button>
+                {/if}
+            {/if}
         {/snippet}
 
         <div class="flex items-end justify-between gap-4 mb-4 md:mb-6">
@@ -288,9 +288,7 @@
                         >
                             <button
                                 onclick={() =>
-                                    goto(
-                                        `/endpoint?collection=${col.id}&readonly=true`,
-                                    )}
+                                    goto(`/collections/run/${col.id}`)}
                                 class="p-1.5 text-slate-400 hover:text-green-500 hover:bg-green-500/10 rounded-md transition-colors"
                                 title="Run Collection"
                             >
