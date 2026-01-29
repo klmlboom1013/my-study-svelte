@@ -66,6 +66,9 @@
     let availableDomains = $state<{ label: string; value: string }[]>([]);
     let selectedDomainPrefix = $state("");
     let securityContext = $state<SecurityContext>({});
+    let currentBC = $state<BroadcastChannel | null>(null);
+    let currentMessageHandler = $state<((event: any) => void) | null>(null);
+    let currentPopup = $state<Window | null>(null);
 
     // Preset & History State
     let presets = $state<ExecutionPreset[]>([]);
@@ -127,6 +130,32 @@
         responseResult = "";
         responseStatus = null;
     }
+
+    function stopExecution() {
+        isExecuting = false;
+        if (currentBC) {
+            currentBC.close();
+            currentBC = null;
+        }
+        if (currentMessageHandler) {
+            window.removeEventListener("message", currentMessageHandler);
+            currentMessageHandler = null;
+        }
+        if (currentPopup && !currentPopup.closed) {
+            try {
+                currentPopup.close();
+            } catch (e) {
+                // Ignore cross-origin errors or other issues
+            }
+            currentPopup = null;
+        }
+    }
+
+    $effect(() => {
+        if (!isOpen) {
+            stopExecution();
+        }
+    });
 
     // Settings logic (reset, domain population, etc)
     $effect(() => {
@@ -389,7 +418,11 @@
             if (endpoint.requestType === "FORM") {
                 try {
                     const popupName = `wpay_popup_${Date.now()}`;
-                    wpayExecutionService.openPopup(451, 908, popupName);
+                    currentPopup = wpayExecutionService.openPopup(
+                        451,
+                        908,
+                        popupName,
+                    ) as Window;
                     const fullUrl = `${selectedDomainPrefix}${endpoint.scope.site ? "/" + endpoint.scope.site : ""}${endpoint.uri}`;
                     const payload = urlEncodeData(
                         encryptData(
@@ -412,19 +445,29 @@
                         payload,
                     );
 
+                    if (currentBC) currentBC.close();
+                    if (currentMessageHandler)
+                        window.removeEventListener(
+                            "message",
+                            currentMessageHandler,
+                        );
+
                     const bc = new BroadcastChannel("wpay_channel");
+                    currentBC = bc;
+
                     const messageHandler = (event: MessageEvent) => {
                         if (event.data?.type === "WPAY_RESULT")
                             handleWpayResult(event.data.data);
                     };
+                    currentMessageHandler = messageHandler;
+
                     const handleWpayResult = (resultData: any) => {
+                        if (!isExecuting) return; // Prevent late result if stopped
                         responseStatus = 200;
                         responseResult = JSON.stringify(resultData, null, 2);
                         scrollToBottom();
                         validateResponse(resultData, securityContext);
-                        window.removeEventListener("message", messageHandler);
-                        bc.close();
-                        isExecuting = false;
+                        stopExecution();
                     };
                     bc.onmessage = (event) => {
                         if (event.data?.type === "WPAY_RESULT")
@@ -434,7 +477,7 @@
                 } catch (e) {
                     responseResult =
                         "Error opening popup: " + (e as Error).message;
-                    isExecuting = false;
+                    stopExecution();
                 }
             } else {
                 // REST Execution
@@ -663,9 +706,9 @@
     let isLongPress = false;
 
     function handleFabStart(e: PointerEvent) {
-        if (isExecuting) return;
         isLongPress = false;
         longPressTimer = setTimeout(() => {
+            if (isExecuting) return;
             isLongPress = true;
             isFabMenuOpen = true;
             if (navigator.vibrate) navigator.vibrate(50);
@@ -674,21 +717,6 @@
 
     function handleFabEnd(e: PointerEvent) {
         clearTimeout(longPressTimer);
-
-        if (isLongPress) return;
-
-        if (isFabMenuOpen) {
-            isFabMenuOpen = false;
-            return;
-        }
-
-        if (isPresetMenuOpen) {
-            isPresetMenuOpen = false;
-            return;
-        }
-
-        // Normal Click
-        handleExecute();
     }
 </script>
 
@@ -749,21 +777,53 @@
                 onpointerdown={handleFabStart}
                 onpointerup={handleFabEnd}
                 onpointerleave={() => clearTimeout(longPressTimer)}
-                disabled={isExecuting}
-                class="h-12 w-12 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-70 disabled:scale-100 {isFabMenuOpen ||
+                class="h-12 w-12 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 {isFabMenuOpen ||
                 isPresetMenuOpen
                     ? 'bg-slate-600 hover:bg-slate-700'
-                    : executionStage === 'READY'
-                      ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/40'
-                      : 'bg-green-600 hover:bg-green-700 shadow-green-600/40'}"
-                title={isFabMenuOpen
-                    ? "Close Menu"
-                    : executionStage === "READY"
-                      ? "Execute (Long press for menu)"
-                      : "Execute"}
+                    : isExecuting
+                      ? 'bg-red-500 hover:bg-red-600 shadow-red-500/40' // Stop state
+                      : executionStage === 'READY'
+                        ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/40'
+                        : 'bg-green-600 hover:bg-green-700 shadow-green-600/40'}"
+                onclick={(e) => {
+                    if (isLongPress) {
+                        isLongPress = false;
+                        return;
+                    }
+
+                    if (isFabMenuOpen) {
+                        isFabMenuOpen = false;
+                        return;
+                    }
+
+                    if (isPresetMenuOpen) {
+                        isPresetMenuOpen = false;
+                        return;
+                    }
+
+                    if (isExecuting) {
+                        e.stopPropagation();
+                        stopExecution();
+                    } else {
+                        handleExecute();
+                    }
+                }}
+                title={isExecuting
+                    ? "Stop Execution"
+                    : isFabMenuOpen
+                      ? "Close Menu"
+                      : executionStage === "READY"
+                        ? "Execute (Long press for menu)"
+                        : "Execute"}
             >
                 {#if isExecuting}
-                    <Loader2 size={20} class="animate-spin" />
+                    <div class="relative flex items-center justify-center">
+                        <Loader2
+                            size={18}
+                            class="animate-spin opacity-50 absolute"
+                        />
+                        <X size={14} strokeWidth={3} />
+                    </div>
                 {:else if isFabMenuOpen || isPresetMenuOpen}
                     <X size={20} />
                 {:else if executionStage === "READY"}
@@ -882,6 +942,7 @@
                 handleUserChange();
             }}
             onExecute={handleExecute}
+            onStopExecution={stopExecution}
             onClose={() => (isOpen = false)}
         />
 

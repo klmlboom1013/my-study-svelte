@@ -2938,14 +2938,16 @@
                         <div class="space-y-4 p-4">
                             <div>
                                 <label
+                                    for="inject-json-value"
                                     class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2"
                                 >
                                     JSON Value
                                 </label>
                                 <textarea
+                                    id="inject-json-value"
                                     bind:value={injectValue}
                                     rows="10"
-                                    class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                    class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                                     placeholder="Paste JSON here..."
                                 ></textarea>
                                 {#if injectError}

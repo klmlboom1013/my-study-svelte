@@ -36,6 +36,7 @@
         onSavePreset,
         onReset,
         onExecute,
+        onStopExecution,
         onClose,
         headerRef = $bindable(),
     } = $props();
@@ -226,16 +227,30 @@
 
                     <button
                         bind:this={executeButtonRef}
-                        onclick={onExecute}
-                        disabled={isExecuting}
-                        class="flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold text-white transition-all hover:scale-105 active:scale-95 shrink-0 rounded-lg shadow-sm disabled:opacity-70 disabled:scale-100 {executionStage ===
-                        'READY'
-                            ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
-                            : 'bg-green-600 hover:bg-green-700 shadow-green-600/20'}"
+                        onclick={() => {
+                            if (isExecuting) {
+                                onStopExecution();
+                            } else {
+                                onExecute();
+                            }
+                        }}
+                        class="flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold text-white transition-all hover:scale-105 active:scale-95 shrink-0 rounded-lg shadow-sm disabled:opacity-70 disabled:scale-100 {isExecuting
+                            ? 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
+                            : executionStage === 'READY'
+                              ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
+                              : 'bg-green-600 hover:bg-green-700 shadow-green-600/20'}"
                     >
                         {#if isExecuting}
-                            <Loader2 size={16} class="animate-spin" />
-                            Executing...
+                            <div
+                                class="relative flex items-center justify-center"
+                            >
+                                <Loader2
+                                    size={16}
+                                    class="animate-spin opacity-50 absolute"
+                                />
+                                <X size={12} strokeWidth={3} />
+                            </div>
+                            Stop
                         {:else if executionStage === "READY"}
                             <Check size={16} />
                             Ready

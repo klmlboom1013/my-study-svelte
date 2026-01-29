@@ -241,6 +241,19 @@
 
     <div class="mb-6">
         {#snippet buttons(mobile = false)}
+            {#if !mobile}
+                {#if !$appStateStore.isPageLocked}
+                    <button
+                        onclick={() => (isCreateModalOpen = true)}
+                        class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all shrink-0"
+                    >
+                        <span class="material-symbols-outlined text-[18px]"
+                            >add</span
+                        >
+                        <span>New Category</span>
+                    </button>
+                {/if}
+            {/if}
             <button
                 onclick={handleDriveBackup}
                 disabled={syncState !== "idle" || $appStateStore.isPageLocked}
@@ -277,19 +290,6 @@
                     <span>Restore</span>
                 {/if}
             </button>
-            {#if !mobile}
-                {#if !$appStateStore.isPageLocked}
-                    <button
-                        onclick={() => (isCreateModalOpen = true)}
-                        class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all shrink-0"
-                    >
-                        <span class="material-symbols-outlined text-[18px]"
-                            >add</span
-                        >
-                        <span>New Category</span>
-                    </button>
-                {/if}
-            {/if}
         {/snippet}
 
         <div class="flex items-end justify-between gap-4 mb-4 md:mb-6">

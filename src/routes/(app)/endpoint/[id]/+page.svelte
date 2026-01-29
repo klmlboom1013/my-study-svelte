@@ -76,7 +76,28 @@
                     {endpoint.description || "No description provided."}
                 </p>
             </div>
-            <div class="flex gap-2 w-full md:w-auto">
+            <div class="flex items-center gap-2 w-full md:w-auto">
+                {#if !$appStateStore.isPageLocked}
+                    <button
+                        onclick={handleDelete}
+                        class="hidden md:flex flex-1 md:flex-none items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-card-dark text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium"
+                    >
+                        <span class="material-symbols-outlined text-[20px]"
+                            >delete</span
+                        >
+                        Delete
+                    </button>
+                    <button
+                        onclick={() => goto(`/endpoint/${endpointId}/edit`)}
+                        class="hidden md:flex flex-1 md:flex-none items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium shadow-sm shadow-primary/20"
+                    >
+                        <span class="material-symbols-outlined text-[20px]"
+                            >edit</span
+                        >
+                        Edit
+                    </button>
+                {/if}
+
                 <button
                     onclick={openExecutionModal}
                     class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium shadow-sm shadow-green-600/20"
@@ -86,29 +107,6 @@
                     >
                     Execute
                 </button>
-
-                {#if !$appStateStore.isPageLocked}
-                    <div class="hidden md:flex gap-2">
-                        <button
-                            onclick={() => goto(`/endpoint/${endpointId}/edit`)}
-                            class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium shadow-sm shadow-primary/20"
-                        >
-                            <span class="material-symbols-outlined text-[20px]"
-                                >edit</span
-                            >
-                            Edit
-                        </button>
-                        <button
-                            onclick={handleDelete}
-                            class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-card-dark text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium"
-                        >
-                            <span class="material-symbols-outlined text-[20px]"
-                                >delete</span
-                            >
-                            Delete
-                        </button>
-                    </div>
-                {/if}
             </div>
         </div>
 

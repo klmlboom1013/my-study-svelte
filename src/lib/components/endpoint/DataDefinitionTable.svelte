@@ -85,7 +85,8 @@
     });
 </script>
 
-<div class="overflow-x-auto">
+<!-- Desktop View: Table -->
+<div class="hidden md:block overflow-x-auto">
     <table class="w-full text-left border-collapse">
         <thead>
             <tr
@@ -383,23 +384,280 @@
             {/each}
         </tbody>
     </table>
+</div>
 
-    <div class="mt-4 flex items-center gap-2">
-        {#if !isReadOnly}
-            <button
-                onclick={addField}
-                class="px-3 py-1.5 text-xs font-bold text-primary hover:text-primary/80 hover:bg-primary/5 rounded-lg transition-colors flex items-center gap-1"
-            >
-                <span class="material-symbols-outlined text-[16px]">add</span>
-                Add
-                {dataType}
-                Field
-            </button>
-        {/if}
-        {#if extraActions}
-            {@render extraActions()}
-        {/if}
-    </div>
+<!-- Mobile View: Card List -->
+<div class="md:hidden flex flex-col gap-4">
+    {#each data as field, i}
+        <div
+            class="p-4 bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-xl shadow-sm"
+        >
+            <div class="flex items-start justify-between mb-3">
+                <div class="flex flex-col gap-1 min-w-0">
+                    {#if isReadOnly}
+                        <span
+                            class="font-bold text-slate-900 dark:text-white break-all"
+                            >{field.name || "Unnamed"}</span
+                        >
+                    {:else}
+                        <input
+                            type="text"
+                            bind:value={field.name}
+                            placeholder="Field Name"
+                            class="w-full px-2 py-1 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-sm font-bold text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none"
+                        />
+                    {/if}
+                    <div class="flex items-center gap-2">
+                        {#if isReadOnly}
+                            {#if field.type === "List"}
+                                <button
+                                    onclick={() => openSubfields(field, i)}
+                                    class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1"
+                                >
+                                    {field.type}
+                                    {#if field.subFields && field.subFields.length > 0}
+                                        <span class="font-bold"
+                                            >[{field.subFields.length}]</span
+                                        >
+                                    {/if}
+                                    <span
+                                        class="material-symbols-outlined text-[12px]"
+                                        >open_in_new</span
+                                    >
+                                </button>
+                            {:else}
+                                <span
+                                    class="px-2 py-0.5 rounded-full text-[10px] bg-slate-100 dark:bg-background-dark text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-border-dark"
+                                >
+                                    {field.type}{#if field.type === "string" && field.length}({field.length}){/if}
+                                </span>
+                            {/if}
+                        {:else}
+                            <div class="flex gap-1 items-center">
+                                <TypeSelector bind:value={field.type} />
+                                <input
+                                    type="number"
+                                    bind:value={field.length}
+                                    disabled={field.type !== "string"}
+                                    placeholder="Len"
+                                    class="w-12 px-1 py-1 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-[10px] text-center outline-none disabled:opacity-50"
+                                />
+                            </div>
+                        {/if}
+                    </div>
+                </div>
+
+                {#if !isReadOnly}
+                    <div class="flex gap-1">
+                        {#if field.type === "List"}
+                            <button
+                                onclick={() => openSubfields(field, i)}
+                                class="p-1.5 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-[20px]"
+                                    >list_alt</span
+                                >
+                            </button>
+                        {/if}
+                        <button
+                            onclick={() => removeField(i)}
+                            class="p-1.5 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        >
+                            <span class="material-symbols-outlined text-[20px]"
+                                >delete</span
+                            >
+                        </button>
+                    </div>
+                {/if}
+            </div>
+
+            <div class="grid grid-cols-2 gap-y-2 gap-x-4 mb-3">
+                {#if dataType === "Request"}
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400 uppercase font-bold"
+                            >Required</span
+                        >
+                        {#if isReadOnly}
+                            <span
+                                class="material-symbols-outlined text-[18px] {field.required
+                                    ? 'text-green-500'
+                                    : 'text-slate-300'}"
+                            >
+                                {field.required ? "check_circle" : "remove"}
+                            </span>
+                        {:else}
+                            <input
+                                type="checkbox"
+                                bind:checked={field.required}
+                                class="w-4 h-4 rounded border-slate-300 text-primary"
+                            />
+                        {/if}
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400 uppercase font-bold"
+                            >Encrypt</span
+                        >
+                        {#if isReadOnly}
+                            <span
+                                class="material-symbols-outlined text-[18px] {field.encrypt
+                                    ? 'text-purple-500'
+                                    : 'text-slate-300'}"
+                            >
+                                {field.encrypt ? "lock" : "lock_open"}
+                            </span>
+                        {:else}
+                            <input
+                                type="checkbox"
+                                bind:checked={field.encrypt}
+                                class="w-4 h-4 rounded border-slate-300 text-primary"
+                            />
+                        {/if}
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400 uppercase font-bold"
+                            >Url Enc</span
+                        >
+                        {#if isReadOnly}
+                            <span
+                                class="material-symbols-outlined text-[18px] {field.encoded
+                                    ? 'text-green-500'
+                                    : 'text-slate-300'}"
+                            >
+                                {field.encoded ? "check_circle" : "remove"}
+                            </span>
+                        {:else}
+                            <input
+                                type="checkbox"
+                                bind:checked={field.encoded}
+                                class="w-4 h-4 rounded border-slate-300 text-primary"
+                            />
+                        {/if}
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400 uppercase font-bold"
+                            >Signing</span
+                        >
+                        {#if isReadOnly}
+                            {#if field.signingOrder}
+                                <span
+                                    class="inline-flex items-center justify-center size-5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold"
+                                    >{field.signingOrder}</span
+                                >
+                            {:else}
+                                <span class="text-slate-300">-</span>
+                            {/if}
+                        {:else}
+                            <input
+                                type="number"
+                                bind:value={field.signingOrder}
+                                placeholder="-"
+                                class="w-10 px-1 py-1 rounded border border-slate-200 dark:border-border-dark text-[10px] text-center"
+                            />
+                        {/if}
+                    </div>
+                {:else}
+                    <!-- Response Fields -->
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400 uppercase font-bold"
+                            >Encrypt</span
+                        >
+                        {#if isReadOnly}
+                            <span
+                                class="material-symbols-outlined text-[18px] {field.encrypt
+                                    ? 'text-purple-500'
+                                    : 'text-slate-300'}"
+                            >
+                                {field.encrypt ? "lock" : "lock_open"}
+                            </span>
+                        {:else}
+                            <input
+                                type="checkbox"
+                                bind:checked={field.encrypt}
+                                class="w-4 h-4 rounded border-slate-300 text-primary"
+                            />
+                        {/if}
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400 uppercase font-bold"
+                            >Url Dec</span
+                        >
+                        {#if isReadOnly}
+                            <span
+                                class="material-symbols-outlined text-[18px] {field.decoded
+                                    ? 'text-green-500'
+                                    : 'text-slate-300'}"
+                            >
+                                {field.decoded ? "check_circle" : "remove"}
+                            </span>
+                        {:else}
+                            <input
+                                type="checkbox"
+                                bind:checked={field.decoded}
+                                class="w-4 h-4 rounded border-slate-300 text-primary"
+                            />
+                        {/if}
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400 uppercase font-bold"
+                            >Signing</span
+                        >
+                        {#if isReadOnly}
+                            {#if field.signingOrder}
+                                <span
+                                    class="inline-flex items-center justify-center size-5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold"
+                                    >{field.signingOrder}</span
+                                >
+                            {:else}
+                                <span class="text-slate-300">-</span>
+                            {/if}
+                        {:else}
+                            <input
+                                type="number"
+                                bind:value={field.signingOrder}
+                                placeholder="-"
+                                class="w-10 px-1 py-1 rounded border border-slate-200 dark:border-border-dark text-[10px] text-center"
+                            />
+                        {/if}
+                    </div>
+                {/if}
+            </div>
+
+            {#if isReadOnly}
+                {#if field.description}
+                    <p
+                        class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed border-t border-slate-100 dark:border-border-dark/50 pt-3"
+                    >
+                        {field.description}
+                    </p>
+                {/if}
+            {:else}
+                <textarea
+                    bind:value={field.description}
+                    placeholder="Description"
+                    rows="1"
+                    class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-xs text-slate-600 dark:text-slate-300 outline-none focus:ring-1 focus:ring-primary/50"
+                ></textarea>
+            {/if}
+        </div>
+    {/each}
+</div>
+
+<div class="mt-4 flex items-center gap-2 px-2 md:px-0">
+    {#if !isReadOnly}
+        <button
+            onclick={addField}
+            class="px-3 py-1.5 text-xs font-bold text-primary hover:text-primary/80 hover:bg-primary/5 rounded-lg transition-colors flex items-center gap-1"
+        >
+            <span class="material-symbols-outlined text-[16px]">add</span>
+            Add
+            {dataType}
+            Field
+        </button>
+    {/if}
+    {#if extraActions}
+        {@render extraActions()}
+    {/if}
 </div>
 
 <!-- Recursive Modal for Subfields -->

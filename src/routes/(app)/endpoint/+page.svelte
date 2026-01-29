@@ -414,7 +414,6 @@
 
                 <!-- Desktop Buttons -->
                 <div class="hidden md:flex items-center gap-2">
-                    {@render syncButtons()}
                     {#if !isReadOnly && !$appStateStore.isPageLocked}
                         <button
                             onclick={() => goto("/endpoint/new")}
@@ -426,6 +425,7 @@
                             <span>New Endpoint</span>
                         </button>
                     {/if}
+                    {@render syncButtons()}
                 </div>
             </div>
 

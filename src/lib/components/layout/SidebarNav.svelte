@@ -111,7 +111,10 @@
                 {#if showItem}
                     <button
                         onclick={() => item.path && goto(item.path)}
-                        class="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-border-dark text-left group transition-colors"
+                        class="items-center gap-3 px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-border-dark text-left group transition-colors {item.path ===
+                        '/settings'
+                            ? 'hidden md:flex'
+                            : 'flex'}"
                     >
                         <div
                             class="size-8 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:text-primary transition-colors shrink-0"

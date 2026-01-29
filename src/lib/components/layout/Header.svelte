@@ -44,6 +44,8 @@
 
     // Global Search Logic
     let headerSearchTerm = $state("");
+    let isMobile = $state(false);
+
     // Use Shared Store for Selected App
     // We can't bind directly to store object property in Svelte 5 easily if we want reactivity?
     // Let's use auto-subscription $appStateStore
@@ -150,6 +152,19 @@
         initAuth();
         syncService.init();
 
+        // Real-time mobile detection
+        const handleResize = () => {
+            isMobile = window.innerWidth < 768;
+            if (isMobile && !$appStateStore.isPageLocked) {
+                appStateStore.update((s) => ({ ...s, isPageLocked: true }));
+            }
+        };
+
+        window.addEventListener("resize", handleResize);
+
+        // Initial check
+        handleResize();
+
         // Init State from URL
         const q = $page.url.searchParams.get("q");
         if (q) headerSearchTerm = q;
@@ -162,6 +177,10 @@
             selectedApp = "All"; // Default
             appStateStore.update((s) => ({ ...s, selectedApp: "All" }));
         }
+
+        return () => {
+            window.removeEventListener("resize", handleResize);
+        };
     });
 </script>
 
@@ -279,18 +298,26 @@
 
                 <!-- Lock Button -->
                 <Tooltip
-                    text={$appStateStore.isPageLocked ? "Unlock" : "Lock"}
+                    text={isMobile
+                        ? "Locked on Mobile"
+                        : $appStateStore.isPageLocked
+                          ? "Unlock"
+                          : "Lock"}
                     delay={100}
                 >
                     <button
-                        onclick={() =>
+                        onclick={() => {
+                            if (isMobile) return;
                             appStateStore.update((s) => ({
                                 ...s,
                                 isPageLocked: !s.isPageLocked,
-                            }))}
-                        class="flex items-center justify-center rounded-lg size-8 transition-colors cursor-pointer {$appStateStore.isPageLocked
+                            }));
+                        }}
+                        class="flex items-center justify-center rounded-lg size-8 transition-colors {$appStateStore.isPageLocked
                             ? 'bg-amber-50 text-amber-600 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 border border-amber-200 dark:border-amber-800/30'
-                            : 'hover:bg-slate-100 dark:hover:bg-border-dark text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-transparent'}"
+                            : 'hover:bg-slate-100 dark:hover:bg-border-dark text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-transparent'} {isMobile
+                            ? 'cursor-default'
+                            : 'cursor-pointer'}"
                     >
                         <span class="material-symbols-outlined text-[18px]">
                             {$appStateStore.isPageLocked ? "lock" : "lock_open"}
