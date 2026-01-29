@@ -69,6 +69,20 @@
                 ];
             }
         }
+
+        const collectionId = $page.url.searchParams.get("collection");
+        if (collectionId) {
+            const collection = $settingsStore.apiCollections.find(
+                (c) => c.id === collectionId,
+            );
+            if (collection) {
+                return [
+                    { label: "Home", href: "/" },
+                    { label: "API Collections", href: "/collections" },
+                    { label: `Test Endpoint (${collection.name})` },
+                ];
+            }
+        }
         return [{ label: "Home", href: "/" }, { label: "Test Endpoint" }];
     });
 
@@ -138,7 +152,18 @@
             const matchesCategory =
                 !categoryId || endpoint.categoryId === categoryId;
 
-            return matchesSearch && matchesApp && matchesCategory;
+            // Check for collection filter from URL
+            const collectionId = $page.url.searchParams.get("collection");
+            const matchesCollection =
+                !collectionId ||
+                (endpoint.collectionIds || []).includes(collectionId);
+
+            return (
+                matchesSearch &&
+                matchesApp &&
+                matchesCategory &&
+                matchesCollection
+            );
         }),
     );
 

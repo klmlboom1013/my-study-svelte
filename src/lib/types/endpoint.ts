@@ -31,6 +31,7 @@ export interface Endpoint {
     description?: string;
     application: string; // "WPAY" | "Express" | "Smart"
     categoryId?: string;
+    collectionIds?: string[]; // Multiple collections possible
     method: HttpMethod;
     uri: string;
     requestType: RequestType;

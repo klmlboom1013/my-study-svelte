@@ -42,6 +42,29 @@ export interface ApiCategory {
     isBookmarked?: boolean;
 }
 
+export interface CollectionStep {
+    id: string;
+    endpointId: string;
+    presetId?: string;
+    name?: string;
+    description?: string;
+    requestMappings?: { fieldPath: string, value: string, source: 'manual' | 'variable' }[];
+    responseMappings?: { sourceField: string, targetVariable: string }[];
+}
+
+export interface ApiCollection {
+    id: string;
+    application: string;
+    service?: string[];
+    name: string;
+    description: string;
+    icon?: string;
+    color?: string;
+    isBookmarked?: boolean;
+    endpointIds?: string[]; // Legacy
+    steps?: CollectionStep[];
+}
+
 
 export interface SiteContext {
     id: string;
@@ -114,6 +137,7 @@ export interface SettingsStoreData {
     endpoint_parameters: EndpointParameters;
     interface: InterfaceSettings;
     apiCategories: ApiCategory[];
+    apiCollections: ApiCollection[];
     applications: Application[];
 }
 
@@ -138,12 +162,14 @@ const defaultSettings: SettingsStoreData = {
         }
     },
     apiCategories: [],
+    apiCollections: [],
     applications: []
 };
 
 // Default Bookmarks Initializer
 const defaultBookmarks: BookmarkSetting[] = [
     { id: "api-categories", name: "Api Categories", icon: "category", path: "/categories", isEnabled: true, showNewButton: true, listLimit: 5 },
+    { id: "api-collections", name: "Api Collections", icon: "folder", path: "/collections", isEnabled: true, showNewButton: true, listLimit: 5 },
     { id: "test-endpoint", name: "Test Endpoint", icon: "science", path: "/endpoint", isEnabled: true, showNewButton: true, listLimit: 5 },
 ];
 
@@ -153,9 +179,11 @@ function createSettingsStore() {
     if (browser) {
         const STORE_KEY = 'settings_store';
         const CATEGORIES_KEY = 'api_categories';
+        const COLLECTIONS_KEY = 'api_collections';
 
         const oldStored = localStorage.getItem(STORE_KEY);
         const storedCategories = localStorage.getItem(CATEGORIES_KEY);
+        const storedCollections = localStorage.getItem(COLLECTIONS_KEY);
 
         if (oldStored || storedCategories) {
             try {
@@ -197,6 +225,15 @@ function createSettingsStore() {
                     }
                 }
 
+                // 1.1 컬렉션 로드
+                let finalCollections: ApiCollection[] = [];
+                if (storedCollections) {
+                    finalCollections = JSON.parse(storedCollections);
+                } else {
+                    const parsed = parsedOld;
+                    if (Array.isArray(parsed.apiCollections)) finalCollections = parsed.apiCollections;
+                }
+
                 // 2. 나머지 설정 마이그레이션
                 const sourceParams = parsedOld.endpoint_parameters || parsedOld;
                 const migrateService = (item: any) => {
@@ -230,12 +267,22 @@ function createSettingsStore() {
                         ...(parsedOld.interface || {})
                     },
                     apiCategories: finalCategories,
+                    apiCollections: finalCollections,
                     applications: migratedApplications
                 };
 
                 // Ensure bookmarks exist if missing (migration)
                 if (!initialValue.interface.bookmarks || initialValue.interface.bookmarks.length === 0) {
                     initialValue.interface.bookmarks = defaultBookmarks;
+                } else {
+                    // Check if api-collections exists, if not add it
+                    const hasCollections = initialValue.interface.bookmarks.some(b => b.id === 'api-collections');
+                    if (!hasCollections) {
+                        const colBookmark = defaultBookmarks.find(b => b.id === 'api-collections');
+                        if (colBookmark) {
+                            initialValue.interface.bookmarks.push(colBookmark);
+                        }
+                    }
                 }
             } catch (e) {
                 console.error("Failed to parse stores", e);
@@ -247,9 +294,10 @@ function createSettingsStore() {
 
     if (browser) {
         subscribe(val => {
-            const { apiCategories, ...rest } = val;
+            const { apiCategories, apiCollections, ...rest } = val;
             localStorage.setItem('settings_store', JSON.stringify(rest));
             localStorage.setItem('api_categories', JSON.stringify(apiCategories || []));
+            localStorage.setItem('api_collections', JSON.stringify(apiCollections || []));
         });
     }
 
@@ -397,6 +445,30 @@ function createSettingsStore() {
             ...s,
             apiCategories: (s.apiCategories || []).filter(c => c.id !== id)
         })),
+
+        // API Collections
+        addApiCollection: (collection: Omit<ApiCollection, 'id'>) => update(s => {
+            const newCollection = { ...collection, id: crypto.randomUUID() };
+            return {
+                ...s,
+                apiCollections: [...(s.apiCollections || []), newCollection]
+            };
+        }),
+        updateApiCollection: (collection: ApiCollection) => update(s => ({
+            ...s,
+            apiCollections: (s.apiCollections || []).map(c => c.id === collection.id ? collection : c)
+        })),
+        removeApiCollection: (id: string) => update(s => ({
+            ...s,
+            apiCollections: (s.apiCollections || []).filter(c => c.id !== id)
+        })),
+        toggleApiCollectionBookmark: (id: string) => update(s => {
+            const collections = s.apiCollections || [];
+            return {
+                ...s,
+                apiCollections: collections.map(c => c.id === id ? { ...c, isBookmarked: !c.isBookmarked } : c)
+            };
+        }),
 
         // Applications
         setApplications: (apps: Application[]) => update(s => ({

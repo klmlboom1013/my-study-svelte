@@ -214,6 +214,75 @@
                                     {/each}
                                 </div>
                             </div>
+                        {:else if bookmark.id === "api-collections"}
+                            <!-- Special rendering for Api Collections (Header + List) -->
+                            <div class="flex flex-col gap-2 mt-2">
+                                <div
+                                    class="flex items-center justify-between px-2"
+                                >
+                                    <button
+                                        onclick={() => goto(bookmark.path)}
+                                        class="text-sm font-bold text-slate-900 dark:text-white hover:text-primary transition-colors"
+                                    >
+                                        {bookmark.name}
+                                    </button>
+                                    {#if bookmark.showNewButton && !$appStateStore.isPageLocked}
+                                        <button
+                                            onclick={() =>
+                                                goto("/collections?new=true")}
+                                            class="flex items-center gap-2 bg-[#238636] hover:bg-[#2ea043] text-white px-3 py-0.5 rounded-md text-xs font-bold transition-colors shadow-sm"
+                                        >
+                                            <span
+                                                class="material-symbols-outlined text-[16px]"
+                                                >folder</span
+                                            >
+                                            <span>New</span>
+                                        </button>
+                                    {/if}
+                                </div>
+
+                                <div class="flex flex-col gap-1">
+                                    {#each ($settingsStore.apiCollections || [])
+                                        .filter((c) => c.isBookmarked)
+                                        .slice(0, bookmark.listLimit || 5) as collection (collection.id)}
+                                        <button
+                                            onclick={() =>
+                                                goto(
+                                                    `/endpoint?collection=${collection.id}&readonly=true`,
+                                                )}
+                                            class="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-border-dark text-left group transition-colors"
+                                        >
+                                            <div
+                                                class="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0 transition-colors"
+                                                style={collection.color
+                                                    ? `background-color: ${collection.color}15; color: ${collection.color}`
+                                                    : ""}
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-[18px]"
+                                                    >{collection.icon ||
+                                                        "folder"}</span
+                                                >
+                                            </div>
+                                            <div
+                                                class="flex flex-col flex-1 min-w-0"
+                                            >
+                                                <div
+                                                    class="flex items-center justify-between"
+                                                >
+                                                    <span
+                                                        class="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors {allowTextWrap
+                                                            ? 'whitespace-normal break-words'
+                                                            : 'truncate'}"
+                                                    >
+                                                        {collection.name}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    {/each}
+                                </div>
+                            </div>
                         {:else if bookmark.id === "test-endpoint"}
                             <!-- Special rendering for Test Endpoint (Header + List) -->
                             <div class="flex flex-col gap-2 mt-2">
