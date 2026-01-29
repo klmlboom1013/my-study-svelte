@@ -4,6 +4,7 @@
         type ApiCollection,
         type CollectionStep,
     } from "$lib/stores/settingsStore";
+    import { profileStore } from "$lib/stores/profileStore";
     import { appStateStore } from "$lib/stores/appStateStore";
     import { goto } from "$app/navigation";
     import EndpointSidebar from "./EndpointSidebar.svelte";
@@ -172,9 +173,11 @@
                                 >
                                     <option value="All">All Applications</option
                                     >
-                                    <option value="WPAY">WPAY</option>
-                                    <option value="W_CASH">W_CASH</option>
-                                    <option value="W_POINT">W_POINT</option>
+                                    {#each $profileStore.myApplications as app}
+                                        <option value={app.appName}
+                                            >{app.appName}</option
+                                        >
+                                    {/each}
                                 </select>
                             </div>
                         </div>
@@ -223,10 +226,11 @@
                     >
                         {#each steps as step, i}
                             <CollectionStepEditor
-                                {step}
+                                bind:step={steps[i]}
                                 index={i}
-                                onUpdate={(updated) =>
-                                    handleUpdateStep(i, updated)}
+                                previousSteps={steps.slice(0, i)}
+                                onUpdate={(updatedStep) =>
+                                    handleUpdateStep(i, updatedStep)}
                                 onRemove={() => handleRemoveStep(i)}
                             />
                         {/each}

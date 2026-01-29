@@ -19,14 +19,31 @@
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import DropdownInput from "$lib/components/ui/DropdownInput.svelte";
 
-    let selectedApplication = $state("WPAY");
+    let selectedApplication = $state("");
     let name = $state("");
     let description = $state("");
     let method = $state<HttpMethod>("POST");
     let uri = $state("");
     let requestType = $state<RequestType>("REST");
-    let selectedService = $state<string>("wpaystd2");
-    let selectedSite = $state<string>("stdwpay");
+    let selectedService = $state<string>("");
+    let selectedSite = $state<string>("");
+
+    // Initialize with first application if available
+    onMount(() => {
+        if ($profileStore.myApplications.length > 0 && !selectedApplication) {
+            selectedApplication = $profileStore.myApplications[0].appName;
+        }
+    });
+
+    const selectedAppData = $derived(
+        $profileStore.myApplications.find(
+            (app) => app.appName === selectedApplication,
+        ),
+    );
+
+    const useServiceDistinction = $derived(
+        selectedAppData?.useServiceDistinction ?? false,
+    );
 
     let requestData = $state<RequestDataField[]>([]);
     let responseData = $state<ResponseDataField[]>([]);
@@ -45,16 +62,46 @@
         customHeaders = customHeaders.filter((_, i) => i !== index);
     }
 
-    // Derived site options based on selected service
-    let siteOptions = $derived(
-        selectedService === "wpaystd2" ? ["stdwpay"] : [],
+    // Derived service options
+    let serviceOptions = $derived(
+        selectedAppData?.services?.map((s) => s.name) || [],
     );
+
+    // Derived site options based on selected service
+    let siteOptions = $derived.by(() => {
+        if (!selectedAppData || !useServiceDistinction) return [];
+        const service = selectedAppData.services?.find(
+            (s) => s.name === selectedService,
+        );
+        if (!service) return [];
+        // Domains represent sites/environments. For site selection, we might need a specific list.
+        // For now, let's use the keys of domains as site options if domains exists.
+        return Object.keys(service.domains || {}).filter(
+            (k) => service.domains[k as keyof typeof service.domains],
+        );
+    });
+
+    // Set default service when application changes
+    $effect(() => {
+        if (useServiceDistinction) {
+            if (
+                serviceOptions.length > 0 &&
+                (!selectedService || !serviceOptions.includes(selectedService))
+            ) {
+                selectedService = serviceOptions[0];
+            }
+        } else {
+            selectedService = "";
+            selectedSite = "";
+        }
+    });
 
     // Set default site when service changes
     $effect(() => {
         if (
+            useServiceDistinction &&
             siteOptions.length > 0 &&
-            !siteOptions.includes(selectedSite as any)
+            (!selectedSite || !siteOptions.includes(selectedSite))
         ) {
             selectedSite = siteOptions[0];
         } else if (siteOptions.length === 0) {
@@ -178,11 +225,9 @@
                             </label>
                             <DropdownInput
                                 bind:value={selectedApplication}
-                                options={$profileStore.myApplications.length > 0
-                                    ? $profileStore.myApplications.map(
-                                          (app) => app.appName,
-                                      )
-                                    : ["WPAY"]}
+                                options={(
+                                    $profileStore.myApplications || []
+                                ).map((app) => app.appName)}
                                 placeholder="Select Application"
                             />
                         </div>
@@ -203,7 +248,7 @@
                             />
                         </div>
 
-                        {#if selectedApplication === "WPAY"}
+                        {#if useServiceDistinction}
                             <div class="flex flex-col gap-2">
                                 <label
                                     class="text-sm font-medium text-slate-700 dark:text-slate-300"
@@ -215,7 +260,7 @@
                                     <div class="flex-1">
                                         <DropdownInput
                                             bind:value={selectedService}
-                                            options={["wpaystd2"]}
+                                            options={serviceOptions}
                                             placeholder="Service"
                                         />
                                     </div>

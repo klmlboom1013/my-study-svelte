@@ -1,4 +1,5 @@
 import type { Endpoint } from "$lib/types/endpoint";
+import { browser } from "$app/environment";
 
 const STORAGE_KEY = "endpoints";
 
@@ -7,6 +8,7 @@ export const endpointService = {
      * Save a new endpoint to localStorage
      */
     saveEndpoint: (endpoint: Endpoint): void => {
+        if (!browser) return;
         const stored = localStorage.getItem(STORAGE_KEY);
         // Ensure read endpoints also get migrated (though less critical here if we trust the new endpoint)
         const endpoints: Endpoint[] = stored
@@ -24,6 +26,7 @@ export const endpointService = {
      * Retrieve all endpoints from localStorage
      */
     getEndpoints: (): Endpoint[] => {
+        if (!browser) return [];
         const stored = localStorage.getItem(STORAGE_KEY);
         if (!stored) return [];
         const parsed = JSON.parse(stored);
@@ -38,6 +41,7 @@ export const endpointService = {
      * Clear all endpoints (for testing/cleanup)
      */
     clearEndpoints: (): void => {
+        if (!browser) return;
         localStorage.removeItem(STORAGE_KEY);
     },
 
@@ -45,6 +49,7 @@ export const endpointService = {
      * Delete an endpoint by ID
      */
     deleteEndpoint: (id: string): void => {
+        if (!browser) return;
         const stored = localStorage.getItem(STORAGE_KEY);
         // Migration during read
         const endpoints: Endpoint[] = stored
@@ -62,6 +67,7 @@ export const endpointService = {
      * Get an endpoint by ID
      */
     getEndpoint: (id: string): Endpoint | undefined => {
+        if (!browser) return undefined;
         const stored = localStorage.getItem(STORAGE_KEY);
         const endpoints: Endpoint[] = stored ? JSON.parse(stored) : [];
         const endpoint = endpoints.find((e) => e.id === id);
@@ -76,6 +82,7 @@ export const endpointService = {
      * Update an existing endpoint
      */
     updateEndpoint: (updatedEndpoint: Endpoint): void => {
+        if (!browser) return;
         const stored = localStorage.getItem(STORAGE_KEY);
         const endpoints: Endpoint[] = stored
             ? JSON.parse(stored).map((e: any) => ({
@@ -104,6 +111,7 @@ export const endpointService = {
     },
 
     importEndpoints: (endpoints: Endpoint[]) => {
+        if (!browser) return;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(endpoints));
         endpointService.notifyChange();
     }

@@ -30,24 +30,30 @@
 
     // Fix: Use derived to keep in sync with data prop (navigation)
     let endpointId = $derived(data.id);
-    let selectedApplication = $state("WPAY");
+    let selectedApplication = $state("");
 
     // Dynamic Application Options from Profile
-    let applicationOptions = $derived.by(() => {
-        const apps =
-            $profileStore.myApplications?.map((app) => app.appName) || [];
+    let applicationOptions = $derived(
+        ($profileStore.myApplications || []).map((app) => app.appName),
+    );
 
-        if (apps.length === 0) return ["WPAY"];
-        return Array.from(new Set(apps));
-    });
+    const selectedAppData = $derived(
+        $profileStore.myApplications.find(
+            (app) => app.appName === selectedApplication,
+        ),
+    );
+
+    const useServiceDistinction = $derived(
+        selectedAppData?.useServiceDistinction ?? false,
+    );
 
     let name = $state("");
     let description = $state("");
     let method = $state<HttpMethod>("POST");
     let uri = $state("");
     let requestType = $state<RequestType>("REST");
-    let selectedService = $state<string>("wpaystd2");
-    let selectedSite = $state<string>("stdwpay");
+    let selectedService = $state<string>("");
+    let selectedSite = $state<string>("");
     let signatureMethod = $state<string>(""); // Added state
 
     let prevRequestType = $state<RequestType>("REST");
@@ -78,10 +84,22 @@
     let isConfigOpen = $state(true);
     let isResponseOpen = $state(true);
 
-    // Derived site options based on selected service
-    let siteOptions = $derived(
-        selectedService === "wpaystd2" ? ["stdwpay"] : [],
+    // Derived service options
+    let serviceOptions = $derived(
+        selectedAppData?.services?.map((s) => s.name) || [],
     );
+
+    // Derived site options based on selected service
+    let siteOptions = $derived.by(() => {
+        if (!selectedAppData || !useServiceDistinction) return [];
+        const service = selectedAppData.services?.find(
+            (s) => s.name === selectedService,
+        );
+        if (!service) return [];
+        return Object.keys(service.domains || {}).filter(
+            (k) => service.domains[k as keyof typeof service.domains],
+        );
+    });
 
     // Load data when endpointId changes
     $effect(() => {
@@ -93,14 +111,14 @@
         const endpoint = endpointService.getEndpoint(endpointId);
 
         if (endpoint) {
-            selectedApplication = endpoint.application || "WPAY";
+            selectedApplication = endpoint.application || "";
             name = endpoint.name;
             description = endpoint.description || "";
             method = endpoint.method;
             uri = endpoint.uri;
             requestType = endpoint.requestType;
             prevRequestType = endpoint.requestType;
-            selectedService = endpoint.scope?.service || "wpaystd2";
+            selectedService = endpoint.scope?.service || "";
             selectedSite = endpoint.scope?.site || "";
             signatureMethod = endpoint.signatureMethod || ""; // Load from endpoint
             contentType = endpoint.config?.contentType || "application/json";
@@ -122,19 +140,28 @@
 
     // Set default values ONLY when user interacts (not on initial load)
     // We need to be careful not to overwrite loaded data with defaults
+    // Set default service when application changes
     $effect(() => {
-        // Only update site if service changes AND the current site is not valid for the new service
-        // But we need to distinguish between initial load and user change.
-        // For simplicity, we trust the loaded data is consistent.
-        // If user changes service, we default site.
+        if (useServiceDistinction) {
+            if (
+                serviceOptions.length > 0 &&
+                (!selectedService || !serviceOptions.includes(selectedService))
+            ) {
+                selectedService = serviceOptions[0];
+            }
+        } else {
+            selectedService = "";
+            selectedSite = "";
+        }
+    });
+
+    // Set default site when service changes
+    $effect(() => {
         if (
+            useServiceDistinction &&
             siteOptions.length > 0 &&
-            !siteOptions.includes(selectedSite as any)
+            (!selectedSite || !siteOptions.includes(selectedSite))
         ) {
-            // If currently selected site is NOT in the new options, reset it.
-            // This might happen on initial load if data is inconsistent, or on user input.
-            // However, on mount, we set selectedService then selectedSite.
-            // If we change selectedService via UI, selectedSite might become invalid.
             selectedSite = siteOptions[0];
         } else if (siteOptions.length === 0) {
             selectedSite = "";
@@ -271,7 +298,7 @@
                             />
                         </div>
 
-                        {#if selectedApplication === "WPAY"}
+                        {#if useServiceDistinction}
                             <div class="flex flex-col gap-2">
                                 <label
                                     class="text-sm font-medium text-slate-700 dark:text-slate-300"
@@ -283,7 +310,7 @@
                                     <div class="flex-1">
                                         <DropdownInput
                                             bind:value={selectedService}
-                                            options={["wpaystd2"]}
+                                            options={serviceOptions}
                                             placeholder="Service"
                                             disabled={$appStateStore.isPageLocked}
                                         />
