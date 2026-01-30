@@ -76,6 +76,10 @@
     let selectedDomainPrefixes = $state<Record<string, string>>({});
     let popupWindow: Window | null = null; // Plain variable to avoid proxying
 
+    // Run All Control State
+    let isRunningAll = $state(false);
+    let stopRequested = $state(false);
+
     function signalClosePopup() {
         if (!popupWindow) return;
         try {
@@ -90,6 +94,11 @@
             console.error("Failed to signal close to popup:", e);
         }
         popupWindow = null;
+    }
+
+    function handleStop() {
+        stopRequested = true;
+        signalClosePopup();
     }
 
     // History/Preset UI State
@@ -594,10 +603,14 @@
         index: number,
         autoRun = false,
         executionId = "manual_run",
+        popupNameOverride?: string,
     ) {
         const stepExec = stepsExecution[index];
         const endpoint = endpointService.getEndpoint(stepExec.endpointId);
         if (!endpoint) return;
+
+        // Check cancellation
+        if (stopRequested) return;
 
         // Apply mappings before execution ONLY if we are not already in SUCCESS state (Prepared/Done)
         if (stepExec.status !== "SUCCESS") {
@@ -765,18 +778,23 @@
             let fullUrl = `${domain}${endpoint.scope.site ? "/" + endpoint.scope.site : ""}${endpoint.uri}`;
 
             if (endpoint.requestType === "FORM") {
-                // Generate a unique popup name
-                let popupName = `col_run_${executionId}_step_${index}_${Date.now()}`;
+                // Determine popup name: override (Run All) or new unique (Manual)
+                const popupName =
+                    popupNameOverride ||
+                    `col_run_${executionId}_step_${index}_${Date.now()}`;
 
-                // 1. Manual execution
-                if (!autoRun) {
-                    if (!popupWindow || popupWindow.closed) {
-                        popupWindow = wpayExecutionService.openPopup(
-                            451,
-                            908,
-                            popupName,
-                        );
-                    }
+                // Handle Popup:
+                // If manual run, open new.
+                // If auto run (override provided), we assume global popup matches this name or we just use the name for targeting.
+                // CRITICAL: For auto-run, we depend on the handleRunAll to have opened the popup.
+                if (!popupNameOverride) {
+                    // Manual run: Open fresh popup
+                    popupWindow = wpayExecutionService.openPopup(
+                        451,
+                        908,
+                        popupName,
+                    );
+
                     if (!popupWindow) {
                         stepExec.status = "SUCCESS";
                         isExecuting = false;
@@ -786,21 +804,46 @@
                         );
                         return;
                     }
+                } else {
+                    // Auto run: Reuse existing global popup
+                    if (!popupWindow || popupWindow.closed) {
+                        console.warn(
+                            `Step ${index}: Global popup is closed or missing. Attempting to reopen...`,
+                        );
+                        popupWindow = wpayExecutionService.openPopup(
+                            451,
+                            908,
+                            popupName,
+                        );
+                    }
                 }
 
-                // 2. Auto-run
-                if (autoRun) {
-                    // Always open a fresh reference to ensure we have the handle
-                    popupWindow = wpayExecutionService.openPopup(
-                        451,
-                        908,
-                        popupName,
+                if (!popupWindow) {
+                    // Final check: If still no window, we are blocked.
+                    console.error(
+                        "Popup Blocked: No window reference available.",
                     );
+                    stepExec.status = "SUCCESS"; // Mark as success to stop spinning? Or FAIL?
+                    isExecuting = false;
+                    showAlert(
+                        "Popup Blocked",
+                        "Browser blocked popup. Please allow popups.",
+                    );
+                    return;
                 }
 
-                // CRITICAL: Explicitly set the window name to ensure form targetting works
-                if (popupWindow) {
-                    popupWindow.name = popupName;
+                // CRITICAL: Explicitly set the window name if we have access
+                // This fixes "About:Blank" issues by reclaiming the window reference
+                if (popupWindow && !popupWindow.closed) {
+                    try {
+                        // Accessing .name on cross-origin might fail, wrap in try-catch
+                        popupWindow.name = popupName;
+                    } catch (e) {
+                        console.warn(
+                            "Could not set popup window name (Cross-Origin?):",
+                            e,
+                        );
+                    }
                 }
 
                 // Prepare payload
@@ -828,47 +871,50 @@
                 await scrollToBottom();
 
                 // Wait for broadcast
-                // We do this BEFORE submitting, so we don't miss any fast responses,
-                // and to handle the window state correctly.
-
-                // Wait for window validity
-                await new Promise((r) => setTimeout(r, 500));
-
-                if (popupWindow && !popupWindow.closed) {
-                    // Use target-based submission (most standard for cross-origin forms)
-                    wpayExecutionService.submitForm(
-                        fullUrl,
-                        endpoint.method || "POST",
-                        popupName,
-                        finalPayload,
-                    );
-                } else {
-                    stepExec.error = "Popup window could not be opened.";
-                    stepExec.status = "ERROR";
-                    return;
-                }
-
-                // Wait for broadcast
-                const result = await new Promise((resolve) => {
+                const resultPromise = new Promise((resolve, reject) => {
                     const bc = new BroadcastChannel("wpay_channel");
                     const handler = (event: MessageEvent) => {
                         if (event.data?.type === "WPAY_RESULT") {
                             bc.close();
                             window.removeEventListener("message", handler);
                             resolve(event.data.data);
+                        } else if (event.data?.type === "WPAY_CLOSE") {
+                            bc.close();
+                            window.removeEventListener("message", handler);
+                            reject(new Error("EXECUTION_STOPPED"));
                         }
                     };
                     bc.onmessage = handler;
                     window.addEventListener("message", handler);
                 });
 
-                stepExec.result = result;
-                stepExec.status = "SUCCESS";
-                processResponseData(index);
+                // Small delay to let popup attach listener
+                await new Promise((r) => setTimeout(r, 500));
 
-                // If this was a manual single-step execution, close the popup after a short delay
-                if (!autoRun) {
-                    setTimeout(signalClosePopup, 1000);
+                // Submit Form
+                wpayExecutionService.submitForm(
+                    fullUrl,
+                    endpoint.method || "POST",
+                    popupName,
+                    payload,
+                );
+
+                try {
+                    const result = await resultPromise;
+                    stepExec.result = result;
+                    stepExec.status = "SUCCESS";
+                    processResponseData(index);
+                } finally {
+                    // ALWAYS close the popup after step execution (success or error)
+                    // ONLY close the popup if this is a MANUAL run
+                    // For Run All, we keep it open for the next step
+                    if (
+                        !popupNameOverride &&
+                        popupWindow &&
+                        !popupWindow.closed
+                    ) {
+                        popupWindow.close();
+                    }
                 }
 
                 await scrollToBottom();
@@ -993,8 +1039,14 @@
                 await scrollToBottom();
             }
         } catch (e) {
-            stepExec.status = "ERROR";
-            stepExec.error = (e as Error).message;
+            const err = e as Error;
+            if (err.message === "EXECUTION_STOPPED") {
+                stepExec.status = "READY"; // Reset to ready on stop
+                stepExec.error = undefined;
+            } else {
+                stepExec.status = "ERROR";
+                stepExec.error = err.message;
+            }
         } finally {
             isExecuting = false;
             collectionExecutionService.saveLastUsed(
@@ -1006,68 +1058,82 @@
                     domainPrefix: selectedDomainPrefixes[s.stepId],
                 })),
             );
-            await scrollToBottom();
+            if (stepExec.status !== "READY") {
+                await scrollToBottom();
+            }
         }
     }
 
     async function handleRunAll() {
-        // Find the first step that is not yet successfully finished
-        let startIdx = stepsExecution.findIndex(
-            (s) => s.status !== "SUCCESS" || s.result === undefined,
-        );
-        if (startIdx === -1) startIdx = 0;
+        if (isRunningAll) return;
 
-        // PRE-OPEN Popup if there are any FORM steps to avoid blocking
-        const hasFormSteps = stepsExecution.slice(startIdx).some((s) => {
-            const ep = endpointService.getEndpoint(s.endpointId);
-            return ep?.requestType === "FORM";
-        });
+        // USER REQUEST: Always start from Step 1 when "Run All" is clicked
+        // Previously: Resumed from the first non-success step.
+        let startIdx = 0;
 
-        if (hasFormSteps) {
-            const popupName = `col_run_${collection?.id || "default"}`;
-            // CRITICAL: Only call openPopup if we don't have a valid reference yet
-            // This avoids browser blocks on redundant window.open calls
-            if (!popupWindow || popupWindow.closed) {
-                console.log("RunAll: Opening fresh popup...", popupName);
-                popupWindow = wpayExecutionService.openPopup(
-                    451,
-                    908,
-                    popupName,
-                );
-            } else {
-                console.log("RunAll: Reusing existing popup window");
-                popupWindow.focus();
-            }
-
-            if (!popupWindow) {
-                showAlert(
-                    "Popup Blocked",
-                    "Please allow popups for this site and try again. The window must be opened by a user gesture.",
-                );
-                return;
-            }
+        // Sync domains based on the starting step to ensure consistency
+        const startStep = stepsExecution[startIdx];
+        const startDomain = selectedDomainPrefixes[startStep.stepId];
+        if (startStep && startDomain) {
+            updateAllStepDomains(startStep.stepId, startDomain);
         }
 
+        isRunningAll = true;
+        stopRequested = false;
         const executionId = `exec_${Date.now()}`;
-        for (let i = startIdx; i < stepsExecution.length; i++) {
-            activeStepIndex = i;
 
-            // Small delay to let popup window stabilize between steps
-            if (i > startIdx) {
-                await new Promise((r) => setTimeout(r, 800));
+        try {
+            for (let i = startIdx; i < stepsExecution.length; i++) {
+                if (stopRequested) break;
+
+                activeStepIndex = i;
+
+                if (i === startIdx) {
+                    // Use a generic name for the reusable popup
+                    const globalPopupName = `col_run_${executionId}`;
+                    popupWindow = wpayExecutionService.openPopup(
+                        451,
+                        908,
+                        globalPopupName,
+                    );
+                    if (!popupWindow) {
+                        showAlert(
+                            "Popup Blocked",
+                            "The browser blocked the initial popup. Please allow popups for this site.",
+                        );
+                        isRunningAll = false;
+                        return;
+                    }
+                }
+
+                const currentPopupName = `col_run_${executionId}`; // Consistent name for reuse
+
+                // Small delay to let popup window stabilize/clear between steps
+                if (i > startIdx) {
+                    await new Promise((r) => setTimeout(r, 1000)); // Increased delay slightly
+                }
+
+                if (stopRequested) break;
+
+                // Execute step (pass popupName to reuse)
+                await executeStep(i, true, executionId, currentPopupName);
+
+                // If an error occurred or stop was requested during execution
+                if (stopRequested || stepsExecution[i].status === "ERROR") {
+                    signalClosePopup(); // Close popup on error or stop
+                    break;
+                }
             }
-
-            await executeStep(i, true, executionId);
-
-            // If an error occurred, stop auto-run.
-            if (stepsExecution[i].status === "ERROR") {
-                signalClosePopup(); // Close popup on error
-                break;
-            }
+        } finally {
+            isRunningAll = false;
+            stopRequested = false;
+            setTimeout(() => {
+                if (popupWindow && !popupWindow.closed) {
+                    popupWindow.close();
+                }
+                signalClosePopup();
+            }, 1000);
         }
-
-        // Close popup at the very end of all steps
-        setTimeout(signalClosePopup, 1500);
     }
 
     function handleReset() {
@@ -1425,10 +1491,10 @@
                     </button>
                     <button
                         onclick={handleRunAll}
-                        disabled={isExecuting}
+                        disabled={isExecuting || isRunningAll}
                         class="flex items-center gap-2 px-6 py-2 text-sm font-bold text-white bg-green-600 rounded-lg hover:bg-green-700 shadow-lg shadow-green-600/20 disabled:opacity-50 transition-all active:scale-95"
                     >
-                        {#if isExecuting}
+                        {#if isExecuting || isRunningAll}
                             <Loader2 size={18} class="animate-spin" />
                             <span>Running...</span>
                         {:else}
@@ -1575,12 +1641,20 @@
                                                 },
                                             };
                                         }}
-                                        onclick={() =>
-                                            executeStep(
-                                                activeStepIndex,
-                                                false,
-                                                `exec_${Date.now()}`,
-                                            )}
+                                        onclick={() => {
+                                            if (
+                                                stepExec.status === "EXECUTING"
+                                            ) {
+                                                handleStop();
+                                            } else {
+                                                stopRequested = false;
+                                                executeStep(
+                                                    activeStepIndex,
+                                                    false,
+                                                    `exec_${Date.now()}`,
+                                                );
+                                            }
+                                        }}
                                         class="flex items-center justify-center gap-2 px-5 py-2 text-sm font-bold text-white transition-all hover:scale-105 active:scale-95 shrink-0 rounded-lg shadow-sm disabled:opacity-70 disabled:scale-100 {stepExec.status ===
                                         'EXECUTING'
                                             ? 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
@@ -2054,10 +2128,23 @@
                         : stepExec.status === 'READY'
                           ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/30'
                           : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'}"
-                    onclick={() => executeStep(activeStepIndex)}
+                    onclick={() => {
+                        if (stepExec.status === "EXECUTING") {
+                            handleStop();
+                        } else {
+                            stopRequested = false;
+                            executeStep(activeStepIndex);
+                        }
+                    }}
                 >
                     {#if stepExec.status === "EXECUTING"}
-                        <Loader2 size={28} class="animate-spin" />
+                        <div class="relative flex items-center justify-center">
+                            <Loader2
+                                size={28}
+                                class="animate-spin opacity-50 absolute"
+                            />
+                            <X size={20} strokeWidth={3} />
+                        </div>
                     {:else if stepExec.status === "READY"}
                         <Check size={28} strokeWidth={3} />
                     {:else}
