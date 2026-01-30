@@ -336,13 +336,16 @@
                                 {col.icon || "folder"}
                             </span>
                         </div>
-                        <div class="block min-w-0 flex-1 group/link">
+                        <button
+                            onclick={() => goto(`/collections/run/${col.id}`)}
+                            class="block min-w-0 flex-1 group/link text-left appearance-none bg-transparent border-none p-0"
+                        >
                             <h3
                                 class="text-lg font-semibold text-slate-900 dark:text-white group-hover/link:text-primary transition-colors truncate"
                             >
                                 {col.name}
                             </h3>
-                        </div>
+                        </button>
                     </div>
 
                     <p

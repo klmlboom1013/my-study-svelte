@@ -1,9 +1,25 @@
 <script lang="ts">
     import { endpointService } from "$lib/features/endpoints/services/endpointService";
     import { appStateStore } from "$lib/stores/appStateStore";
+    import { settingsStore } from "$lib/stores/settingsStore";
     import type { Endpoint } from "$lib/types/endpoint";
 
     let searchQuery = $state("");
+    let selectedService = $state("All");
+
+    // Reset service filter when application changes
+    $effect(() => {
+        const app = $appStateStore.selectedApp;
+        selectedService = "All";
+    });
+
+    let currentApp = $derived(
+        $settingsStore.applications.find(
+            (a) => a.appName === $appStateStore.selectedApp,
+        ),
+    );
+
+    let services = $derived(currentApp?.services || []);
 
     let endpoints = $derived.by(() => {
         let list = endpointService.getEndpoints();
@@ -11,6 +27,12 @@
 
         if (headerApp && headerApp !== "All") {
             list = list.filter((e: Endpoint) => e.application === headerApp);
+
+            if (selectedService !== "All") {
+                list = list.filter(
+                    (e: Endpoint) => e.scope.service === selectedService,
+                );
+            }
         }
 
         if (searchQuery) {
@@ -40,6 +62,21 @@
         >
             Endpoints
         </h2>
+
+        {#if services.length > 0}
+            <div class="mb-3">
+                <select
+                    bind:value={selectedService}
+                    class="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary transition-all font-medium"
+                >
+                    <option value="All">All Services</option>
+                    {#each services as svc}
+                        <option value={svc.name}>{svc.name}</option>
+                    {/each}
+                </select>
+            </div>
+        {/if}
+
         <div class="relative">
             <span
                 class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]"

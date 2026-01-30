@@ -74,6 +74,23 @@
     let activeStepIndex = $state(0);
     let isExecuting = $state(false);
     let selectedDomainPrefixes = $state<Record<string, string>>({});
+    let popupWindow: Window | null = null; // Plain variable to avoid proxying
+
+    function signalClosePopup() {
+        if (!popupWindow) return;
+        try {
+            const bc = new BroadcastChannel("wpay_channel");
+            bc.postMessage({ type: "WPAY_CLOSE" });
+            bc.close();
+            // Direct reference close as fallback
+            if (popupWindow && !popupWindow.closed) {
+                popupWindow.close();
+            }
+        } catch (e) {
+            console.error("Failed to signal close to popup:", e);
+        }
+        popupWindow = null;
+    }
 
     // History/Preset UI State
     let isPresetDropdownOpen = $state(false);
@@ -256,22 +273,7 @@
     });
 
     function getInitialDomain(endpointId: string) {
-        const endpoint = endpointService.getEndpoint(endpointId);
-        if (!endpoint) return "";
-        const app = $settingsStore.applications.find(
-            (a) => a.appName === endpoint.application,
-        );
-        if (!app) return "";
-
-        let domains = app.domains;
-        if (endpoint.scope.service && app.services) {
-            const svc = app.services.find(
-                (s) => s.name === endpoint.scope.service,
-            );
-            if (svc?.domains && Object.values(svc.domains).some((v) => v))
-                domains = svc.domains;
-        }
-
+        const domains = getMergedDomains(endpointId);
         if (domains) {
             return (
                 domains.dev ||
@@ -369,6 +371,23 @@
         return options;
     }
 
+    function generateRandomValue(type: string, length: number) {
+        const charsetMap: Record<string, string> = {
+            alpha: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+            numeric: "0123456789",
+            alphanumeric:
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+        };
+        const charset = charsetMap[type] || charsetMap.alphanumeric;
+        let result = "";
+        for (let i = 0; i < length; i++) {
+            result += charset.charAt(
+                Math.floor(Math.random() * charset.length),
+            );
+        }
+        return result;
+    }
+
     // Apply mappings for a step
     function applyMappings(index: number) {
         if (!collection || !collection.steps) return;
@@ -412,15 +431,12 @@
                     if (val !== undefined)
                         setNestedValue(newValues, mapping.fieldPath, val);
                 }
-            } else if (mapping.source === "global") {
-                const param =
-                    $settingsStore.endpoint_parameters.globalParameters.find(
-                        (p) => p.key === mapping.fieldPath,
-                    );
-                if (param)
-                    setNestedValue(newValues, mapping.fieldPath, param.value);
+            } else if (mapping.source === "random") {
+                const [type, lenStr] = mapping.value.split(":");
+                const length = parseInt(lenStr) || 8;
+                const val = generateRandomValue(type, length);
+                setNestedValue(newValues, mapping.fieldPath, val);
             }
-            // Add other sources if needed
         });
 
         stepsExecution[index].requestValues = newValues;
@@ -574,21 +590,21 @@
             Object.keys(processed).length > 0 ? processed : undefined;
     }
 
-    async function executeStep(index: number, autoRun = false) {
+    async function executeStep(
+        index: number,
+        autoRun = false,
+        executionId = "manual_run",
+    ) {
         const stepExec = stepsExecution[index];
-        const stepDef = collection?.steps?.find(
-            (s) => s.id === stepExec.stepId,
-        );
         const endpoint = endpointService.getEndpoint(stepExec.endpointId);
         if (!endpoint) return;
 
         // Apply mappings before execution ONLY if we are not already in SUCCESS state (Prepared/Done)
-        // This prevents resetting the status to READY when clicking "Execute" for a prepared FORM request.
         if (stepExec.status !== "SUCCESS") {
             applyMappings(index);
         }
 
-        // If it's the first time (READY), we just prepare
+        // 1. Preparation Phase (If READY)
         if (stepExec.status === "READY") {
             const midValue = stepExec.requestValues["mid"];
             let securityContext: SecurityContext = {};
@@ -616,11 +632,31 @@
                 );
 
                 if (endpoint.requestType === "FORM") {
-                    // Absolute URL conversion for returnUrl
-                    if (stepExec.requestValues["returnUrl"]?.startsWith("/")) {
-                        stepExec.requestValues["returnUrl"] =
-                            window.location.origin +
-                            stepExec.requestValues["returnUrl"];
+                    if (stepExec.requestValues["returnUrl"]) {
+                        try {
+                            const url = new URL(
+                                stepExec.requestValues["returnUrl"],
+                                window.location.origin,
+                            );
+                            url.searchParams.set("isSession", "true");
+                            stepExec.requestValues["returnUrl"] =
+                                url.toString();
+                        } catch (e) {
+                            // Fallback if not a valid full URL
+                            const char = stepExec.requestValues[
+                                "returnUrl"
+                            ].includes("?")
+                                ? "&"
+                                : "?";
+                            if (
+                                !stepExec.requestValues["returnUrl"].includes(
+                                    "isSession=true",
+                                )
+                            ) {
+                                stepExec.requestValues["returnUrl"] +=
+                                    `${char}isSession=true`;
+                            }
+                        }
                     }
 
                     const encodedValues = urlEncodeData(
@@ -706,17 +742,18 @@
             }
         }
 
+        // 2. Execution Phase
         stepExec.status = "EXECUTING";
         isExecuting = true;
 
-        const midValue = stepExec.requestValues["mid"];
-        let securityContext: SecurityContext = {};
-        if (midValue) {
+        const executeMidValue = stepExec.requestValues["mid"];
+        let executeSecurityContext: SecurityContext = {};
+        if (executeMidValue) {
             const midCtx = $settingsStore.endpoint_parameters.midContexts.find(
-                (c) => c.mid === midValue,
+                (c) => c.mid === executeMidValue,
             );
             if (midCtx)
-                securityContext = {
+                executeSecurityContext = {
                     hashKey: midCtx.hashKey,
                     encKey: midCtx.encKey,
                     encIV: midCtx.encIV,
@@ -727,40 +764,51 @@
             const domain = selectedDomainPrefixes[stepExec.stepId];
             let fullUrl = `${domain}${endpoint.scope.site ? "/" + endpoint.scope.site : ""}${endpoint.uri}`;
 
-            let processedValues = encryptData(
-                { ...stepExec.requestValues },
-                endpoint.requestData,
-                securityContext,
-            );
-            const signatureField = endpoint.requestData.find(
-                (f) => f.name === "signature",
-            );
-
             if (endpoint.requestType === "FORM") {
-                // Implementation similar to EndpointExecutionModal...
-                const popupName = `col_run_${Date.now()}`;
+                // Generate a unique popup name
+                let popupName = `col_run_${executionId}_step_${index}_${Date.now()}`;
 
-                // CRITICAL: Open popup IMMEDIATELY to avoid browser block
-                const popup = wpayExecutionService.openPopup(
-                    451,
-                    908,
-                    popupName,
-                );
-
-                if (!popup) {
-                    isAlertOpen = true;
-                    alertTitle = "Popup Blocked";
-                    alertMessage =
-                        "Please allow popups for this site and try again.";
-                    throw new Error("Popup was blocked by the browser.");
+                // 1. Manual execution
+                if (!autoRun) {
+                    if (!popupWindow || popupWindow.closed) {
+                        popupWindow = wpayExecutionService.openPopup(
+                            451,
+                            908,
+                            popupName,
+                        );
+                    }
+                    if (!popupWindow) {
+                        stepExec.status = "SUCCESS";
+                        isExecuting = false;
+                        showAlert(
+                            "Popup Blocked",
+                            "The browser blocked the popup. Please click manually.",
+                        );
+                        return;
+                    }
                 }
 
-                // SYNCHRONOUS payload preparation using already calculated values
+                // 2. Auto-run
+                if (autoRun) {
+                    // Always open a fresh reference to ensure we have the handle
+                    popupWindow = wpayExecutionService.openPopup(
+                        451,
+                        908,
+                        popupName,
+                    );
+                }
+
+                // CRITICAL: Explicitly set the window name to ensure form targetting works
+                if (popupWindow) {
+                    popupWindow.name = popupName;
+                }
+
+                // Prepare payload
                 const payload = urlEncodeData(
                     encryptData(
                         { ...stepExec.requestValues },
                         endpoint.requestData,
-                        securityContext,
+                        executeSecurityContext,
                     ),
                     endpoint.requestData,
                 );
@@ -777,17 +825,28 @@
                     .map(([k, v]) => `${k}=${v}`)
                     .join("\n");
 
-                // Transition to EXECUTING to show "Waiting" UI
-                stepExec.status = "EXECUTING";
                 await scrollToBottom();
 
-                // SYNCHRONOUS submit
-                wpayExecutionService.submitForm(
-                    fullUrl,
-                    endpoint.method || "POST",
-                    popupName,
-                    payload,
-                );
+                // Wait for broadcast
+                // We do this BEFORE submitting, so we don't miss any fast responses,
+                // and to handle the window state correctly.
+
+                // Wait for window validity
+                await new Promise((r) => setTimeout(r, 500));
+
+                if (popupWindow && !popupWindow.closed) {
+                    // Use target-based submission (most standard for cross-origin forms)
+                    wpayExecutionService.submitForm(
+                        fullUrl,
+                        endpoint.method || "POST",
+                        popupName,
+                        finalPayload,
+                    );
+                } else {
+                    stepExec.error = "Popup window could not be opened.";
+                    stepExec.status = "ERROR";
+                    return;
+                }
 
                 // Wait for broadcast
                 const result = await new Promise((resolve) => {
@@ -806,11 +865,26 @@
                 stepExec.result = result;
                 stepExec.status = "SUCCESS";
                 processResponseData(index);
+
+                // If this was a manual single-step execution, close the popup after a short delay
+                if (!autoRun) {
+                    setTimeout(signalClosePopup, 1000);
+                }
+
                 await scrollToBottom();
             } else {
                 // REST Execution
-                let payload = processedValues;
-                if (endpoint.signatureMethod && signatureField) {
+                let execProcessedValues = encryptData(
+                    { ...stepExec.requestValues },
+                    endpoint.requestData,
+                    executeSecurityContext,
+                );
+                const execSignatureField = endpoint.requestData.find(
+                    (f) => f.name === "signature",
+                );
+
+                let payload = execProcessedValues;
+                if (endpoint.signatureMethod && execSignatureField) {
                     const valForSig =
                         endpoint.method === "POST" &&
                         endpoint.config?.contentType ===
@@ -821,9 +895,9 @@
                         valForSig,
                         endpoint.requestData,
                         endpoint.signatureMethod,
-                        securityContext,
+                        executeSecurityContext,
                     );
-                    payload[signatureField.name] = signature;
+                    payload[execSignatureField.name] = signature;
                     stepExec.signatureSourceString = rawString;
                 }
 
@@ -875,9 +949,10 @@
                 } else {
                     const qp = new URLSearchParams(
                         Object.fromEntries(
-                            Object.entries(
-                                payload, // Removed urlEncodeData here
-                            ).map(([k, v]) => [k, String(v)]),
+                            Object.entries(payload).map(([k, v]) => [
+                                k,
+                                String(v),
+                            ]),
                         ),
                     ).toString();
                     if (qp) fullUrl += (fullUrl.includes("?") ? "&" : "?") + qp;
@@ -936,14 +1011,67 @@
     }
 
     async function handleRunAll() {
-        for (let i = 0; i < stepsExecution.length; i++) {
-            activeStepIndex = i;
-            await executeStep(i, true);
-            if (stepsExecution[i].status === "ERROR") break;
+        // Find the first step that is not yet successfully finished
+        let startIdx = stepsExecution.findIndex(
+            (s) => s.status !== "SUCCESS" || s.result === undefined,
+        );
+        if (startIdx === -1) startIdx = 0;
+
+        // PRE-OPEN Popup if there are any FORM steps to avoid blocking
+        const hasFormSteps = stepsExecution.slice(startIdx).some((s) => {
+            const ep = endpointService.getEndpoint(s.endpointId);
+            return ep?.requestType === "FORM";
+        });
+
+        if (hasFormSteps) {
+            const popupName = `col_run_${collection?.id || "default"}`;
+            // CRITICAL: Only call openPopup if we don't have a valid reference yet
+            // This avoids browser blocks on redundant window.open calls
+            if (!popupWindow || popupWindow.closed) {
+                console.log("RunAll: Opening fresh popup...", popupName);
+                popupWindow = wpayExecutionService.openPopup(
+                    451,
+                    908,
+                    popupName,
+                );
+            } else {
+                console.log("RunAll: Reusing existing popup window");
+                popupWindow.focus();
+            }
+
+            if (!popupWindow) {
+                showAlert(
+                    "Popup Blocked",
+                    "Please allow popups for this site and try again. The window must be opened by a user gesture.",
+                );
+                return;
+            }
         }
+
+        const executionId = `exec_${Date.now()}`;
+        for (let i = startIdx; i < stepsExecution.length; i++) {
+            activeStepIndex = i;
+
+            // Small delay to let popup window stabilize between steps
+            if (i > startIdx) {
+                await new Promise((r) => setTimeout(r, 800));
+            }
+
+            await executeStep(i, true, executionId);
+
+            // If an error occurred, stop auto-run.
+            if (stepsExecution[i].status === "ERROR") {
+                signalClosePopup(); // Close popup on error
+                break;
+            }
+        }
+
+        // Close popup at the very end of all steps
+        setTimeout(signalClosePopup, 1500);
     }
 
     function handleReset() {
+        signalClosePopup();
         stepsExecution = stepsExecution.map((s) => ({
             ...s,
             status: "READY",
@@ -995,23 +1123,35 @@
     }
 
     // Domain Helpers
-    function getAvailableDomains(endpointId: string) {
+    function getMergedDomains(endpointId: string) {
         const endpoint = endpointService.getEndpoint(endpointId);
-        if (!endpoint) return [];
+        if (!endpoint) return null;
         const app = $settingsStore.applications.find(
             (a) => a.appName === endpoint.application,
         );
-        if (!app) return [];
+        if (!app) return null;
 
-        let domains = app.domains;
+        // Base domains from application
+        const merged = { ...(app.domains || {}) };
+
+        // Override with service domains if specified
         if (endpoint.scope.service && app.services) {
             const svc = app.services.find(
                 (s) => s.name === endpoint.scope.service,
             );
-            if (svc?.domains && Object.values(svc.domains).some((v) => v))
-                domains = svc.domains;
+            if (svc?.domains) {
+                if (svc.domains.dev) merged.dev = svc.domains.dev;
+                if (svc.domains.stg) merged.stg = svc.domains.stg;
+                if (svc.domains.pGlb) merged.pGlb = svc.domains.pGlb;
+                if (svc.domains.pKs) merged.pKs = svc.domains.pKs;
+                if (svc.domains.pFc) merged.pFc = svc.domains.pFc;
+            }
         }
+        return merged;
+    }
 
+    function getAvailableDomains(endpointId: string) {
+        const domains = getMergedDomains(endpointId);
         const list = [];
         if (domains) {
             if (domains.dev) list.push({ label: "DEV", value: domains.dev });
@@ -1021,6 +1161,31 @@
             if (domains.pFc) list.push({ label: "pFC", value: domains.pFc });
         }
         return list;
+    }
+
+    function updateAllStepDomains(currentStepId: string, selectedUrl: string) {
+        if (!selectedUrl) return;
+
+        // Find which environment label this URL corresponds to for the current step
+        const stepExec = stepsExecution.find((s) => s.stepId === currentStepId);
+        if (!stepExec) return;
+
+        const currentDomains = getAvailableDomains(stepExec.endpointId);
+        const selectedEnv = currentDomains.find((d) => d.value === selectedUrl);
+        if (!selectedEnv) return;
+
+        // Apply the same environment label to all other steps
+        stepsExecution.forEach((step) => {
+            if (step.stepId === currentStepId) return;
+
+            const stepDomains = getAvailableDomains(step.endpointId);
+            const match = stepDomains.find(
+                (d) => d.label === selectedEnv.label,
+            );
+            if (match) {
+                selectedDomainPrefixes[step.stepId] = match.value;
+            }
+        });
     }
 
     async function handleBackupToDrive() {
@@ -1318,8 +1483,8 @@
                                         <div
                                             class="size-6 rounded-full border-2 {activeStepIndex ===
                                             idx
-                                                ? 'border-primary'
-                                                : 'border-slate-200 dark:border-slate-700'} flex items-center justify-center text-[10px] font-bold"
+                                                ? 'border-primary text-primary'
+                                                : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'} flex items-center justify-center text-[10px] font-bold"
                                         >
                                             {idx + 1}
                                         </div>
@@ -1411,7 +1576,11 @@
                                             };
                                         }}
                                         onclick={() =>
-                                            executeStep(activeStepIndex)}
+                                            executeStep(
+                                                activeStepIndex,
+                                                false,
+                                                `exec_${Date.now()}`,
+                                            )}
                                         class="flex items-center justify-center gap-2 px-5 py-2 text-sm font-bold text-white transition-all hover:scale-105 active:scale-95 shrink-0 rounded-lg shadow-sm disabled:opacity-70 disabled:scale-100 {stepExec.status ===
                                         'EXECUTING'
                                             ? 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
@@ -1461,11 +1630,19 @@
                                 <!-- URL & Domain Row -->
                                 <div class="flex flex-wrap items-center gap-3">
                                     <select
-                                        bind:value={
+                                        value={selectedDomainPrefixes[
+                                            stepExec.stepId
+                                        ]}
+                                        onchange={(e) => {
+                                            const val = e.currentTarget.value;
                                             selectedDomainPrefixes[
                                                 stepExec.stepId
-                                            ]
-                                        }
+                                            ] = val;
+                                            updateAllStepDomains(
+                                                stepExec.stepId,
+                                                val,
+                                            );
+                                        }}
                                         class="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-blue-500/30"
                                     >
                                         {#each getAvailableDomains(stepExec.endpointId) as dom}

@@ -22,6 +22,7 @@
     let name = $state("");
     let description = $state("");
     let application = $state("");
+    let selectedService = $state("");
     let steps = $state<CollectionStep[]>([]);
     let isBookmarked = $state(false);
     let color = $state("#3b82f6");
@@ -32,10 +33,28 @@
         description = collection?.description || "";
         application =
             collection?.application || $appStateStore.selectedApp || "All";
+        selectedService = collection?.service?.[0] || "";
         steps = collection?.steps || [];
         isBookmarked = collection?.isBookmarked || false;
         color = collection?.color || "#3b82f6";
         icon = collection?.icon || "folder";
+    });
+
+    let currentApp = $derived(
+        $settingsStore.applications.find((a) => a.appName === application),
+    );
+
+    let services = $derived(currentApp?.services || []);
+
+    // Reset service if current application doesn't support it or if application changes
+    $effect(() => {
+        if (application) {
+            if (services.length === 0) {
+                selectedService = "";
+            } else if (!services.find((s) => s.name === selectedService)) {
+                // Keep current if still valid, otherwise reset or keep empty
+            }
+        }
     });
 
     function handleDrop(e: DragEvent) {
@@ -77,6 +96,7 @@
             name,
             description,
             application,
+            service: selectedService ? [selectedService] : [],
             steps,
             isBookmarked,
             color,
@@ -180,8 +200,29 @@
                                     {/each}
                                 </select>
                             </div>
+                            {#if services.length > 0}
+                                <div>
+                                    <label
+                                        for="col-service"
+                                        class="block text-xs font-bold text-slate-500 uppercase mb-1.5"
+                                        >Service</label
+                                    >
+                                    <select
+                                        id="col-service"
+                                        bind:value={selectedService}
+                                        class="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary transition-all font-semibold"
+                                    >
+                                        <option value="">Select Service</option>
+                                        {#each services as svc}
+                                            <option value={svc.name}
+                                                >{svc.name}</option
+                                            >
+                                        {/each}
+                                    </select>
+                                </div>
+                            {/if}
                         </div>
-                        <div>
+                        <div class="flex flex-col">
                             <label
                                 for="col-desc"
                                 class="block text-xs font-bold text-slate-500 uppercase mb-1.5"
@@ -190,9 +231,8 @@
                             <textarea
                                 id="col-desc"
                                 bind:value={description}
-                                rows="4"
                                 placeholder="Describe the business flow (e.g. Order -> Payment -> Completion)..."
-                                class="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary transition-all resize-none"
+                                class="w-full flex-1 px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary transition-all resize-none"
                             ></textarea>
                         </div>
                     </div>

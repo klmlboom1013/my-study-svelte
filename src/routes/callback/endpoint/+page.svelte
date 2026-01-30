@@ -10,9 +10,46 @@
     $: resultData = form?.data || data?.data || {};
     $: method = form?.method || data?.method || "UNKNOWN";
 
+    let isSession = false;
+
     onMount(() => {
         // Send result to parent window via BroadcastChannel
         const bc = new BroadcastChannel("wpay_channel");
+
+        // 0. Listen for close signal from parent
+        bc.onmessage = (event) => {
+            if (event.data?.type === "WPAY_CLOSE") {
+                console.log("Received CLOSE signal from parent. Closing...");
+                bc.close();
+                window.close();
+            } else if (event.data?.type === "WPAY_CLEAR") {
+                console.log("Received CLEAR signal. Navigating to blank...");
+                window.location.href = "about:blank";
+            } else if (event.data?.type === "WPAY_SUBMIT") {
+                console.log(
+                    "Received SUBMIT signal. Submitting form...",
+                    event.data,
+                );
+                const { url, method, payload } = event.data;
+
+                const form = document.createElement("form");
+                form.action = url;
+                form.method = method || "POST";
+                form.target = "_self"; // Submit in this window
+
+                if (payload) {
+                    Object.entries(payload).forEach(([key, value]) => {
+                        const input = document.createElement("input");
+                        input.type = "hidden";
+                        input.name = key;
+                        input.value = String(value || "");
+                        form.appendChild(input);
+                    });
+                }
+                document.body.appendChild(form);
+                form.submit();
+            }
+        };
 
         // Ensure resultData is not empty or handle specific success conditions if needed
         if (Object.keys(resultData).length > 0) {
@@ -32,98 +69,88 @@
                 );
             }
 
-            // Close the popup after a short delay to ensure message is sent
-            setTimeout(() => {
-                window.close();
-            }, 300);
+            // Detect if this is a collection run to prevent auto-closure
+            const urlParams = new URLSearchParams(window.location.search);
+            const isCollectionRun = !!(
+                window.name && window.name.startsWith("col_run_")
+            );
+            isSession =
+                urlParams.get("isSession") === "true" ||
+                resultData.isSession === "true" ||
+                isCollectionRun;
+
+            if (!isSession) {
+                // Close the popup after a short delay to ensure message is sent
+                setTimeout(() => {
+                    bc.close();
+                    window.close();
+                }, 3000);
+            } else {
+                console.log(
+                    `Workflow session detected (Name: ${window.name}). Keeping window open for next step.`,
+                );
+            }
         }
+
+        return () => {
+            bc.close();
+        };
     });
 </script>
 
-<div class="max-w-screen-2xl mx-auto py-8 px-4">
-    <Breadcrumbs
-        items={[{ label: "Home", href: "/" }, { label: "Endpoint Callback" }]}
-    />
-
-    <h1 class="text-3xl font-bold text-slate-900 dark:text-white mb-8">
-        Endpoint Test Result
-    </h1>
-
+<div
+    class="flex items-center justify-center h-screen bg-slate-50 dark:bg-slate-900"
+>
     <div
-        class="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-border-dark p-6 shadow-sm"
+        class="text-center p-8 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 max-w-sm w-full mx-4"
     >
-        <div class="flex items-center gap-4 mb-6">
-            <span
-                class="px-3 py-1 rounded-full text-sm font-bold {method ===
-                'POST'
-                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                    : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'}"
+        <div class="mb-6">
+            <div
+                class="size-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse"
             >
-                {method}
-            </span>
-            <span class="text-slate-500 dark:text-slate-400 text-sm">
-                Received at {new Date().toLocaleTimeString()}
-            </span>
-        </div>
-
-        <div class="space-y-4">
-            <h3 class="text-lg font-semibold text-slate-800 dark:text-white">
-                Received Data
-            </h3>
-
-            {#if Object.keys(resultData).length > 0}
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left">
-                        <thead
-                            class="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/50"
-                        >
-                            <tr>
-                                <th class="px-4 py-3 rounded-tl-lg">Key</th>
-                                <th class="px-4 py-3 rounded-tr-lg">Value</th>
-                            </tr>
-                        </thead>
-                        <tbody
-                            class="divide-y divide-slate-100 dark:divide-slate-800"
-                        >
-                            {#each Object.entries(resultData) as [key, value]}
-                                <tr
-                                    class="hover:bg-slate-50 dark:hover:bg-slate-800/30"
-                                >
-                                    <td
-                                        class="px-4 py-3 font-medium text-slate-700 dark:text-slate-300"
-                                    >
-                                        {key}
-                                    </td>
-                                    <td
-                                        class="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono break-all"
-                                    >
-                                        {value}
-                                    </td>
-                                </tr>
-                            {/each}
-                        </tbody>
-                    </table>
-                </div>
-            {:else}
-                <div
-                    class="p-8 text-center bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-dashed border-slate-300 dark:border-slate-700"
+                <span
+                    class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-[32px]"
+                    >sync</span
                 >
-                    <p class="text-slate-500 dark:text-slate-400">
-                        No data received
-                    </p>
-                </div>
-            {/if}
+            </div>
+            <h1 class="text-xl font-bold text-slate-900 dark:text-white mb-2">
+                Processing Interface Data...
+            </h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400">
+                Please wait while we complete the data transfer to {method ===
+                "POST"
+                    ? "server"
+                    : "requester"}.
+            </p>
         </div>
 
-        <div
-            class="mt-8 pt-6 border-t border-slate-200 dark:border-border-dark flex justify-end"
-        >
-            <a
-                href="/"
-                class="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium transition-colors"
+        {#if Object.keys(resultData).length > 0}
+            <div
+                class="py-3 px-4 rounded-lg text-xs font-medium border {isSession
+                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-100'
+                    : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100'}"
             >
-                Return to Home
-            </a>
+                <div class="flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-[16px]"
+                        >{isSession ? "timer" : "check_circle"}</span
+                    >
+                    {#if isSession}
+                        Data processed. Keeping window open...
+                    {:else}
+                        Data received. Closing window...
+                    {/if}
+                </div>
+            </div>
+        {/if}
+
+        <div class="mt-8 pt-6 border-t border-slate-100 dark:border-slate-700">
+            <p class="text-[10px] text-slate-400 italic">
+                {#if isSession}
+                    This window is being controlled by the collection workflow.
+                {:else}
+                    This window will close automatically.
+                {/if}
+            </p>
         </div>
     </div>
 </div>

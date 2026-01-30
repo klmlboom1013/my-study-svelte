@@ -63,7 +63,7 @@
 
     function updateMapping(
         fieldPath: string,
-        source: "manual" | "variable" | "global" | "option" | "mid",
+        source: "manual" | "variable" | "random",
         value: string,
     ) {
         let mappings = [...(step.requestMappings || [])];
@@ -162,21 +162,6 @@
                         </p>
                     </div>
 
-                    <!-- Endpoint Preset Selector -->
-                    <select
-                        class="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary transition-all"
-                        onchange={(e) =>
-                            handlePresetChange(
-                                (e.target as HTMLSelectElement).value,
-                            )}
-                        value={step.presetId || ""}
-                    >
-                        <option value="">Default (No Preset)</option>
-                        {#each presets as preset}
-                            <option value={preset.id}>{preset.name}</option>
-                        {/each}
-                    </select>
-
                     <!-- Mapping UI -->
                     {#if endpoint?.requestData}
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
@@ -206,14 +191,20 @@
                                         <select
                                             class="px-2 py-1 text-[10px] rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                                             value={source}
-                                            onchange={(e) =>
+                                            onchange={(e) => {
+                                                const nextSource = (
+                                                    e.target as HTMLSelectElement
+                                                ).value as any;
+                                                let nextValue = "";
+                                                if (nextSource === "random") {
+                                                    nextValue = `alphanumeric:${field.length || 8}`;
+                                                }
                                                 updateMapping(
                                                     field.name,
-                                                    (
-                                                        e.target as HTMLSelectElement
-                                                    ).value as any,
-                                                    "",
-                                                )}
+                                                    nextSource,
+                                                    nextValue,
+                                                );
+                                            }}
                                         >
                                             <option value="manual"
                                                 >Manual</option
@@ -223,19 +214,83 @@
                                                     >From Previous Step</option
                                                 >
                                             {/if}
-                                            <option value="global"
-                                                >From Global Parameter</option
-                                            >
-                                            <option value="option"
-                                                >From Parameter Option</option
-                                            >
-                                            <option value="mid"
-                                                >From MID Context</option
+                                            <option value="random"
+                                                >Random</option
                                             >
                                         </select>
                                     </div>
 
-                                    {#if source === "variable"}
+                                    {#if source === "random"}
+                                        {@const config = value.includes(":")
+                                            ? value.split(":")
+                                            : [
+                                                  "alphanumeric",
+                                                  field.length || 8,
+                                              ]}
+                                        {@const type = config[0]}
+                                        {@const length = config[1]}
+                                        <div
+                                            class="flex flex-col gap-2 mt-2 px-1"
+                                        >
+                                            <div
+                                                class="flex items-center gap-2"
+                                            >
+                                                <span
+                                                    class="text-[10px] text-slate-500 uppercase font-bold shrink-0"
+                                                    >Type</span
+                                                >
+                                                <select
+                                                    class="flex-1 px-2 py-1 text-[10px] rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                                                    value={type}
+                                                    onchange={(e) =>
+                                                        updateMapping(
+                                                            field.name,
+                                                            "random",
+                                                            `${(e.currentTarget as HTMLSelectElement).value}:${length}`,
+                                                        )}
+                                                >
+                                                    <option value="alpha"
+                                                        >Alpha</option
+                                                    >
+                                                    <option value="numeric"
+                                                        >Numeric</option
+                                                    >
+                                                    <option value="alphanumeric"
+                                                        >Mixed</option
+                                                    >
+                                                </select>
+                                            </div>
+                                            <div
+                                                class="flex items-center gap-2"
+                                            >
+                                                <span
+                                                    class="text-[10px] text-slate-500 uppercase font-bold shrink-0"
+                                                    >Len</span
+                                                >
+                                                <input
+                                                    type="number"
+                                                    class="flex-1 px-2 py-1 text-[10px] rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                                                    value={length}
+                                                    oninput={(e) =>
+                                                        updateMapping(
+                                                            field.name,
+                                                            "random",
+                                                            `${type}:${(e.currentTarget as HTMLInputElement).value}`,
+                                                        )}
+                                                    min="1"
+                                                    max={field.length}
+                                                />
+                                            </div>
+                                            {#if field.length}
+                                                <span
+                                                    class="text-[9px] text-slate-400 -mt-1 italic"
+                                                >
+                                                    * Fixed length defined in
+                                                    field: {field.length}
+                                                </span>
+                                            {/if}
+                                        </div>
+                                    {:else if source === "variable"}
                                         {@const selectedStepId = value
                                             ? value.split(".")[0]
                                             : ""}
@@ -320,174 +375,6 @@
                                                 </select>
                                             {/if}
                                         </div>
-                                    {:else if source === "global"}
-                                        {@const globalParams =
-                                            $settingsStore.endpoint_parameters
-                                                .globalParameters || []}
-                                        <div class="flex flex-col gap-2">
-                                            <select
-                                                class="w-full px-2 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                                                {value}
-                                                onchange={(e) =>
-                                                    updateMapping(
-                                                        field.name,
-                                                        "global",
-                                                        (
-                                                            e.target as HTMLSelectElement
-                                                        ).value,
-                                                    )}
-                                            >
-                                                <option value=""
-                                                    >Select Global Parameter</option
-                                                >
-                                                {#each globalParams as param}
-                                                    <option value={param.key}
-                                                        >{param.key} ({param.value})</option
-                                                    >
-                                                {/each}
-                                            </select>
-                                        </div>
-                                    {:else if source === "option"}
-                                        {@const paramOptions =
-                                            $settingsStore.endpoint_parameters
-                                                .parameterOptions || []}
-                                        {@const [optionId, optionValue] =
-                                            value.includes(":")
-                                                ? value.split(":")
-                                                : [value, ""]}
-                                        {@const selectedOption =
-                                            paramOptions.find(
-                                                (o) => o.id === optionId,
-                                            )}
-                                        <div class="flex flex-col gap-2">
-                                            <select
-                                                class="w-full px-2 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                                                value={optionId}
-                                                onchange={(e) =>
-                                                    updateMapping(
-                                                        field.name,
-                                                        "option",
-                                                        (
-                                                            e.target as HTMLSelectElement
-                                                        ).value,
-                                                    )}
-                                            >
-                                                <option value=""
-                                                    >Select Option Group</option
-                                                >
-                                                {#each paramOptions as opt}
-                                                    <option value={opt.id}
-                                                        >{opt.name}</option
-                                                    >
-                                                {/each}
-                                            </select>
-
-                                            {#if selectedOption}
-                                                <select
-                                                    class="w-full px-2 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                                                    value={optionValue}
-                                                    onchange={(e) => {
-                                                        const newValue = (
-                                                            e.target as HTMLSelectElement
-                                                        ).value;
-                                                        updateMapping(
-                                                            field.name,
-                                                            "option",
-                                                            `${optionId}:${newValue}`,
-                                                        );
-                                                    }}
-                                                >
-                                                    <option value=""
-                                                        >Select Value</option
-                                                    >
-                                                    {#each selectedOption.options as optVal}
-                                                        <option
-                                                            value={optVal.value}
-                                                            >{optVal.code} - {optVal.value}</option
-                                                        >
-                                                    {/each}
-                                                </select>
-                                            {/if}
-                                        </div>
-                                    {:else if source === "mid"}
-                                        {@const midContexts =
-                                            $settingsStore.endpoint_parameters
-                                                .midContexts || []}
-                                        {@const [contextId, contextField] =
-                                            value.includes(":")
-                                                ? value.split(":")
-                                                : [value, ""]}
-                                        <div class="flex flex-col gap-2">
-                                            <select
-                                                class="w-full px-2 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                                                value={contextId}
-                                                onchange={(e) =>
-                                                    updateMapping(
-                                                        field.name,
-                                                        "mid",
-                                                        (
-                                                            e.target as HTMLSelectElement
-                                                        ).value,
-                                                    )}
-                                            >
-                                                <option value=""
-                                                    >Select MID Context</option
-                                                >
-                                                {#each midContexts as ctx}
-                                                    <option value={ctx.id}
-                                                        >{ctx.mid} ({ctx.application})</option
-                                                    >
-                                                {/each}
-                                            </select>
-
-                                            {#if contextId}
-                                                <select
-                                                    class="w-full px-2 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                                                    value={contextField}
-                                                    onchange={(e) => {
-                                                        const newField = (
-                                                            e.target as HTMLSelectElement
-                                                        ).value;
-                                                        updateMapping(
-                                                            field.name,
-                                                            "mid",
-                                                            `${contextId}:${newField}`,
-                                                        );
-                                                    }}
-                                                >
-                                                    <option value=""
-                                                        >Select Field</option
-                                                    >
-                                                    <option value="mid"
-                                                        >MID</option
-                                                    >
-                                                    <option value="encKey"
-                                                        >EncKey</option
-                                                    >
-                                                    <option value="encIV"
-                                                        >EncIV</option
-                                                    >
-                                                    <option value="hashKey"
-                                                        >HashKey</option
-                                                    >
-                                                </select>
-                                            {/if}
-                                        </div>
-                                    {:else}
-                                        <input
-                                            type="text"
-                                            placeholder="Enter manual value"
-                                            class="w-full px-2 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                                            {value}
-                                            oninput={(e) =>
-                                                updateMapping(
-                                                    field.name,
-                                                    "manual",
-                                                    (
-                                                        e.target as HTMLInputElement
-                                                    ).value,
-                                                )}
-                                        />
                                     {/if}
                                 </div>
                             {/each}
