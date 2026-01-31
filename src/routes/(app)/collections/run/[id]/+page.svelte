@@ -72,6 +72,7 @@
     // State
     let stepsExecution = $state<CollectionStepExecution[]>([]);
     let activeStepIndex = $state(0);
+    let lastLoadedId = $state<string | null>(null);
     let isExecuting = $state(false);
     let selectedDomainPrefixes = $state<Record<string, string>>({});
     let popupWindow: Window | null = null; // Plain variable to avoid proxying
@@ -81,7 +82,6 @@
     let stopRequested = $state(false);
 
     function signalClosePopup() {
-        if (!popupWindow) return;
         try {
             const bc = new BroadcastChannel("wpay_channel");
             bc.postMessage({ type: "WPAY_CLOSE" });
@@ -222,6 +222,14 @@
             );
             collectionPresets = history.presets;
 
+            // If the collection ID has changed, reset the execution state
+            if (collection.id !== lastLoadedId) {
+                stepsExecution = [];
+                activeStepIndex = 0;
+                selectedDomainPrefixes = {};
+                lastLoadedId = collection.id;
+            }
+
             if (stepsExecution.length === 0) {
                 const lastUsed = history.lastUsed;
                 stepsExecution =
@@ -264,8 +272,14 @@
                             status: "READY",
                             sentRequest: undefined,
                             signatureSourceString: undefined,
+                            // New fields for signature verification display
+                            responseSignatureRawString: undefined,
+                            responseCalculatedSignature: undefined,
+                            responseValidationSuccess: undefined,
                             error: undefined,
                             result: undefined,
+                            mappedOptions: lastStepData?.mappedOptions || {},
+                            requestUrl: lastStepData?.requestUrl,
                         };
                     }) || [];
 
@@ -277,6 +291,11 @@
                         );
                     }
                 });
+
+                // Initial mapping application to populate variables/randoms
+                for (let i = 0; i < stepsExecution.length; i++) {
+                    applyMappings(i);
+                }
             }
         }
     });
@@ -405,6 +424,7 @@
 
         const currentExec = stepsExecution[index];
         const newValues = { ...currentExec.requestValues };
+        const newMappedOptions = { ...(currentExec.mappedOptions || {}) };
 
         step.requestMappings.forEach((mapping) => {
             if (mapping.source === "variable") {
@@ -416,29 +436,100 @@
 
                 if (targetStepExec) {
                     let val;
-                    // Priority 1: Use processed (decrypted/decoded) result if available
-                    if (targetStepExec.processedResult) {
-                        const path = pathParts.join(".");
-                        const processed = targetStepExec.processedResult[path];
-                        if (
-                            processed &&
-                            typeof processed === "object" &&
-                            "value" in processed
-                        ) {
-                            val = processed.value;
+                    // Use normalizedResult (recursively processed) if available, otherwise raw result
+                    let sourceData =
+                        targetStepExec.normalizedResult ||
+                        targetStepExec.result;
+
+                    // Ensure sourceData is an object if it's a JSON string (for legacy/unprocessed results)
+                    if (typeof sourceData === "string") {
+                        try {
+                            sourceData = JSON.parse(sourceData);
+                        } catch (e) {
+                            console.warn("Failed to parse sourceData JSON", e);
+                            sourceData = null;
                         }
                     }
 
-                    // Priority 2: Fallback to raw result
-                    if (val === undefined && targetStepExec.result) {
-                        val = getNestedValue(
-                            targetStepExec.result,
-                            pathParts.join("."),
-                        );
+                    if (sourceData) {
+                        val = getNestedValue(sourceData, pathParts.join("."));
+                        console.log(`[DEBUG] Mapping ${mapping.value}:`, {
+                            val,
+                            path: pathParts.join("."),
+                        });
                     }
 
-                    if (val !== undefined)
-                        setNestedValue(newValues, mapping.fieldPath, val);
+                    if (val !== undefined) {
+                        if (Array.isArray(val)) {
+                            // It's a list. Save it to mappedOptions.
+                            const valueKey =
+                                mapping.fieldPath.split(".").pop() || "";
+                            const options = val
+                                .map((item: any) => {
+                                    // If already formatted as an option by getNestedValue projection
+                                    if (
+                                        typeof item === "object" &&
+                                        item?.isOption
+                                    ) {
+                                        return {
+                                            value: String(item.value),
+                                            label: item.label,
+                                        };
+                                    }
+                                    // Fallback for raw objects or primitives
+                                    const itemValue =
+                                        typeof item === "object"
+                                            ? item[valueKey]
+                                            : item;
+                                    return {
+                                        value: String(itemValue ?? ""),
+                                        label:
+                                            generateOptionLabel(
+                                                item,
+                                                valueKey,
+                                            ) || String(itemValue ?? ""),
+                                    };
+                                })
+                                .filter((opt) => opt.value !== "");
+
+                            newMappedOptions[mapping.fieldPath] = options;
+
+                            // Check if current value is still in the new list
+                            const currentVal = getNestedValue(
+                                newValues,
+                                mapping.fieldPath,
+                            );
+
+                            if (!Array.isArray(currentVal)) {
+                                const currentValStr = String(currentVal || "");
+                                const existsInNewOptions = options.some(
+                                    (opt) => opt.value === currentValStr,
+                                );
+
+                                if (!existsInNewOptions) {
+                                    setNestedValue(
+                                        newValues,
+                                        mapping.fieldPath,
+                                        options,
+                                    );
+                                } else {
+                                    // Selection preserved!
+                                    console.log(
+                                        `[DEBUG] Preserving selection for ${mapping.fieldPath}: ${currentValStr}`,
+                                    );
+                                }
+                            } else {
+                                setNestedValue(
+                                    newValues,
+                                    mapping.fieldPath,
+                                    options,
+                                );
+                            }
+                        } else {
+                            // Scalar value. standard mapping.
+                            setNestedValue(newValues, mapping.fieldPath, val);
+                        }
+                    }
                 }
             } else if (mapping.source === "random") {
                 const [type, lenStr] = mapping.value.split(":");
@@ -449,6 +540,7 @@
         });
 
         stepsExecution[index].requestValues = newValues;
+        stepsExecution[index].mappedOptions = newMappedOptions;
         resetStepExecution(index);
     }
 
@@ -463,8 +555,57 @@
         current[parts[parts.length - 1]] = value;
     }
 
+    function generateOptionLabel(item: any, valueKey: string): string | null {
+        if (!item || typeof item !== "object") return null;
+
+        // Prioritize specific naming patterns
+        const priorityKeys = ["cardName", "bankName"];
+        for (const key of priorityKeys) {
+            if (item[key]) return String(item[key]);
+        }
+
+        // Search for generalized 'name', 'title', 'label' keys
+        const nameKeys = Object.keys(item).filter(
+            (k) =>
+                /name|title|label|desc|code/i.test(k) &&
+                k !== valueKey &&
+                !/url|uri|date|time/i.test(k),
+        );
+
+        // Pick the first valid simplified key
+        if (nameKeys.length > 0) {
+            // Sort by length to prefer shorter labels (e.g. 'name' vs 'longDescription')
+            nameKeys.sort((a, b) => a.length - b.length);
+            return String(item[nameKeys[0]]);
+        }
+
+        return null;
+    }
+
     function getNestedValue(obj: any, path: string) {
-        return path.split(".").reduce((prev, curr) => prev?.[curr], obj);
+        return path.split(".").reduce((prev, curr) => {
+            if (Array.isArray(prev) && !/^\d+$/.test(curr)) {
+                // Array Projection: Map property over array items
+                return prev
+                    .map((item) => {
+                        const val = item?.[curr];
+                        if (val !== undefined && typeof item === "object") {
+                            // Generate a label for context
+                            const label = generateOptionLabel(item, curr);
+                            if (label) {
+                                return {
+                                    value: val,
+                                    label: label,
+                                    isOption: true,
+                                };
+                            }
+                        }
+                        return val;
+                    })
+                    .filter((v) => v !== undefined);
+            }
+            return prev?.[curr];
+        }, obj);
     }
 
     function resetStepExecution(index: number) {
@@ -526,11 +667,225 @@
         }
     }
 
+    async function checkNextStepCondition(index: number) {
+        const stepDef = collection?.steps?.[index];
+        if (!stepDef) return;
+
+        // Normalize conditions to array
+        let conditions: NonNullable<
+            NonNullable<typeof collection.steps>[number]["nextStepConditions"]
+        > = [];
+
+        if (
+            stepDef.nextStepConditions &&
+            stepDef.nextStepConditions.length > 0
+        ) {
+            conditions = stepDef.nextStepConditions.filter((c) => c.enabled);
+        } else if (stepDef.nextStepCondition?.enabled) {
+            conditions = [
+                {
+                    enabled: true,
+                    field: stepDef.nextStepCondition.field,
+                    values: [stepDef.nextStepCondition.value],
+                    operator: "equals",
+                },
+            ];
+        }
+
+        if (conditions.length === 0) return;
+
+        const stepExec = stepsExecution[index];
+        const result = stepExec.result;
+
+        if (!result || typeof result !== "object") {
+            // Even if result is missing, we might want to flag error if we expected to check something
+            // But if no result, we can't really check.
+            return;
+        }
+
+        const endpoint = endpointService.getEndpoint(stepExec.endpointId);
+        if (!endpoint) return;
+
+        // Prepare Security Context for Signature Verification
+        let securityContext: SecurityContext = {};
+        const midValue = stepExec.requestValues["mid"]; // Assuming MID identifies the context
+        if (midValue) {
+            const midCtx = $settingsStore.endpoint_parameters.midContexts.find(
+                (c) => c.mid === midValue,
+            );
+            if (midCtx)
+                securityContext = {
+                    hashKey: midCtx.hashKey,
+                    encKey: midCtx.encKey,
+                    encIV: midCtx.encIV,
+                };
+        }
+
+        for (const condition of conditions) {
+            if (!condition.field || condition.field.trim() === "") continue;
+
+            const actualValue = condition.field
+                .split(".")
+                .reduce((obj: any, key: string) => obj?.[key], result);
+
+            const operator = condition.operator || "equals";
+            const strActual = String(actualValue ?? "");
+
+            if (operator === "isNotEmpty") {
+                if (!actualValue || strActual.trim() === "") {
+                    stepExec.status = "ERROR";
+                    stepExec.error = `Condition failed: '${condition.field}' should not be empty.`;
+                    return;
+                }
+                continue;
+            }
+
+            if (operator === "validSignature") {
+                if (!endpoint.signatureMethod) {
+                    stepExec.status = "ERROR";
+                    stepExec.error = `Condition failed: '${condition.field}' - No signature method defined in endpoint.`;
+                    return;
+                }
+
+                // Calculate complete signature based on response data and signing order
+                // Note: result is the Raw JSON object (decrypted/processed? No, stepExec.result is direct JSON)
+                // We should use the raw values from result.
+
+                // generateSignature expects simple KV map. result might be complex.
+                // Assuming flat response or top level keys match.
+                // Also need to handle URL decoding if fields are encoded?
+                // Usually signature is generated on Raw values.
+
+                try {
+                    const { rawString, signature: calculatedSignature } =
+                        await generateSignature(
+                            result,
+                            endpoint.responseData,
+                            endpoint.signatureMethod,
+                            securityContext,
+                        );
+
+                    stepExec.responseSignatureRawString = rawString;
+                    stepExec.responseCalculatedSignature = calculatedSignature;
+
+                    if (calculatedSignature !== strActual) {
+                        stepExec.status = "ERROR";
+                        stepExec.error = `Condition failed: Invalid Signature. Calculated '${calculatedSignature}' but got '${strActual}'`;
+                        stepExec.responseValidationSuccess = false;
+                        return;
+                    }
+                    stepExec.responseValidationSuccess = true;
+                } catch (e) {
+                    stepExec.status = "ERROR";
+                    stepExec.error = `Condition failed: Signature verification error - ${(e as Error).message}`;
+                    stepExec.responseValidationSuccess = false;
+                    return;
+                }
+                continue;
+            }
+
+            // Standard Operators (equals, notEquals, contains)
+            const valToCheck = String(actualValue); // Handle "undefined" as "undefined" string for legacy match
+
+            // For standard operators, we check if ANY of the expected values match the criteria (OR logic for values)
+            // But 'notEquals' is tricky. "Actual != V1 OR Actual != V2" is almost always true.
+            // Usually 'notEquals' with multiple values means "Actual should NOT be V1 AND should NOT be V2".
+            // Let's stick to simple iterators for now.
+            // If operator is 'equals' or 'contains', we want: (Actual == V1 OR Actual == V2)
+            // If operator is 'notEquals', we want: (Actual != V1 AND Actual != V2) -> NONE should match.
+
+            if (operator === "notEquals") {
+                const isMatch = condition.values.some(
+                    (v) => String(v) === valToCheck,
+                );
+                if (isMatch) {
+                    stepExec.status = "ERROR";
+                    stepExec.error = `Condition failed: '${condition.field}' (${valToCheck}) should NOT match any of [${condition.values.join(", ")}]`;
+                    return;
+                }
+            } else if (operator === "contains") {
+                const isMatch = condition.values.some((v) =>
+                    valToCheck.includes(String(v)),
+                );
+                if (!isMatch) {
+                    stepExec.status = "ERROR";
+                    stepExec.error = `Condition failed: '${condition.field}' (${valToCheck}) should contain any of [${condition.values.join(", ")}]`;
+                    return;
+                }
+            } else {
+                // Default 'equals'
+                const isMatch = condition.values.some(
+                    (v) => String(v) === valToCheck,
+                );
+                if (!isMatch) {
+                    stepExec.status = "ERROR";
+                    stepExec.error = `Condition failed: '${condition.field}' expected [${condition.values.join(", ")}], got '${valToCheck}'`;
+                    return;
+                }
+            }
+        }
+    }
+
+    function recurseProcess(
+        data: any,
+        fields: ResponseDataField[] = [],
+        securityContext: SecurityContext,
+    ): any {
+        if (!data || typeof data !== "object") return data;
+
+        // If 'data' is an array, we expect 'fields' to be the schema for the ITEMS of that array.
+        // But usually current recursion calls pass 'val' (which is the array) and 'subFields' (schema for items).
+        // Wait, if data is array, we map over it.
+        if (Array.isArray(data)) {
+            // This case shouldn't be hit directly if called correctly from the loop below,
+            // but for safety:
+            return data.map((item) =>
+                recurseProcess(item, fields, securityContext),
+            );
+        }
+
+        const processed = { ...data }; // Shallow copy
+
+        for (const field of fields) {
+            const val = processed[field.name];
+            if (val === undefined || val === null) continue;
+
+            if (
+                field.type === "List" &&
+                Array.isArray(val) &&
+                field.subFields
+            ) {
+                processed[field.name] = val.map((item) =>
+                    recurseProcess(item, field.subFields!, securityContext),
+                );
+            } else {
+                let processedVal = String(val);
+                if (field.decoded) {
+                    processedVal = urlDecodeString(processedVal);
+                }
+                if (field.encrypt) {
+                    processedVal = decryptString(processedVal, securityContext);
+                }
+                // Update the value in the normalized object if changed
+                // (We always update to ensure it's a string if it was number/boolean,
+                // but actually for numbers/booleans we might want to keep original type if no encryption?
+                // For now, let's only update if encryption/decoding happened to match old logic,
+                // OR just update always if we want consistency.
+                // The user wants DECODED data.
+                if (field.decoded || field.encrypt) {
+                    processed[field.name] = processedVal;
+                }
+            }
+        }
+        return processed;
+    }
+
     function processResponseData(index: number) {
         const stepExec = stepsExecution[index];
         const endpoint = endpointService.getEndpoint(stepExec.endpointId);
         if (!endpoint || !stepExec.result) {
             stepExec.processedResult = undefined;
+            stepExec.normalizedResult = undefined;
             return;
         }
 
@@ -553,15 +908,22 @@
             try {
                 resultObj = JSON.parse(stepExec.result);
             } catch {
-                // If it's not JSON, we might still want to process if it's a KV string,
-                // but usually responseDefinitions assume JSON mapping for collections.
                 stepExec.processedResult = undefined;
+                stepExec.normalizedResult = stepExec.result; // Fallback to raw string
                 return;
             }
         } else {
             resultObj = stepExec.result;
         }
 
+        // 1. Create Normalized Result (Deep processed copy)
+        stepExec.normalizedResult = recurseProcess(
+            resultObj,
+            endpoint.responseData,
+            securityContext,
+        );
+
+        // 2. Populate 'processedResult' for the "Decrypted Data" View (Backwards compat / View specific)
         const processed: Record<string, any> = {};
         const respFields = endpoint.responseData || [];
 
@@ -597,6 +959,85 @@
 
         stepExec.processedResult =
             Object.keys(processed).length > 0 ? processed : undefined;
+
+        // Auto-apply mappings to ALL subsequent steps after response is processed
+        for (let i = index + 1; i < stepsExecution.length; i++) {
+            applyMappings(i);
+        }
+    }
+
+    function flattenDecryptedData(
+        data: any,
+        fields: ResponseDataField[],
+        prefix = "",
+    ): { name: string; type: string; value: string }[] {
+        const result: { name: string; type: string; value: string }[] = [];
+
+        if (!data || typeof data !== "object") return result;
+
+        // Iterate through defined fields to check if they were processed
+        for (const field of fields) {
+            const currentPath = prefix ? `${prefix}.${field.name}` : field.name;
+            const value = data[field.name];
+
+            if (value === undefined || value === null) continue;
+
+            // Check if this field itself was configured for encryption/decoding
+            if (field.encrypt || field.decoded) {
+                let type = "PROCESSED";
+                if (field.encrypt) type = "DECRYPTED";
+                else if (field.decoded) type = "URL DECODED";
+
+                result.push({
+                    name: currentPath,
+                    type,
+                    value: String(value),
+                });
+            }
+
+            // Recurse if List
+            if (
+                field.type === "List" &&
+                field.subFields &&
+                Array.isArray(value)
+            ) {
+                value.forEach((item, index) => {
+                    result.push(
+                        ...flattenDecryptedData(
+                            item,
+                            field.subFields!,
+                            `${currentPath}[${index}]`,
+                        ),
+                    );
+                });
+            }
+        }
+        return result;
+    }
+
+    function getDecryptedData(stepExec: CollectionStepExecution) {
+        // Use normalizedResult if available (supports recursive), otherwise fallback to legacy processedResult
+        if (stepExec.normalizedResult) {
+            const endpoint = endpointService.getEndpoint(stepExec.endpointId);
+            if (!endpoint) return [];
+            return flattenDecryptedData(
+                stepExec.normalizedResult,
+                endpoint.responseData,
+            );
+        }
+
+        if (!stepExec.processedResult) return [];
+        return Object.entries(stepExec.processedResult).map(([key, item]) => {
+            let type = "PROCESSED";
+            if (item.decrypted) type = "DECRYPTED";
+            else if (item.decoded) type = "URL DECODED";
+
+            return {
+                name: key,
+                type,
+                value: String(item.value),
+            };
+        });
     }
 
     async function executeStep(
@@ -612,8 +1053,9 @@
         // Check cancellation
         if (stopRequested) return;
 
-        // Apply mappings before execution ONLY if we are not already in SUCCESS state (Prepared/Done)
-        if (stepExec.status !== "SUCCESS") {
+        // Apply mappings before execution ONLY if we are not already in SUCCESS (Prepared) or READY state
+        // This prevents overwriting user-selected values from list mappings
+        if (stepExec.status !== "SUCCESS" && stepExec.status !== "READY") {
             applyMappings(index);
         }
 
@@ -651,7 +1093,9 @@
                                 stepExec.requestValues["returnUrl"],
                                 window.location.origin,
                             );
-                            url.searchParams.set("isSession", "true");
+                            if (autoRun) {
+                                url.searchParams.set("isSession", "true");
+                            }
                             stepExec.requestValues["returnUrl"] =
                                 url.toString();
                         } catch (e) {
@@ -662,6 +1106,7 @@
                                 ? "&"
                                 : "?";
                             if (
+                                autoRun &&
                                 !stepExec.requestValues["returnUrl"].includes(
                                     "isSession=true",
                                 )
@@ -864,6 +1309,8 @@
                         stepExec.requestValues[sigField.name];
                 }
 
+                stepExec.requestUrl = fullUrl;
+
                 stepExec.sentRequest = Object.entries(payload)
                     .map(([k, v]) => `${k}=${v}`)
                     .join("\n");
@@ -903,17 +1350,18 @@
                     const result = await resultPromise;
                     stepExec.result = result;
                     stepExec.status = "SUCCESS";
+                    stepExec.status = "SUCCESS";
                     processResponseData(index);
+                    await checkNextStepCondition(index);
                 } finally {
                     // ALWAYS close the popup after step execution (success or error)
                     // ONLY close the popup if this is a MANUAL run
                     // For Run All, we keep it open for the next step
-                    if (
-                        !popupNameOverride &&
-                        popupWindow &&
-                        !popupWindow.closed
-                    ) {
-                        popupWindow.close();
+                    if (!popupNameOverride) {
+                        if (popupWindow && !popupWindow.closed) {
+                            popupWindow.close();
+                        }
+                        signalClosePopup();
                     }
                 }
 
@@ -935,7 +1383,7 @@
                         endpoint.method === "POST" &&
                         endpoint.config?.contentType ===
                             "application/x-www-form-urlencoded"
-                            ? urlEncodeData(payload, endpoint.requestData)
+                            ? payload // signature should be calculated on processed values, urlEncode happens later
                             : payload;
                     const { signature, rawString } = await generateSignature(
                         valForSig,
@@ -1004,6 +1452,8 @@
                     if (qp) fullUrl += (fullUrl.includes("?") ? "&" : "?") + qp;
                 }
 
+                stepExec.requestUrl = fullUrl;
+
                 const response = await fetch("/api/proxy", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -1027,14 +1477,7 @@
                     stepExec.status = response.ok ? "SUCCESS" : "ERROR";
                 }
                 processResponseData(index);
-
-                // Auto-apply mappings to NEXT step if successful
-                if (
-                    stepExec.status === "SUCCESS" &&
-                    index < stepsExecution.length - 1
-                ) {
-                    applyMappings(index + 1);
-                }
+                await checkNextStepCondition(index);
 
                 await scrollToBottom();
             }
@@ -1339,7 +1782,7 @@
     }
 </script>
 
-<div class="max-w-screen-2xl mx-auto py-8 px-4 pb-32">
+<div class="max-w-7xl mx-auto py-8 px-4 pb-32">
     {#if collection}
         <div class="mb-8">
             <Breadcrumbs
@@ -1818,6 +2261,8 @@
                                     <ExecutionParameterForm
                                         fields={endpoint?.requestData || []}
                                         bind:values={stepExec.requestValues}
+                                        mappedOptions={stepExec.mappedOptions ||
+                                            {}}
                                         onUserChange={() =>
                                             resetStepExecution(activeStepIndex)}
                                         getOptions={(f: RequestDataField) =>
@@ -1868,6 +2313,7 @@
                                             >
                                                 <ExecutionResultView
                                                     signatureRawString={stepExec.signatureSourceString}
+                                                    requestUrl={stepExec.requestUrl}
                                                     jsonResult={stepExec.sentRequest}
                                                     executionStage="PREPARE"
                                                 />
@@ -1938,6 +2384,7 @@
                                                         >
                                                     </div>
                                                     <ExecutionResultView
+                                                        requestUrl={stepExec.requestUrl}
                                                         responseResult={typeof stepExec.result ===
                                                         "string"
                                                             ? stepExec.result
@@ -1951,86 +2398,13 @@
                                                             ? 200
                                                             : 500}
                                                         executionStage="EXECUTE"
+                                                        responseValidationSuccess={stepExec.responseValidationSuccess}
+                                                        responseSignatureRawString={stepExec.responseSignatureRawString}
+                                                        responseCalculatedSignature={stepExec.responseCalculatedSignature}
+                                                        responseDecryptedData={getDecryptedData(
+                                                            stepExec,
+                                                        )}
                                                     />
-                                                </div>
-                                            {/if}
-
-                                            <!-- 3. Response Validation Section -->
-                                            {#if stepExec.processedResult}
-                                                <div
-                                                    class="space-y-4 pt-6 border-t border-slate-100 dark:border-slate-800"
-                                                    in:slide
-                                                >
-                                                    <div
-                                                        class="flex items-center gap-2 px-1"
-                                                    >
-                                                        <CheckCircle2
-                                                            size={18}
-                                                            class="text-indigo-500"
-                                                        />
-                                                        <h3
-                                                            class="text-lg font-bold text-slate-800 dark:text-slate-200"
-                                                        >
-                                                            Response Validation
-                                                        </h3>
-                                                    </div>
-
-                                                    <div
-                                                        class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 space-y-5 shadow-sm"
-                                                    >
-                                                        <div
-                                                            class="flex items-center gap-2 mb-1"
-                                                        >
-                                                            <Bookmark
-                                                                size={14}
-                                                                class="text-slate-400"
-                                                            />
-                                                            <span
-                                                                class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest"
-                                                                >Decrypted /
-                                                                Decoded Data</span
-                                                            >
-                                                        </div>
-
-                                                        <div class="grid gap-3">
-                                                            {#each Object.entries(stepExec.processedResult) as [key, data]}
-                                                                <div
-                                                                    class="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 group relative transition-all hover:border-slate-300 dark:hover:border-slate-700"
-                                                                >
-                                                                    <div
-                                                                        class="flex items-center justify-between mb-2"
-                                                                    >
-                                                                        <span
-                                                                            class="text-[11px] font-bold text-slate-700 dark:text-slate-300"
-                                                                            >{key}</span
-                                                                        >
-                                                                        <div
-                                                                            class="flex gap-1.5"
-                                                                        >
-                                                                            {#if data.decoded}
-                                                                                <span
-                                                                                    class="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-[9px] font-bold text-slate-500 dark:text-slate-400"
-                                                                                    >URL
-                                                                                    DECODED</span
-                                                                                >
-                                                                            {/if}
-                                                                            {#if data.decrypted}
-                                                                                <span
-                                                                                    class="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-[9px] font-bold text-slate-500 dark:text-slate-400"
-                                                                                    >DECRYPTED</span
-                                                                                >
-                                                                            {/if}
-                                                                        </div>
-                                                                    </div>
-                                                                    <div
-                                                                        class="text-sm font-medium text-emerald-600 dark:text-emerald-400 font-mono break-all line-clamp-2 group-hover:line-clamp-none transition-all"
-                                                                    >
-                                                                        {data.value}
-                                                                    </div>
-                                                                </div>
-                                                            {/each}
-                                                        </div>
-                                                    </div>
                                                 </div>
                                             {/if}
                                         </div>

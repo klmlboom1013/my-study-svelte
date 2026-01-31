@@ -102,7 +102,7 @@
 </script>
 
 {#if isValid}
-    <div class="max-w-screen-2xl mx-auto flex flex-col gap-8 py-8 px-4">
+    <div class="max-w-7xl mx-auto flex flex-col gap-8 py-8 px-4">
         <!-- Page Heading -->
         <div class="flex flex-wrap justify-between items-end gap-4 mt-9">
             <div class="flex flex-col gap-2">

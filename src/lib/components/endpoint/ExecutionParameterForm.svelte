@@ -2,6 +2,7 @@
     import { ChevronDown, Plus, Trash2, Check } from "lucide-svelte";
     import { slide, fade } from "svelte/transition";
     import type { RequestDataField } from "$lib/types/endpoint";
+    import { clickOutside } from "$lib/utils/clickOutside";
 
     let {
         fields,
@@ -9,6 +10,7 @@
         onUserChange,
         getOptions,
         activeDropdownPath = $bindable(),
+        mappedOptions = {},
     } = $props();
 
     function initializeValues(
@@ -173,8 +175,92 @@
                     </select>
                 {:else}
                     {@const options = getOptions(field)}
-                    {#if options.length > 0}
-                        <div class="relative w-full param-dropdown-container">
+                    {@const dynamicOptions = mappedOptions?.[path]}
+                    {#if dynamicOptions}
+                        <div
+                            class="relative w-full param-dropdown-container"
+                            use:clickOutside={() => {
+                                if (activeDropdownPath === path)
+                                    activeDropdownPath = null;
+                            }}
+                        >
+                            <button
+                                type="button"
+                                class="w-full pl-3 pr-10 py-2 text-sm text-left font-normal rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all flex items-center justify-between"
+                                onclick={() =>
+                                    (activeDropdownPath =
+                                        activeDropdownPath === path
+                                            ? null
+                                            : path)}
+                            >
+                                {#if Array.isArray(currentValues[field.name])}
+                                    <span class="text-slate-400 italic"
+                                        >Select value... ({dynamicOptions.length}
+                                        options)</span
+                                    >
+                                {:else if !currentValues[field.name]}
+                                    <span class="text-slate-400 italic"
+                                        >Select value... ({dynamicOptions.length}
+                                        options)</span
+                                    >
+                                {:else}
+                                    <span class="truncate"
+                                        >{currentValues[field.name]}</span
+                                    >
+                                {/if}
+                                <ChevronDown size={14} class="text-slate-400" />
+                            </button>
+
+                            {#if activeDropdownPath === path}
+                                <div
+                                    transition:fade={{ duration: 200 }}
+                                    class="absolute right-0 top-full mt-1 z-50 w-full min-w-[200px] max-h-[240px] overflow-y-auto rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-slate-900 shadow-xl"
+                                >
+                                    {#each dynamicOptions as opt}
+                                        <button
+                                            type="button"
+                                            class="w-full px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors truncate border-b last:border-0 border-slate-100 dark:border-slate-800 flex items-center justify-between group"
+                                            onclick={() => {
+                                                currentValues[field.name] =
+                                                    opt.value;
+                                                activeDropdownPath = null;
+                                                onUserChange();
+                                            }}
+                                        >
+                                            <div
+                                                class="flex flex-col overflow-hidden"
+                                            >
+                                                <span
+                                                    class="font-medium text-slate-800 dark:text-slate-100 truncate group-hover:text-primary transition-colors"
+                                                    >{opt.label ||
+                                                        opt.value}</span
+                                                >
+                                                {#if opt.label}
+                                                    <span
+                                                        class="text-[10px] text-slate-400 font-mono mt-0.5"
+                                                        >{opt.value}</span
+                                                    >
+                                                {/if}
+                                            </div>
+                                            {#if String(currentValues[field.name]) === String(opt.value)}
+                                                <Check
+                                                    size={14}
+                                                    class="text-primary shrink-0 ml-2"
+                                                />
+                                            {/if}
+                                        </button>
+                                    {/each}
+                                </div>
+                            {/if}
+                        </div>
+                    {:else if options.length > 0}
+                        <div
+                            class="relative w-full param-dropdown-container"
+                            use:clickOutside={() => {
+                                if (activeDropdownPath === path)
+                                    activeDropdownPath = null;
+                            }}
+                        >
                             <input
                                 id={path}
                                 type={field.type === "number"

@@ -8,6 +8,7 @@
     import type { Endpoint } from "$lib/types/endpoint";
     import { onMount } from "svelte";
     import { slide } from "svelte/transition";
+    import CollectionConditionFieldSelector from "./CollectionConditionFieldSelector.svelte";
 
     interface Props {
         step: CollectionStep;
@@ -81,6 +82,104 @@
     function toggleCollapse() {
         isCollapsed = !isCollapsed;
     }
+
+    function toggleConditionEnabled(enabled: boolean) {
+        // Legacy support shim: if enabling, ensure we have at least one condition if using new array
+        if (
+            enabled &&
+            (!step.nextStepConditions || step.nextStepConditions.length === 0)
+        ) {
+            // Migration or init
+            const legacy = step.nextStepCondition || {
+                enabled: true,
+                field: "",
+                value: "",
+                operator: "equals" as const,
+            };
+            onUpdate({
+                ...step,
+                nextStepCondition: undefined, // Clear legacy to avoid confusion? Or keep sync? Let's favor new array.
+                nextStepConditions: [
+                    {
+                        enabled: true,
+                        field: legacy.field,
+                        values: legacy.value ? [legacy.value] : [],
+                        operator: "equals",
+                    },
+                ],
+            });
+        } else if (!enabled) {
+            // Disable all? Or just clear?
+            // The toggle usually implies "Feature Enabled".
+            // If we have a list, maybe we don't need a master toggle, checking if array length > 0 is enough?
+            // But the UI shows a master toggle. Let's treat it as "clearing all" or just hiding the UI?
+            // Existing behavior: toggle enabled flag.
+            // New behavior: If disabled, maybe we clear the array or just valid if there are conditions?
+            // Let's assume the Master Toggle controls visibility/activity of the entire feature.
+            // But we don't have a master 'enabled' field on the step itself for this array.
+            // Let's assume if array exists and length > 0, it is enabled.
+            // So if user turns OFF, we ask "Delete all conditions?".
+            // Actually, let's keep it simple. If valid conditions exist, it's active.
+            // The UI "Enabled" switch might be redundant if we just showing specific conditions.
+            // BUT, to keep UI consistent, let's say "Enabled" means "Has at least one active condition".
+        }
+    }
+
+    // New Helper Functions
+    function addCondition() {
+        const newConditions = [...(step.nextStepConditions || [])];
+        newConditions.push({
+            enabled: true,
+            field: "",
+            values: [],
+            operator: "equals",
+        });
+        onUpdate({ ...step, nextStepConditions: newConditions });
+    }
+
+    function removeCondition(index: number) {
+        const newConditions = [...(step.nextStepConditions || [])];
+        newConditions.splice(index, 1);
+        onUpdate({ ...step, nextStepConditions: newConditions });
+    }
+
+    function updateCondition(
+        index: number,
+        updates: Partial<
+            NonNullable<CollectionStep["nextStepConditions"]>[number]
+        >,
+    ) {
+        const newConditions = [...(step.nextStepConditions || [])];
+        if (newConditions[index]) {
+            newConditions[index] = { ...newConditions[index], ...updates };
+            onUpdate({ ...step, nextStepConditions: newConditions });
+        }
+    }
+
+    // Migration Effect
+    $effect(() => {
+        // One-time migration from legacy object to array if array is missing but object exists
+        if (
+            step.nextStepCondition &&
+            (!step.nextStepConditions || step.nextStepConditions.length === 0)
+        ) {
+            // Check if legacy has real data
+            if (step.nextStepCondition.field || step.nextStepCondition.value) {
+                const legacy = step.nextStepCondition;
+                onUpdate({
+                    ...step,
+                    nextStepConditions: [
+                        {
+                            enabled: legacy.enabled,
+                            field: legacy.field,
+                            values: legacy.value ? [legacy.value] : [],
+                            operator: (legacy.operator as any) || "equals",
+                        },
+                    ],
+                });
+            }
+        }
+    });
 </script>
 
 <div
@@ -347,32 +446,16 @@
                                                               .join(".")
                                                         : ""}
 
-                                                <select
-                                                    class="w-full px-2 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                                                <CollectionConditionFieldSelector
+                                                    endpoint={prevEp}
                                                     value={selectedField}
-                                                    onchange={(e) => {
+                                                    onUpdate={(val) =>
                                                         updateMapping(
                                                             field.name,
                                                             "variable",
-                                                            `${selectedStepId}.${(e.target as HTMLSelectElement).value}`,
-                                                        );
-                                                    }}
-                                                    disabled={!prevEp?.responseData}
-                                                >
-                                                    <option value=""
-                                                        >Select Field</option
-                                                    >
-                                                    {#if prevEp?.responseData}
-                                                        {#each prevEp.responseData as respField}
-                                                            <option
-                                                                value={respField.name}
-                                                                >{respField.name}
-                                                                ({respField.description ||
-                                                                    ""})</option
-                                                            >
-                                                        {/each}
-                                                    {/if}
-                                                </select>
+                                                            `${selectedStepId}.${val}`,
+                                                        )}
+                                                />
                                             {/if}
                                         </div>
                                     {/if}
@@ -381,6 +464,163 @@
                         </div>
                     {/if}
                 </div>
+            </div>
+            <!-- Next Step Condition Area -->
+            <div class="flex flex-col gap-4 mt-8">
+                <div
+                    class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2"
+                >
+                    <span
+                        class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider"
+                        >Next Step Conditions</span
+                    >
+                    <div class="flex-1"></div>
+                    <button
+                        onclick={addCondition}
+                        class="px-2 py-1 text-[10px] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors flex items-center gap-1"
+                    >
+                        <span class="material-symbols-outlined text-[14px]"
+                            >add</span
+                        >
+                        Add Condition
+                    </button>
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                    <p class="text-[11px] text-slate-500 leading-relaxed">
+                        이 Step의 Response 값을 검증하여 다음 Step 진행 여부를
+                        결정합니다. 설정된 모든 조건이 만족해야 하며(AND), 각
+                        조건의 값 중 하나라도 일치하면(OR) 통과합니다.
+                    </p>
+                </div>
+
+                {#if step.nextStepConditions && step.nextStepConditions.length > 0}
+                    <div class="space-y-3" transition:slide={{ duration: 200 }}>
+                        {#each step.nextStepConditions as condition, i}
+                            <div
+                                class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 relative group"
+                            >
+                                <button
+                                    onclick={() => removeCondition(i)}
+                                    class="absolute top-2 right-2 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                    title="Remove Condition"
+                                >
+                                    <span
+                                        class="material-symbols-outlined text-[16px]"
+                                        >close</span
+                                    >
+                                </button>
+
+                                <div
+                                    class="grid grid-cols-1 md:grid-cols-12 gap-4"
+                                >
+                                    <!-- Response Field Selection -->
+                                    <div
+                                        class="md:col-span-4 flex flex-col gap-2"
+                                    >
+                                        <span
+                                            class="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase"
+                                            >Response Field (Key)</span
+                                        >
+                                        <CollectionConditionFieldSelector
+                                            {endpoint}
+                                            value={condition.field}
+                                            onUpdate={(val) =>
+                                                updateCondition(i, {
+                                                    field: val,
+                                                })}
+                                        />
+                                    </div>
+
+                                    <!-- Operator Selection -->
+                                    <div
+                                        class="md:col-span-3 flex flex-col gap-2"
+                                    >
+                                        <span
+                                            class="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase"
+                                            >Operator</span
+                                        >
+                                        <select
+                                            class="w-full px-2 py-2 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white appearance-none"
+                                            value={condition.operator ||
+                                                "equals"}
+                                            onchange={(e) =>
+                                                updateCondition(i, {
+                                                    operator: (
+                                                        e.target as HTMLSelectElement
+                                                    ).value as any,
+                                                })}
+                                        >
+                                            <option value="equals"
+                                                >Equals (==)</option
+                                            >
+                                            <option value="notEquals"
+                                                >Not Equals (!=)</option
+                                            >
+                                            <option value="contains"
+                                                >Contains (Includes)</option
+                                            >
+                                            <hr />
+                                            <option value="isNotEmpty"
+                                                >Is Not Empty</option
+                                            >
+                                            <option value="validSignature"
+                                                >Valid Signature</option
+                                            >
+                                        </select>
+                                    </div>
+
+                                    <!-- Expected Values -->
+                                    {#if condition.operator !== "isNotEmpty" && condition.operator !== "validSignature"}
+                                        <div
+                                            class="md:col-span-5 flex flex-col gap-2"
+                                            transition:slide={{
+                                                axis: "x",
+                                                duration: 200,
+                                            }}
+                                        >
+                                            <span
+                                                class="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase"
+                                                >Expected Values (Red: OR)</span
+                                            >
+                                            <input
+                                                type="text"
+                                                class="w-full px-2 py-2 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-mono"
+                                                placeholder="e.g. 0000, 200 (comma separated)"
+                                                value={condition.values.join(
+                                                    ", ",
+                                                )}
+                                                oninput={(e) =>
+                                                    updateCondition(i, {
+                                                        values: (
+                                                            e.target as HTMLInputElement
+                                                        ).value
+                                                            .split(",")
+                                                            .map((v) =>
+                                                                v.trim(),
+                                                            ),
+                                                    })}
+                                            />
+                                            <span
+                                                class="text-[9px] text-slate-400"
+                                                >쉼표(,)로 구분하여 여러 값을
+                                                입력할 수 있습니다.</span
+                                            >
+                                        </div>
+                                    {/if}
+                                </div>
+                            </div>
+                        {/each}
+                    </div>
+                {:else}
+                    <div
+                        class="text-center py-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-lg"
+                    >
+                        <span class="text-xs text-slate-400"
+                            >설정된 조건이 없습니다.</span
+                        >
+                    </div>
+                {/if}
             </div>
         </div>
     {/if}

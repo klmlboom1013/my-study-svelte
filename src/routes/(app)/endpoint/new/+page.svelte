@@ -18,6 +18,7 @@
     import DataDefinitionTable from "$lib/components/endpoint/DataDefinitionTable.svelte";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import DropdownInput from "$lib/components/ui/DropdownInput.svelte";
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
 
     let selectedApplication = $state("");
     let name = $state("");
@@ -27,6 +28,15 @@
     let requestType = $state<RequestType>("REST");
     let selectedService = $state<string>("");
     let selectedSite = $state<string>("");
+
+    let prevSelectedApplication = $state("");
+    let prevSelectedService = $state("");
+
+    // Alert Modal State
+    let isAlertOpen = $state(false);
+    let alertTitle = $state("");
+    let alertMessage = $state("");
+    let alertOnConfirm = $state<(() => void) | undefined>(undefined);
 
     // Initialize with first application if available
     onMount(() => {
@@ -83,29 +93,38 @@
 
     // Set default service when application changes
     $effect(() => {
-        if (useServiceDistinction) {
-            if (
-                serviceOptions.length > 0 &&
-                (!selectedService || !serviceOptions.includes(selectedService))
-            ) {
-                selectedService = serviceOptions[0];
+        // Only reset if APPLICATION actually changed
+        if (selectedApplication !== prevSelectedApplication) {
+            if (useServiceDistinction) {
+                if (
+                    serviceOptions.length > 0 &&
+                    (!selectedService ||
+                        !serviceOptions.includes(selectedService))
+                ) {
+                    selectedService = serviceOptions[0];
+                }
+            } else {
+                selectedService = "";
+                selectedSite = "";
             }
-        } else {
-            selectedService = "";
-            selectedSite = "";
+            prevSelectedApplication = selectedApplication;
         }
     });
 
     // Set default site when service changes
     $effect(() => {
-        if (
-            useServiceDistinction &&
-            siteOptions.length > 0 &&
-            (!selectedSite || !siteOptions.includes(selectedSite))
-        ) {
-            selectedSite = siteOptions[0];
-        } else if (siteOptions.length === 0) {
-            selectedSite = "";
+        // Only reset if SERVICE actually changed
+        if (selectedService !== prevSelectedService) {
+            if (
+                useServiceDistinction &&
+                siteOptions.length > 0 &&
+                (!selectedSite || !siteOptions.includes(selectedSite))
+            ) {
+                selectedSite = siteOptions[0];
+            } else if (siteOptions.length === 0) {
+                selectedSite = "";
+            }
+            prevSelectedService = selectedService;
         }
     });
 
@@ -162,8 +181,10 @@
         endpointService.saveEndpoint(newEndpoint);
         console.log("Saved Endpoint:", newEndpoint);
 
-        alert("Endpoint Saved!");
-        goto(`/endpoint/${newEndpoint.id}`);
+        alertTitle = "Success";
+        alertMessage = "Endpoint Saved!";
+        alertOnConfirm = () => goto(`/endpoint/${newEndpoint.id}`);
+        isAlertOpen = true;
     }
 
     function handleCancel() {
@@ -171,7 +192,7 @@
     }
 </script>
 
-<div class="w-full max-w-screen-2xl mx-auto py-8 px-4">
+<div class="w-full max-w-7xl mx-auto py-8 px-4">
     <Breadcrumbs
         items={[
             { label: "Home", href: "/" },
@@ -616,3 +637,10 @@
         </div>
     </div>
 </div>
+
+<AlertModal
+    bind:isOpen={isAlertOpen}
+    title={alertTitle}
+    message={alertMessage}
+    onConfirm={alertOnConfirm}
+/>

@@ -50,6 +50,19 @@ export interface CollectionStep {
     description?: string;
     requestMappings?: { fieldPath: string, value: string, source: 'manual' | 'variable' | 'random' }[];
     responseMappings?: { sourceField: string, targetVariable: string }[];
+    nextStepCondition?: {
+        enabled: boolean;
+        field: string;
+        value: string;
+        operator: 'equals';
+    };
+    nextStepConditions?: {
+        enabled: boolean;
+        field: string;
+        values: string[];
+        operator: 'equals' | 'notEquals' | 'contains' | 'isNotEmpty' | 'validSignature';
+    }[];
+    conditionLogic?: 'AND' | 'OR';
 }
 
 export interface ApiCollection {

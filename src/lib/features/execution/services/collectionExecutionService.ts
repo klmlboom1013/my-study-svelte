@@ -9,6 +9,13 @@ export interface CollectionStepExecution {
     domainPrefix?: string;
     signatureSourceString?: string;
     processedResult?: Record<string, any>;
+    // New fields for signature display
+    responseSignatureRawString?: string;
+    responseCalculatedSignature?: string;
+    responseValidationSuccess?: boolean;
+    normalizedResult?: any; // Recursively processed (decrypted/decoded) result for mapping
+    mappedOptions?: Record<string, any[]>; // Dynamic options provided by mapping
+    requestUrl?: string; // Final URL used for the request
 }
 
 export interface CollectionExecutionPreset {

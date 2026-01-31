@@ -909,7 +909,7 @@
     }
 </script>
 
-<div class="max-w-screen-2xl mx-auto py-8 px-4">
+<div class="max-w-7xl mx-auto py-8 px-4">
     <Breadcrumbs
         items={[{ label: "Home", href: "/" }, { label: "Settings" }]}
     />
@@ -1040,7 +1040,7 @@
                 </div>
 
                 <!-- Endpoint Content -->
-                <div class="p-6">
+                <div class="p-6 max-w-5xl">
                     {#if activeSubTab === "global"}
                         <!-- Global Parameters Content -->
                         <div
@@ -1928,7 +1928,7 @@
                 </div>
             {:else if activeCategory === "interface"}
                 <!-- Interface Settings Content -->
-                <div class="p-6">
+                <div class="p-8 max-w-4xl">
                     <h2
                         class="text-xl font-bold text-slate-900 dark:text-white mb-6"
                     >
@@ -2080,7 +2080,7 @@
 
                 <!-- Application Settings Content -->
                 {#if activeAppSubTab === "settings"}
-                    <div class="p-6">
+                    <div class="p-8 max-w-5xl">
                         <h2
                             class="text-xl font-bold text-slate-900 dark:text-white mb-6"
                         >
@@ -2483,7 +2483,7 @@
                 {/if}
 
                 {#if activeAppSubTab === "site"}
-                    <div class="p-6">
+                    <div class="p-8 max-w-6xl">
                         <div
                             class="mb-8 bg-slate-50 dark:bg-background-dark p-6 rounded-xl border border-slate-200 dark:border-border-dark"
                         >
@@ -2669,7 +2669,7 @@
                     </div>
                 {/if}
             {:else if activeCategory === "bookmarks"}
-                <div class="p-6">
+                <div class="p-8 max-w-5xl">
                     <h2
                         class="text-xl font-bold text-slate-900 dark:text-white mb-6"
                     >
@@ -2820,7 +2820,7 @@
                     </div>
                 </div>
             {:else if activeCategory === "localstorage"}
-                <div class="p-6">
+                <div class="p-8 max-w-5xl">
                     <h2
                         class="text-xl font-bold text-slate-900 dark:text-white mb-6"
                     >

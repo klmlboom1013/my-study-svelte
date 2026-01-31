@@ -12,6 +12,7 @@
 
     let {
         signatureRawString = undefined,
+        requestUrl = undefined,
         jsonResult = undefined,
         responseResult = undefined,
         responseStatus = undefined,
@@ -34,6 +35,35 @@
         }, 2000);
     }
 </script>
+
+<!-- Request URL Display -->
+{#if requestUrl}
+    <div
+        class="rounded-lg border border-slate-200 dark:border-border-dark overflow-hidden shrink-0 mb-4"
+    >
+        <div
+            class="px-4 py-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-border-dark font-medium text-sm text-slate-700 dark:text-slate-300 flex justify-between items-center"
+        >
+            <span>Endpoint URL</span>
+            <button
+                onclick={() => handleCopy(requestUrl, "url")}
+                class="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded transition-colors text-slate-500"
+                title="Copy to clipboard"
+            >
+                {#if copiedSection === "url"}
+                    <CopyCheck size={14} class="text-green-500" />
+                {:else}
+                    <Copy size={14} />
+                {/if}
+            </button>
+        </div>
+        <div
+            class="p-4 bg-white dark:bg-slate-950/50 font-mono text-xs text-slate-600 dark:text-slate-400 break-all"
+        >
+            {requestUrl}
+        </div>
+    </div>
+{/if}
 
 <!-- Signature Source Display -->
 {#if signatureRawString}

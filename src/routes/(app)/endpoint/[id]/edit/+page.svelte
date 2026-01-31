@@ -18,18 +18,18 @@
     import DataDefinitionTable from "$lib/components/endpoint/DataDefinitionTable.svelte";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import DropdownInput from "$lib/components/ui/DropdownInput.svelte";
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
     import { appStateStore } from "$lib/stores/appStateStore";
 
-    interface Props {
-        data: {
-            id: string;
-        };
-    }
+    // interface Props {
+    //    data: {
+    //        id: string;
+    //    };
+    // }
+    // let { data }: Props = $props();
 
-    let { data }: Props = $props();
-
-    // Fix: Use derived to keep in sync with data prop (navigation)
-    let endpointId = $derived(data.id);
+    // Fix: Use page params directly since we don't have a load function returning data.id
+    let endpointId = $derived($page.params.id ?? "");
     let selectedApplication = $state("");
 
     // Dynamic Application Options from Profile
@@ -66,6 +66,16 @@
     let contentType = $state("application/json");
     let charset = $state("UTF-8");
     let createdAt = $state(0);
+    let isInitialLoading = $state(true);
+
+    let prevSelectedApplication = $state("");
+    let prevSelectedService = $state("");
+
+    // Alert Modal State
+    let isAlertOpen = $state(false);
+    let alertTitle = $state("");
+    let alertMessage = $state("");
+    let alertOnConfirm = $state<(() => void) | undefined>(undefined);
 
     let customHeaders = $state<{ key: string; value: string }[]>([
         { key: "", value: "" },
@@ -129,12 +139,23 @@
             requestData = endpoint.requestData || [];
             responseData = endpoint.responseData || [];
             createdAt = endpoint.createdAt;
+
+            // Initialize prev states to avoid immediate reset
+            prevSelectedApplication = selectedApplication;
+            prevSelectedService = selectedService;
+
+            // Set loading to false after a short delay to ensure options derived from profile are settled
+            setTimeout(() => {
+                isInitialLoading = false;
+            }, 100);
         } else {
             // Avoid infinite loop if alerting/navigating inside effect immediately?
             // Use untracked or just careful logic.
             // Since we navigate away, it should be fine.
-            alert("Endpoint not found");
-            goto("/endpoint");
+            alertTitle = "Error";
+            alertMessage = "Endpoint not found";
+            alertOnConfirm = () => goto("/endpoint");
+            isAlertOpen = true;
         }
     });
 
@@ -142,29 +163,42 @@
     // We need to be careful not to overwrite loaded data with defaults
     // Set default service when application changes
     $effect(() => {
-        if (useServiceDistinction) {
-            if (
-                serviceOptions.length > 0 &&
-                (!selectedService || !serviceOptions.includes(selectedService))
-            ) {
-                selectedService = serviceOptions[0];
+        if (isInitialLoading) return;
+
+        // Only reset service if the APPLICATION actually changed
+        if (selectedApplication !== prevSelectedApplication) {
+            if (useServiceDistinction) {
+                if (
+                    serviceOptions.length > 0 &&
+                    (!selectedService ||
+                        !serviceOptions.includes(selectedService))
+                ) {
+                    selectedService = serviceOptions[0];
+                }
+            } else {
+                selectedService = "";
+                selectedSite = "";
             }
-        } else {
-            selectedService = "";
-            selectedSite = "";
+            prevSelectedApplication = selectedApplication;
         }
     });
 
     // Set default site when service changes
     $effect(() => {
-        if (
-            useServiceDistinction &&
-            siteOptions.length > 0 &&
-            (!selectedSite || !siteOptions.includes(selectedSite))
-        ) {
-            selectedSite = siteOptions[0];
-        } else if (siteOptions.length === 0) {
-            selectedSite = "";
+        if (isInitialLoading) return;
+
+        // Only reset site if the SERVICE actually changed
+        if (selectedService !== prevSelectedService) {
+            if (
+                useServiceDistinction &&
+                siteOptions.length > 0 &&
+                (!selectedSite || !siteOptions.includes(selectedSite))
+            ) {
+                selectedSite = siteOptions[0];
+            } else if (siteOptions.length === 0) {
+                selectedSite = "";
+            }
+            prevSelectedService = selectedService;
         }
     });
 
@@ -211,8 +245,10 @@
         endpointService.updateEndpoint(updatedEndpoint);
         console.log("Updated Endpoint:", updatedEndpoint);
 
-        alert("Endpoint Updated!");
-        goto(`/endpoint/${endpointId}`);
+        alertTitle = "Success";
+        alertMessage = "Endpoint Updated!";
+        alertOnConfirm = () => goto(`/endpoint/${endpointId}`);
+        isAlertOpen = true;
     }
 
     function handleCancel() {
@@ -220,7 +256,7 @@
     }
 </script>
 
-<div class="w-full max-w-screen-2xl mx-auto py-8 px-4">
+<div class="w-full max-w-7xl mx-auto py-8 px-4">
     <Breadcrumbs
         items={[
             { label: "Home", href: "/" },
@@ -689,3 +725,10 @@
         </div>
     </div>
 </div>
+
+<AlertModal
+    bind:isOpen={isAlertOpen}
+    title={alertTitle}
+    message={alertMessage}
+    onConfirm={alertOnConfirm}
+/>

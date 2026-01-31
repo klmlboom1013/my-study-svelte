@@ -248,7 +248,7 @@
                                         <button
                                             onclick={() =>
                                                 goto(
-                                                    `/endpoint?collection=${collection.id}&readonly=true`,
+                                                    `/collections/run/${collection.id}`,
                                                 )}
                                             class="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-border-dark text-left group transition-colors"
                                         >
