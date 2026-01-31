@@ -198,7 +198,6 @@
                                         >Select value... ({dynamicOptions.length}
                                         options)</span
                                     >
-                                {:else if !currentValues[field.name]}
                                     <span class="text-slate-400 italic"
                                         >Select value... ({dynamicOptions.length}
                                         options)</span
@@ -232,13 +231,12 @@
                                             >
                                                 <span
                                                     class="font-medium text-slate-800 dark:text-slate-100 truncate group-hover:text-primary transition-colors"
-                                                    >{opt.label ||
-                                                        opt.value}</span
+                                                    >{opt.value}</span
                                                 >
-                                                {#if opt.label}
+                                                {#if opt.label && opt.label !== opt.value}
                                                     <span
                                                         class="text-[10px] text-slate-400 font-mono mt-0.5"
-                                                        >{opt.value}</span
+                                                        >{opt.label}</span
                                                     >
                                                 {/if}
                                             </div>

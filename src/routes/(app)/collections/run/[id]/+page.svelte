@@ -436,6 +436,8 @@
 
                 if (targetStepExec) {
                     let val;
+                    let labelVals: any[] | undefined;
+                    let labelVals2: any[] | undefined;
                     // Use normalizedResult (recursively processed) if available, otherwise raw result
                     let sourceData =
                         targetStepExec.normalizedResult ||
@@ -451,12 +453,47 @@
                         }
                     }
 
+                    let rawSourceData = targetStepExec.result;
+
                     if (sourceData) {
                         val = getNestedValue(sourceData, pathParts.join("."));
-                        console.log(`[DEBUG] Mapping ${mapping.value}:`, {
-                            val,
-                            path: pathParts.join("."),
-                        });
+                        console.log(
+                            `[DEBUG] Mapping Detail ${mapping.value}:`,
+                            mapping,
+                        );
+                        console.log(`[DEBUG] Mapping Value:`, val);
+
+                        // Fetch Custom Label Values if 'text' mapping exists
+                        if (mapping.text) {
+                            const [txtStepId, ...txtParts] =
+                                mapping.text.split(".");
+                            if (txtStepId === targetStepId) {
+                                labelVals = getNestedValue(
+                                    rawSourceData,
+                                    txtParts.join("."),
+                                );
+                                console.log(
+                                    `[DEBUG] Mapping Text ${mapping.text}:`,
+                                    labelVals,
+                                );
+                            }
+                        }
+
+                        // Fetch Custom Label Values if 'text2' mapping exists
+                        if (mapping.text2) {
+                            const [txtStepId2, ...txtParts2] =
+                                mapping.text2.split(".");
+                            if (txtStepId2 === targetStepId) {
+                                labelVals2 = getNestedValue(
+                                    rawSourceData,
+                                    txtParts2.join("."),
+                                );
+                                console.log(
+                                    `[DEBUG] Mapping Text2 ${mapping.text2}:`,
+                                    labelVals2,
+                                );
+                            }
+                        }
                     }
 
                     if (val !== undefined) {
@@ -465,29 +502,117 @@
                             const valueKey =
                                 mapping.fieldPath.split(".").pop() || "";
                             const options = val
-                                .map((item: any) => {
+                                .map((item: any, idx: number) => {
+                                    // If already formatted as an option by getNestedValue projection
+                                    let label = "";
+                                    let itemValue: any;
+
                                     // If already formatted as an option by getNestedValue projection
                                     if (
                                         typeof item === "object" &&
                                         item?.isOption
                                     ) {
-                                        return {
-                                            value: String(item.value),
-                                            label: item.label,
-                                        };
-                                    }
-                                    // Fallback for raw objects or primitives
-                                    const itemValue =
-                                        typeof item === "object"
-                                            ? item[valueKey]
-                                            : item;
-                                    return {
-                                        value: String(itemValue ?? ""),
-                                        label:
+                                        itemValue = item.value;
+                                        label = item.label;
+                                    } else {
+                                        // Fallback for raw objects or primitives
+                                        itemValue =
+                                            typeof item === "object"
+                                                ? item[valueKey]
+                                                : item;
+
+                                        label =
                                             generateOptionLabel(
                                                 item,
                                                 valueKey,
-                                            ) || String(itemValue ?? ""),
+                                            ) || String(itemValue ?? "");
+                                    }
+
+                                    // Helper for safe decoding
+                                    const safeDecode = (str: string) => {
+                                        try {
+                                            return decodeURIComponent(str);
+                                        } catch (e) {
+                                            return str;
+                                        }
+                                    };
+
+                                    // Overwrite with custom label if available
+                                    // Overwrite with custom label if available
+                                    if (labelVals && idx < labelVals.length) {
+                                        const customLabel = labelVals[idx];
+                                        if (
+                                            customLabel !== undefined &&
+                                            customLabel !== null
+                                        ) {
+                                            if (
+                                                typeof customLabel === "object"
+                                            ) {
+                                                console.warn(
+                                                    `[WARN] Label 1 at index ${idx} is an object. Trying to extract value.`,
+                                                    customLabel,
+                                                );
+                                                label = safeDecode(
+                                                    customLabel.value || // Prefer value!
+                                                        customLabel.label ||
+                                                        JSON.stringify(
+                                                            customLabel,
+                                                        ),
+                                                );
+                                            } else {
+                                                label = safeDecode(
+                                                    String(customLabel),
+                                                );
+                                            }
+                                        }
+                                    }
+
+                                    // Append second custom label if available
+                                    if (labelVals2 && idx < labelVals2.length) {
+                                        const customLabel2 = labelVals2[idx];
+                                        if (
+                                            customLabel2 !== undefined &&
+                                            customLabel2 !== null
+                                        ) {
+                                            if (
+                                                typeof customLabel2 === "object"
+                                            ) {
+                                                console.warn(
+                                                    `[WARN] Label 2 at index ${idx} is an object. Trying to extract value.`,
+                                                    customLabel2,
+                                                );
+                                                label +=
+                                                    " " +
+                                                    safeDecode(
+                                                        customLabel2.value || // Prefer value!
+                                                            customLabel2.label ||
+                                                            JSON.stringify(
+                                                                customLabel2,
+                                                            ),
+                                                    );
+                                            } else {
+                                                label +=
+                                                    " " +
+                                                    safeDecode(
+                                                        String(customLabel2),
+                                                    );
+                                            }
+                                        }
+                                    }
+
+                                    console.log(
+                                        `[DEBUG] Generated Option ${idx}:`,
+                                        {
+                                            label,
+                                            value: String(itemValue ?? ""),
+                                            labelValsEntry: labelVals?.[idx],
+                                            labelVals2Entry: labelVals2?.[idx],
+                                        },
+                                    );
+
+                                    return {
+                                        value: String(itemValue ?? ""),
+                                        label: label,
                                     };
                                 })
                                 .filter((opt) => opt.value !== "");
@@ -586,23 +711,22 @@
         return path.split(".").reduce((prev, curr) => {
             if (Array.isArray(prev) && !/^\d+$/.test(curr)) {
                 // Array Projection: Map property over array items
-                return prev
-                    .map((item) => {
-                        const val = item?.[curr];
-                        if (val !== undefined && typeof item === "object") {
-                            // Generate a label for context
-                            const label = generateOptionLabel(item, curr);
-                            if (label) {
-                                return {
-                                    value: val,
-                                    label: label,
-                                    isOption: true,
-                                };
-                            }
+                return prev.map((item) => {
+                    const val = item?.[curr];
+                    if (val !== undefined && typeof item === "object") {
+                        // Generate a label for context
+                        const label = generateOptionLabel(item, curr);
+                        if (label) {
+                            return {
+                                value: val,
+                                label: label,
+                                isOption: true,
+                            };
                         }
-                        return val;
-                    })
-                    .filter((v) => v !== undefined);
+                    }
+                    return val;
+                });
+                // .filter((v) => v !== undefined); // Removed to preserve index for zipping with labels
             }
             return prev?.[curr];
         }, obj);

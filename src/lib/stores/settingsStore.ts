@@ -48,7 +48,7 @@ export interface CollectionStep {
     presetId?: string;
     name?: string;
     description?: string;
-    requestMappings?: { fieldPath: string, value: string, source: 'manual' | 'variable' | 'random' }[];
+    requestMappings?: { fieldPath: string, value: string, source: 'manual' | 'variable' | 'random', text?: string, text2?: string }[];
     responseMappings?: { sourceField: string, targetVariable: string }[];
     nextStepCondition?: {
         enabled: boolean;

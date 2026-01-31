@@ -66,15 +66,42 @@
         fieldPath: string,
         source: "manual" | "variable" | "random",
         value: string,
+        text?: string,
+        text2?: string,
     ) {
         let mappings = [...(step.requestMappings || [])];
         const existingIndex = mappings.findIndex(
             (m) => m.fieldPath === fieldPath,
         );
+
+        let newMapping: any = { fieldPath, source, value };
+
+        // Handle text (Label 1)
+        if (text !== undefined) {
+            newMapping.text = text;
+        } else if (
+            existingIndex >= 0 &&
+            mappings[existingIndex].text &&
+            source === "variable"
+        ) {
+            newMapping.text = mappings[existingIndex].text;
+        }
+
+        // Handle text2 (Label 2)
+        if (text2 !== undefined) {
+            newMapping.text2 = text2;
+        } else if (
+            existingIndex >= 0 &&
+            mappings[existingIndex].text2 &&
+            source === "variable"
+        ) {
+            newMapping.text2 = mappings[existingIndex].text2;
+        }
+
         if (existingIndex >= 0) {
-            mappings[existingIndex] = { fieldPath, source, value };
+            mappings[existingIndex] = newMapping;
         } else {
-            mappings.push({ fieldPath, source, value });
+            mappings.push(newMapping);
         }
         onUpdate({ ...step, requestMappings: mappings });
     }
@@ -82,6 +109,8 @@
     function toggleCollapse() {
         isCollapsed = !isCollapsed;
     }
+    // ... (omitted shared lines for safe replacement context, but wait, replace_file_content requires exact match of replaced content)
+    // Actually, I should use MULTI_REPLACE because I'm touching two places: the function definition and the UI loop.
 
     function toggleConditionEnabled(enabled: boolean) {
         // Legacy support shim: if enabling, ensure we have at least one condition if using new array
@@ -446,16 +475,90 @@
                                                               .join(".")
                                                         : ""}
 
-                                                <CollectionConditionFieldSelector
-                                                    endpoint={prevEp}
-                                                    value={selectedField}
-                                                    onUpdate={(val) =>
-                                                        updateMapping(
-                                                            field.name,
-                                                            "variable",
-                                                            `${selectedStepId}.${val}`,
-                                                        )}
-                                                />
+                                                <!-- Value Mapping -->
+                                                <div
+                                                    class="flex flex-col gap-1"
+                                                >
+                                                    <span
+                                                        class="text-[10px] text-slate-500 font-bold uppercase"
+                                                        >Value Field</span
+                                                    >
+                                                    <CollectionConditionFieldSelector
+                                                        endpoint={prevEp}
+                                                        value={selectedField}
+                                                        onUpdate={(val) =>
+                                                            updateMapping(
+                                                                field.name,
+                                                                "variable",
+                                                                `${selectedStepId}.${val}`,
+                                                            )}
+                                                    />
+                                                </div>
+
+                                                <!-- Label Mapping (New) -->
+                                                <div
+                                                    class="flex flex-col gap-1 mt-1"
+                                                >
+                                                    <span
+                                                        class="text-[10px] text-slate-500 font-bold uppercase"
+                                                        >Label Field (Optional)</span
+                                                    >
+                                                    <CollectionConditionFieldSelector
+                                                        endpoint={prevEp}
+                                                        value={mapping?.text &&
+                                                        mapping.text.startsWith(
+                                                            selectedStepId +
+                                                                ".",
+                                                        )
+                                                            ? mapping.text
+                                                                  .split(".")
+                                                                  .slice(1)
+                                                                  .join(".")
+                                                            : ""}
+                                                        onUpdate={(val) =>
+                                                            updateMapping(
+                                                                field.name,
+                                                                "variable",
+                                                                mapping?.value ||
+                                                                    "", // Keep existing value
+                                                                `${selectedStepId}.${val}`, // Update text
+                                                                mapping?.text2, // Keep text2 explicitly
+                                                            )}
+                                                    />
+                                                </div>
+
+                                                <!-- Label Mapping 2 (New) -->
+                                                <div
+                                                    class="flex flex-col gap-1 mt-1"
+                                                >
+                                                    <span
+                                                        class="text-[10px] text-slate-500 font-bold uppercase"
+                                                        >Label Field 2
+                                                        (Optional)</span
+                                                    >
+                                                    <CollectionConditionFieldSelector
+                                                        endpoint={prevEp}
+                                                        value={mapping?.text2 &&
+                                                        mapping.text2.startsWith(
+                                                            selectedStepId +
+                                                                ".",
+                                                        )
+                                                            ? mapping.text2
+                                                                  .split(".")
+                                                                  .slice(1)
+                                                                  .join(".")
+                                                            : ""}
+                                                        onUpdate={(val) =>
+                                                            updateMapping(
+                                                                field.name,
+                                                                "variable",
+                                                                mapping?.value ||
+                                                                    "", // Keep existing value
+                                                                mapping?.text, // Keep text explicitly
+                                                                `${selectedStepId}.${val}`, // Update text2
+                                                            )}
+                                                    />
+                                                </div>
                                             {/if}
                                         </div>
                                     {/if}
