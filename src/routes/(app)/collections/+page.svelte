@@ -147,6 +147,25 @@
             },
         );
     }
+
+    function handleDuplicate(col: any) {
+        // Create a deep copy using JSON parse/stringify for simplicity with POJOs
+        const newCol = JSON.parse(JSON.stringify(col));
+
+        // Generate new IDs
+        newCol.id = crypto.randomUUID();
+        newCol.name = `${newCol.name} - 복사본`;
+        newCol.isBookmarked = false; // Reset bookmark for copy
+
+        if (newCol.steps) {
+            newCol.steps.forEach((step: any) => {
+                step.id = crypto.randomUUID();
+            });
+        }
+
+        settingsStore.addApiCollection(newCol);
+        showAlert("Success", "Collection duplicated successfully!");
+    }
 </script>
 
 <AlertModal
@@ -165,6 +184,19 @@
 
     <div class="mb-6">
         {#snippet buttons(mobile = false)}
+            {#if !mobile}
+                {#if !$appStateStore.isPageLocked}
+                    <button
+                        onclick={handleNewCollection}
+                        class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all shrink-0"
+                    >
+                        <span class="material-symbols-outlined text-[18px]"
+                            >add</span
+                        >
+                        <span>New Collection</span>
+                    </button>
+                {/if}
+            {/if}
             <button
                 onclick={handleDriveBackup}
                 disabled={syncState !== "idle" || $appStateStore.isPageLocked}
@@ -201,19 +233,6 @@
                     <span>Restore</span>
                 {/if}
             </button>
-            {#if !mobile}
-                {#if !$appStateStore.isPageLocked}
-                    <button
-                        onclick={handleNewCollection}
-                        class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all shrink-0"
-                    >
-                        <span class="material-symbols-outlined text-[18px]"
-                            >add</span
-                        >
-                        <span>New Collection</span>
-                    </button>
-                {/if}
-            {/if}
         {/snippet}
 
         <div class="flex items-end justify-between gap-4 mb-4 md:mb-6">
@@ -298,6 +317,16 @@
                                 >
                             </button>
                             {#if !$appStateStore.isPageLocked}
+                                <button
+                                    onclick={() => handleDuplicate(col)}
+                                    class="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded-md transition-colors"
+                                    title="Duplicate"
+                                >
+                                    <span
+                                        class="material-symbols-outlined text-[18px]"
+                                        >content_copy</span
+                                    >
+                                </button>
                                 <button
                                     onclick={() => handleEditCollection(col.id)}
                                     class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-md transition-colors"

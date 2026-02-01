@@ -229,7 +229,7 @@
                                     {#if bookmark.showNewButton && !$appStateStore.isPageLocked}
                                         <button
                                             onclick={() =>
-                                                goto("/collections?new=true")}
+                                                goto("/collections/new")}
                                             class="flex items-center gap-2 bg-[#238636] hover:bg-[#2ea043] text-white px-3 py-0.5 rounded-md text-xs font-bold transition-colors shadow-sm"
                                         >
                                             <span

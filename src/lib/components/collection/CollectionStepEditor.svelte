@@ -215,13 +215,19 @@
     class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all mb-6"
 >
     <div
-        class="bg-slate-50 dark:bg-slate-800/50 px-5 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between cursor-pointer select-none"
+        class="bg-slate-50 dark:bg-slate-800/50 px-5 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between cursor-pointer select-none drag-handle"
         onclick={toggleCollapse}
         onkeydown={(e) => e.key === "Enter" && toggleCollapse()}
         role="button"
         tabindex="0"
     >
         <div class="flex items-center gap-3">
+            <span
+                class="material-symbols-outlined text-slate-400 cursor-move drag-handle hover:text-slate-600 dark:hover:text-slate-200"
+                title="Drag to reorder"
+            >
+                drag_indicator
+            </span>
             <span
                 class="material-symbols-outlined text-slate-400 transition-transform duration-300 {isCollapsed
                     ? '-rotate-90'

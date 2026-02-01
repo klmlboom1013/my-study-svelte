@@ -24,6 +24,8 @@
     let application = $state("");
     let selectedService = $state("");
     let steps = $state<CollectionStep[]>([]);
+    let draggedStepIndex = $state<number | null>(null);
+    let draggableStepIndex = $state<number | null>(null);
     let isBookmarked = $state(false);
     let color = $state("#3b82f6");
     let icon = $state("folder");
@@ -59,10 +61,23 @@
 
     function handleDrop(e: DragEvent) {
         e.preventDefault();
+
+        // Handle internal reordering
+        if (draggedStepIndex !== null) {
+            // Reordering is handled in handleDropReorder, but if dropped in main area
+            // we should reset or treat as cancellation of reorder if not dropped on a target.
+            // Actually, handleDropReorder stops propagation, so this only fires if dropped
+            // in empty space or non-target.
+            draggedStepIndex = null;
+            return;
+        }
+
         if (!e.dataTransfer) return;
 
         try {
             const data = JSON.parse(e.dataTransfer.getData("application/json"));
+
+            // Handle new endpoint drop
             if (data && data.id) {
                 // Add new step
                 const newStep: CollectionStep = {
@@ -75,6 +90,48 @@
         } catch (err) {
             console.error("Failed to parse dropped data", err);
         }
+    }
+
+    function handleDragStart(e: DragEvent, index: number) {
+        // Only allow drag if we are in draggable state (triggered by mousedown on handle)
+        if (draggableStepIndex !== index) {
+            e.preventDefault();
+            return;
+        }
+
+        draggedStepIndex = index;
+        if (e.dataTransfer) {
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.dropEffect = "move";
+            e.dataTransfer.setData("text/plain", index.toString());
+        }
+    }
+
+    function handleDragOver(e: DragEvent, index: number) {
+        e.preventDefault();
+        if (draggedStepIndex === null || draggedStepIndex === index) return;
+        // console.log('Drag over:', index);
+    }
+
+    function handleDropReorder(e: DragEvent, targetIndex: number) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (draggedStepIndex === null || draggedStepIndex === targetIndex) {
+            draggedStepIndex = null;
+            return;
+        }
+
+        const newSteps = [...steps];
+        const [movedStep] = newSteps.splice(draggedStepIndex, 1);
+        newSteps.splice(targetIndex, 0, movedStep);
+        steps = newSteps;
+
+        draggedStepIndex = null;
+    }
+
+    function handleDragEnd() {
+        draggedStepIndex = null;
     }
 
     function handleUpdateStep(index: number, updatedStep: CollectionStep) {
@@ -264,15 +321,36 @@
                         }}
                         ondrop={handleDrop}
                     >
-                        {#each steps as step, i}
-                            <CollectionStepEditor
-                                bind:step={steps[i]}
-                                index={i}
-                                previousSteps={steps.slice(0, i)}
-                                onUpdate={(updatedStep) =>
-                                    handleUpdateStep(i, updatedStep)}
-                                onRemove={() => handleRemoveStep(i)}
-                            />
+                        {#each steps as step, i (step.id)}
+                            <div
+                                draggable={draggableStepIndex === i}
+                                onmousedown={(e) => {
+                                    const target = e.target as HTMLElement;
+                                    if (target.closest(".drag-handle")) {
+                                        draggableStepIndex = i;
+                                    }
+                                }}
+                                onmouseup={() => (draggableStepIndex = null)}
+                                onmouseleave={() => (draggableStepIndex = null)}
+                                ondragstart={(e) => handleDragStart(e, i)}
+                                ondragover={(e) => handleDragOver(e, i)}
+                                ondrop={(e) => handleDropReorder(e, i)}
+                                ondragend={handleDragEnd}
+                                role="listitem"
+                                class="transition-all rounded-xl {draggedStepIndex ===
+                                i
+                                    ? 'opacity-40 scale-[0.98] border-2 border-blue-400 border-dashed'
+                                    : ''}"
+                            >
+                                <CollectionStepEditor
+                                    bind:step={steps[i]}
+                                    index={i}
+                                    previousSteps={steps.slice(0, i)}
+                                    onUpdate={(updatedStep) =>
+                                        handleUpdateStep(i, updatedStep)}
+                                    onRemove={() => handleRemoveStep(i)}
+                                />
+                            </div>
                         {/each}
 
                         {#if steps.length === 0}
