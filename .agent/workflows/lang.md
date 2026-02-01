@@ -2,6 +2,8 @@
 description: Agent Language Set Korean.
 ---
 
+// turbo-all
+
 This workflow executes the change language.
 
 1. AI Agent 대화 메시지는 기본 한국어로 설정 한다.

@@ -2,6 +2,8 @@
 description: IDE Startup Checklist Automation
 ---
 
+// turbo-all
+
 This workflow executes the startup routine defined in the project's checklist.
 
 1. **언어 설정.**

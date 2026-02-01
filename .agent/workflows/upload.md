@@ -2,6 +2,8 @@
 description: github에 변경 사항 업로드
 ---
 
+// turbo-all
+
 github에 변경 사항 업로드 한다.
 
 1. **github에 변경 사항 업로드 한다.**

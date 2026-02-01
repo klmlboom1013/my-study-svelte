@@ -2,6 +2,8 @@
 description: Project Server Down
 ---
 
+// turbo-all
+
 Run Server stop.
 
 1. **실행중인 server를 중지 한다.**

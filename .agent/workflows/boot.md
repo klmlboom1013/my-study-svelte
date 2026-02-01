@@ -2,6 +2,8 @@
 description: Project Server Run
 ---
 
+// turbo-all
+
 This workflow executes Project Server Run.
 
 1. **5137 port가 현재 사용 중인지 확인**

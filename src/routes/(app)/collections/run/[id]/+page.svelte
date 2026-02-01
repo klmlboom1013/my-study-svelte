@@ -396,6 +396,15 @@
                 }
             });
         }
+
+        if (options.length > 0 && !options.some((opt) => opt.value === "")) {
+            options.unshift({
+                value: "",
+                label: "(빈 값)",
+                source: "None",
+            });
+        }
+
         return options;
     }
 
@@ -420,249 +429,285 @@
     function applyMappings(index: number) {
         if (!collection || !collection.steps) return;
         const step = collection.steps[index];
-        if (!step || !step.requestMappings) return;
+        if (!step) return;
 
         const currentExec = stepsExecution[index];
         const newValues = { ...currentExec.requestValues };
-        const newMappedOptions = { ...(currentExec.mappedOptions || {}) };
+        const newMappedOptions: Record<string, any> = {};
 
-        step.requestMappings.forEach((mapping) => {
-            if (mapping.source === "variable") {
-                // value is stepId.fieldPath
-                const [targetStepId, ...pathParts] = mapping.value.split(".");
-                const targetStepExec = stepsExecution.find(
-                    (s) => s.stepId === targetStepId,
-                );
+        if (step.requestMappings) {
+            step.requestMappings.forEach((mapping) => {
+                if (mapping.source === "variable") {
+                    // value is stepId.fieldPath
+                    const [targetStepId, ...pathParts] =
+                        mapping.value.split(".");
+                    const targetStepExec = stepsExecution.find(
+                        (s) => s.stepId === targetStepId,
+                    );
 
-                if (targetStepExec) {
-                    let val;
-                    let labelVals: any[] | undefined;
-                    let labelVals2: any[] | undefined;
-                    // Use normalizedResult (recursively processed) if available, otherwise raw result
-                    let sourceData =
-                        targetStepExec.normalizedResult ||
-                        targetStepExec.result;
+                    if (targetStepExec) {
+                        let val;
+                        let labelVals: any[] | undefined;
+                        let labelVals2: any[] | undefined;
+                        // Use normalizedResult (recursively processed) if available, otherwise raw result
+                        let sourceData =
+                            targetStepExec.normalizedResult ||
+                            targetStepExec.result;
 
-                    // Ensure sourceData is an object if it's a JSON string (for legacy/unprocessed results)
-                    if (typeof sourceData === "string") {
-                        try {
-                            sourceData = JSON.parse(sourceData);
-                        } catch (e) {
-                            console.warn("Failed to parse sourceData JSON", e);
-                            sourceData = null;
-                        }
-                    }
-
-                    let rawSourceData = targetStepExec.result;
-
-                    if (sourceData) {
-                        val = getNestedValue(sourceData, pathParts.join("."));
-                        console.log(
-                            `[DEBUG] Mapping Detail ${mapping.value}:`,
-                            mapping,
-                        );
-                        console.log(`[DEBUG] Mapping Value:`, val);
-
-                        // Fetch Custom Label Values if 'text' mapping exists
-                        if (mapping.text) {
-                            const [txtStepId, ...txtParts] =
-                                mapping.text.split(".");
-                            if (txtStepId === targetStepId) {
-                                labelVals = getNestedValue(
-                                    rawSourceData,
-                                    txtParts.join("."),
+                        // Ensure sourceData is an object if it's a JSON string (for legacy/unprocessed results)
+                        if (typeof sourceData === "string") {
+                            try {
+                                sourceData = JSON.parse(sourceData);
+                            } catch (e) {
+                                console.warn(
+                                    "Failed to parse sourceData JSON",
+                                    e,
                                 );
-                                console.log(
-                                    `[DEBUG] Mapping Text ${mapping.text}:`,
-                                    labelVals,
-                                );
+                                sourceData = null;
                             }
                         }
 
-                        // Fetch Custom Label Values if 'text2' mapping exists
-                        if (mapping.text2) {
-                            const [txtStepId2, ...txtParts2] =
-                                mapping.text2.split(".");
-                            if (txtStepId2 === targetStepId) {
-                                labelVals2 = getNestedValue(
-                                    rawSourceData,
-                                    txtParts2.join("."),
-                                );
-                                console.log(
-                                    `[DEBUG] Mapping Text2 ${mapping.text2}:`,
-                                    labelVals2,
-                                );
+                        let rawSourceData = targetStepExec.result;
+
+                        if (sourceData) {
+                            val = getNestedValue(
+                                sourceData,
+                                pathParts.join("."),
+                            );
+                            console.log(
+                                `[DEBUG] Mapping Detail ${mapping.value}:`,
+                                mapping,
+                            );
+                            console.log(`[DEBUG] Mapping Value:`, val);
+
+                            // Fetch Custom Label Values if 'text' mapping exists
+                            if (mapping.text) {
+                                const [txtStepId, ...txtParts] =
+                                    mapping.text.split(".");
+                                if (txtStepId === targetStepId) {
+                                    labelVals = getNestedValue(
+                                        rawSourceData,
+                                        txtParts.join("."),
+                                    );
+                                    console.log(
+                                        `[DEBUG] Mapping Text ${mapping.text}:`,
+                                        labelVals,
+                                    );
+                                }
+                            }
+
+                            // Fetch Custom Label Values if 'text2' mapping exists
+                            if (mapping.text2) {
+                                const [txtStepId2, ...txtParts2] =
+                                    mapping.text2.split(".");
+                                if (txtStepId2 === targetStepId) {
+                                    labelVals2 = getNestedValue(
+                                        rawSourceData,
+                                        txtParts2.join("."),
+                                    );
+                                    console.log(
+                                        `[DEBUG] Mapping Text2 ${mapping.text2}:`,
+                                        labelVals2,
+                                    );
+                                }
                             }
                         }
-                    }
 
-                    if (val !== undefined) {
-                        if (Array.isArray(val)) {
-                            // It's a list. Save it to mappedOptions.
-                            const valueKey =
-                                mapping.fieldPath.split(".").pop() || "";
-                            const options = val
-                                .map((item: any, idx: number) => {
-                                    // If already formatted as an option by getNestedValue projection
-                                    let label = "";
-                                    let itemValue: any;
+                        if (val !== undefined) {
+                            if (Array.isArray(val)) {
+                                // It's a list. Save it to mappedOptions.
+                                const valueKey =
+                                    mapping.fieldPath.split(".").pop() || "";
+                                const options = val
+                                    .map((item: any, idx: number) => {
+                                        // If already formatted as an option by getNestedValue projection
+                                        let label = "";
+                                        let itemValue: any;
 
-                                    // If already formatted as an option by getNestedValue projection
-                                    if (
-                                        typeof item === "object" &&
-                                        item?.isOption
-                                    ) {
-                                        itemValue = item.value;
-                                        label = item.label;
-                                    } else {
-                                        // Fallback for raw objects or primitives
-                                        itemValue =
-                                            typeof item === "object"
-                                                ? item[valueKey]
-                                                : item;
-
-                                        label =
-                                            generateOptionLabel(
-                                                item,
-                                                valueKey,
-                                            ) || String(itemValue ?? "");
-                                    }
-
-                                    // Helper for safe decoding
-                                    const safeDecode = (str: string) => {
-                                        try {
-                                            return decodeURIComponent(str);
-                                        } catch (e) {
-                                            return str;
-                                        }
-                                    };
-
-                                    // Overwrite with custom label if available
-                                    // Overwrite with custom label if available
-                                    if (labelVals && idx < labelVals.length) {
-                                        const customLabel = labelVals[idx];
+                                        // If already formatted as an option by getNestedValue projection
                                         if (
-                                            customLabel !== undefined &&
-                                            customLabel !== null
+                                            typeof item === "object" &&
+                                            item?.isOption
                                         ) {
-                                            if (
-                                                typeof customLabel === "object"
-                                            ) {
-                                                console.warn(
-                                                    `[WARN] Label 1 at index ${idx} is an object. Trying to extract value.`,
-                                                    customLabel,
-                                                );
-                                                label = safeDecode(
-                                                    customLabel.value || // Prefer value!
-                                                        customLabel.label ||
-                                                        JSON.stringify(
-                                                            customLabel,
-                                                        ),
-                                                );
-                                            } else {
-                                                label = safeDecode(
-                                                    String(customLabel),
-                                                );
+                                            itemValue = item.value;
+                                            label = item.label;
+                                        } else {
+                                            // Fallback for raw objects or primitives
+                                            itemValue =
+                                                typeof item === "object"
+                                                    ? item[valueKey]
+                                                    : item;
+
+                                            label =
+                                                generateOptionLabel(
+                                                    item,
+                                                    valueKey,
+                                                ) || String(itemValue ?? "");
+                                        }
+
+                                        // Helper for safe decoding
+                                        const safeDecode = (str: string) => {
+                                            try {
+                                                return decodeURIComponent(str);
+                                            } catch (e) {
+                                                return str;
                                             }
-                                        }
-                                    }
+                                        };
 
-                                    // Append second custom label if available
-                                    if (labelVals2 && idx < labelVals2.length) {
-                                        const customLabel2 = labelVals2[idx];
+                                        // Overwrite with custom label if available
+                                        // Overwrite with custom label if available
                                         if (
-                                            customLabel2 !== undefined &&
-                                            customLabel2 !== null
+                                            labelVals &&
+                                            idx < labelVals.length
                                         ) {
+                                            const customLabel = labelVals[idx];
                                             if (
-                                                typeof customLabel2 === "object"
+                                                customLabel !== undefined &&
+                                                customLabel !== null
                                             ) {
-                                                console.warn(
-                                                    `[WARN] Label 2 at index ${idx} is an object. Trying to extract value.`,
-                                                    customLabel2,
-                                                );
-                                                label +=
-                                                    " " +
-                                                    safeDecode(
-                                                        customLabel2.value || // Prefer value!
-                                                            customLabel2.label ||
+                                                if (
+                                                    typeof customLabel ===
+                                                    "object"
+                                                ) {
+                                                    console.warn(
+                                                        `[WARN] Label 1 at index ${idx} is an object. Trying to extract value.`,
+                                                        customLabel,
+                                                    );
+                                                    label = safeDecode(
+                                                        customLabel.value || // Prefer value!
+                                                            customLabel.label ||
                                                             JSON.stringify(
-                                                                customLabel2,
+                                                                customLabel,
                                                             ),
                                                     );
-                                            } else {
-                                                label +=
-                                                    " " +
-                                                    safeDecode(
-                                                        String(customLabel2),
+                                                } else {
+                                                    label = safeDecode(
+                                                        String(customLabel),
                                                     );
+                                                }
                                             }
                                         }
-                                    }
 
-                                    console.log(
-                                        `[DEBUG] Generated Option ${idx}:`,
-                                        {
-                                            label,
+                                        // Append second custom label if available
+                                        if (
+                                            labelVals2 &&
+                                            idx < labelVals2.length
+                                        ) {
+                                            const customLabel2 =
+                                                labelVals2[idx];
+                                            if (
+                                                customLabel2 !== undefined &&
+                                                customLabel2 !== null
+                                            ) {
+                                                if (
+                                                    typeof customLabel2 ===
+                                                    "object"
+                                                ) {
+                                                    console.warn(
+                                                        `[WARN] Label 2 at index ${idx} is an object. Trying to extract value.`,
+                                                        customLabel2,
+                                                    );
+                                                    label +=
+                                                        " " +
+                                                        safeDecode(
+                                                            customLabel2.value || // Prefer value!
+                                                                customLabel2.label ||
+                                                                JSON.stringify(
+                                                                    customLabel2,
+                                                                ),
+                                                        );
+                                                } else {
+                                                    label +=
+                                                        " " +
+                                                        safeDecode(
+                                                            String(
+                                                                customLabel2,
+                                                            ),
+                                                        );
+                                                }
+                                            }
+                                        }
+
+                                        console.log(
+                                            `[DEBUG] Generated Option ${idx}:`,
+                                            {
+                                                label,
+                                                value: String(itemValue ?? ""),
+                                                labelValsEntry:
+                                                    labelVals?.[idx],
+                                                labelVals2Entry:
+                                                    labelVals2?.[idx],
+                                            },
+                                        );
+
+                                        return {
                                             value: String(itemValue ?? ""),
-                                            labelValsEntry: labelVals?.[idx],
-                                            labelVals2Entry: labelVals2?.[idx],
-                                        },
-                                    );
+                                            label: label,
+                                        };
+                                    })
+                                    .filter((opt) => opt.value !== "");
 
-                                    return {
-                                        value: String(itemValue ?? ""),
-                                        label: label,
-                                    };
-                                })
-                                .filter((opt) => opt.value !== "");
+                                // Add empty option at the top if not present
+                                if (!options.some((opt) => opt.value === "")) {
+                                    options.unshift({
+                                        value: "",
+                                        label: "(빈 값)",
+                                    });
+                                }
 
-                            newMappedOptions[mapping.fieldPath] = options;
+                                newMappedOptions[mapping.fieldPath] = options;
 
-                            // Check if current value is still in the new list
-                            const currentVal = getNestedValue(
-                                newValues,
-                                mapping.fieldPath,
-                            );
-
-                            if (!Array.isArray(currentVal)) {
-                                const currentValStr = String(currentVal || "");
-                                const existsInNewOptions = options.some(
-                                    (opt) => opt.value === currentValStr,
+                                // Check if current value is still in the new list
+                                const currentVal = getNestedValue(
+                                    newValues,
+                                    mapping.fieldPath,
                                 );
 
-                                if (!existsInNewOptions) {
+                                if (!Array.isArray(currentVal)) {
+                                    const currentValStr = String(
+                                        currentVal || "",
+                                    );
+                                    const existsInNewOptions = options.some(
+                                        (opt) => opt.value === currentValStr,
+                                    );
+
+                                    if (!existsInNewOptions) {
+                                        setNestedValue(
+                                            newValues,
+                                            mapping.fieldPath,
+                                            options,
+                                        );
+                                    } else {
+                                        // Selection preserved!
+                                        console.log(
+                                            `[DEBUG] Preserving selection for ${mapping.fieldPath}: ${currentValStr}`,
+                                        );
+                                    }
+                                } else {
                                     setNestedValue(
                                         newValues,
                                         mapping.fieldPath,
                                         options,
                                     );
-                                } else {
-                                    // Selection preserved!
-                                    console.log(
-                                        `[DEBUG] Preserving selection for ${mapping.fieldPath}: ${currentValStr}`,
-                                    );
                                 }
                             } else {
+                                // Scalar value. standard mapping.
                                 setNestedValue(
                                     newValues,
                                     mapping.fieldPath,
-                                    options,
+                                    val,
                                 );
                             }
-                        } else {
-                            // Scalar value. standard mapping.
-                            setNestedValue(newValues, mapping.fieldPath, val);
                         }
                     }
+                } else if (mapping.source === "random") {
+                    const [type, lenStr] = mapping.value.split(":");
+                    const length = parseInt(lenStr) || 8;
+                    const val = generateRandomValue(type, length);
+                    setNestedValue(newValues, mapping.fieldPath, val);
                 }
-            } else if (mapping.source === "random") {
-                const [type, lenStr] = mapping.value.split(":");
-                const length = parseInt(lenStr) || 8;
-                const val = generateRandomValue(type, length);
-                setNestedValue(newValues, mapping.fieldPath, val);
-            }
-        });
+            });
+        }
 
         stepsExecution[index].requestValues = newValues;
         stepsExecution[index].mappedOptions = newMappedOptions;
@@ -2433,7 +2478,7 @@
                                                 </h3>
                                             </div>
                                             <div
-                                                class="bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden shadow-2xl"
+                                                class="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl"
                                             >
                                                 <ExecutionResultView
                                                     signatureRawString={stepExec.signatureSourceString}
@@ -2490,10 +2535,10 @@
 
                                             {#if stepExec.result}
                                                 <div
-                                                    class="bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden shadow-2xl"
+                                                    class="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl"
                                                 >
                                                     <div
-                                                        class="bg-slate-900 px-4 py-2 border-b border-slate-800 flex items-center justify-between"
+                                                        class="bg-slate-50 dark:bg-slate-900 px-4 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between"
                                                     >
                                                         <span
                                                             class="text-[10px] font-bold text-slate-500 uppercase tracking-widest"

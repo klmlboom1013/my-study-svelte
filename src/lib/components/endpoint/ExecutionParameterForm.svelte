@@ -198,13 +198,11 @@
                                         >Select value... ({dynamicOptions.length}
                                         options)</span
                                     >
-                                    <span class="text-slate-400 italic"
-                                        >Select value... ({dynamicOptions.length}
-                                        options)</span
-                                    >
                                 {:else}
                                     <span class="truncate"
-                                        >{currentValues[field.name]}</span
+                                        >{currentValues[field.name] === ""
+                                            ? "(빈 값)"
+                                            : currentValues[field.name]}</span
                                     >
                                 {/if}
                                 <ChevronDown size={14} class="text-slate-400" />
@@ -231,9 +229,12 @@
                                             >
                                                 <span
                                                     class="font-medium text-slate-800 dark:text-slate-100 truncate group-hover:text-primary transition-colors"
-                                                    >{opt.value}</span
+                                                    >{opt.value === "" &&
+                                                    opt.label
+                                                        ? opt.label
+                                                        : opt.value}</span
                                                 >
-                                                {#if opt.label && opt.label !== opt.value}
+                                                {#if opt.label && opt.label !== opt.value && opt.value !== ""}
                                                     <span
                                                         class="text-[10px] text-slate-400 font-mono mt-0.5"
                                                         >{opt.label}</span
@@ -308,7 +309,10 @@
                                             <div class="flex flex-col gap-0.5">
                                                 <span
                                                     class="font-medium text-slate-700 dark:text-slate-200 group-hover:text-primary dark:group-hover:text-primary transition-colors"
-                                                    >{opt.value}</span
+                                                    >{opt.value === "" &&
+                                                    opt.label
+                                                        ? opt.label
+                                                        : opt.value}</span
                                                 >
                                                 <span
                                                     class="text-slate-400 dark:text-slate-500 uppercase tracking-wider text-[10px]"

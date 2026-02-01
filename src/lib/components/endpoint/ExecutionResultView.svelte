@@ -117,7 +117,7 @@
         </div>
         <div class="relative group/params">
             <pre
-                class="p-4 bg-slate-900 text-slate-50 overflow-x-auto text-sm font-mono scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent min-h-[60px] whitespace-pre-wrap break-all">{jsonResult}</pre>
+                class="p-4 bg-slate-50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-50 overflow-x-auto text-sm font-mono scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent min-h-[60px] whitespace-pre-wrap break-all">{jsonResult}</pre>
 
             {#if onExecute}
                 <div class="absolute bottom-4 right-4" transition:scale>
@@ -173,7 +173,7 @@
             </button>
         </div>
         <pre
-            class="p-4 bg-slate-950 text-emerald-400 overflow-x-auto text-sm font-mono scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent min-h-[100px]">{responseResult}</pre>
+            class="p-4 bg-slate-50 dark:bg-slate-950 text-emerald-600 dark:text-emerald-400 overflow-x-auto text-sm font-mono scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent min-h-[100px]">{responseResult}</pre>
     </div>
 {/if}
 
