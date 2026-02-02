@@ -94,6 +94,7 @@ export interface InterfaceSettings {
         showEndpoint: boolean;
         showCollections: boolean;
         showCategories: boolean;
+        showChatbot: boolean;
     };
     dashboard: {
         showStats: boolean;
@@ -167,7 +168,8 @@ const defaultSettings: SettingsStoreData = {
             showTestSuite: true,
             showEndpoint: true,
             showCollections: true,
-            showCategories: true
+            showCategories: true,
+            showChatbot: true
         },
         dashboard: {
             showStats: true,
@@ -277,7 +279,15 @@ function createSettingsStore() {
                     },
                     interface: {
                         ...defaultSettings.interface,
-                        ...(parsedOld.interface || {})
+                        ...(parsedOld.interface || {}),
+                        sidebar: {
+                            ...defaultSettings.interface.sidebar,
+                            ...(parsedOld.interface?.sidebar || {})
+                        },
+                        dashboard: {
+                            ...defaultSettings.interface.dashboard,
+                            ...(parsedOld.interface?.dashboard || {})
+                        }
                     },
                     apiCategories: finalCategories,
                     apiCollections: finalCollections,
