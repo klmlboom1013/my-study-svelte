@@ -6,21 +6,24 @@
 
 * **목적**: 등록된 API Endpoint 목록을 조회, 검색, 관리(생성/삭제)하고, 바로 실행(Execute)할 수 있는 진입점(Dashboard) 역할을 합니다.
 * **주요 기능**:
-  * Endpoint 검색 및 필터링
+  * Endpoint 검색 및 필터링 (Name, URI, Method, Category, Collection)
   * Application별 그룹핑 뷰 (WPAY 전용)
   * Google Drive 백업 및 복구 (Sync)
-  * Endpoint 실행(Execute) 및 상세 이동
+  * Endpoint 실행(Execute), 즐겨찾기(Bookmark), 삭제(Delete)
+  * Global Lock 및 Read-only 모드 지원
 
 ## 2. 화면 구성 (UI Structure)
 
 ### 2.1. Header Area
 
+* **Breadcrumbs**: 상단에 현재 위치 경로 표시 (예: Home > API Categories > Test Endpoint). `category` 또는 `collection` 파라미터 유무에 따라 경로가 동적으로 변경됨.
+
 | 요소 | 설명 | 비고 |
 | :--- | :--- | :--- |
 | **Title** | "Endpoints" | |
 | **Description** | "Manage your API endpoints and configurations." | |
-| **New Endpoint** | 새 Endpoint 생성 화면(`/endpoint/new`)으로 이동하는 버튼 | Mobile에서는 하단/상단 배치 차이 있음 |
-| **Sync Buttons** | **Backup**: 현재 Endpoint 데이터를 Google Drive에 저장<br>**Restore**: Google Drive에서 데이터를 불러와 로컬 덮어쓰기 | `settingsStore`가 아닌 `endpointService` 데이터 대상 |
+| **New Endpoint** | 새 Endpoint 생성 화면(`/endpoint/new`)으로 이동하는 버튼 | `Global Lock` 상태이거나 `readonly` 모드일 경우 숨김 처리됨. Mobile에서는 하단/상단 배치 차이 있음. |
+| **Sync Buttons** | **Backup**: 현재 Endpoint 데이터를 Google Drive에 저장<br>**Restore**: Google Drive에서 데이터를 불러와 로컬 덮어쓰기 | `Global Lock` 상태이거나 `readonly` 모드일 경우 비활성화됨. |
 
 ### 2.2. Search & Filter Bar
 
@@ -28,9 +31,10 @@
   * 대상 필드: Endpoint Name, URI, Method
   * 동작: 입력 즉시 필터링 (Client-side filtering)
   * URL 연동: `q` 쿼리 파라미터와 양방향 동기화
-* **Application Filter** (Global Header 연동):
-  * 상단 글로벌 헤더의 Application 선택에 따라 목록이 필터링됩니다.
-  * URL 연동: `app` 쿼리 파라미터 감지.
+* **Filters**:
+  * **Application Filter** (Global Header 연동): 상단 글로벌 헤더의 Application 선택에 따라 목록이 필터링됩니다 (`app` 파라미터).
+  * **Category Filter**: URL `category` 파라미터가 있을 경우 해당 카테고리의 Endpoint만 표시.
+  * **Collection Filter**: URL `collection` 파라미터가 있을 경우 해당 컬렉션에 포함된 Endpoint만 표시.
 
 ### 2.3. List View (보기 방식)
 
@@ -58,14 +62,16 @@
   * Method (예: `POST`, `GET`)
   * Request Type (예: `REST`, `FORM`)
 * **Actions (Hover/Mobile Display)**:
-  * **Execute (Play Icon)**: 해당 Endpoint의 실행 모달(`EndpointExecutionModal`)을 엽니다. 상세 페이지로 이동하지 않고 즉시 테스트 가능합니다.
-  * **Delete (Trash Icon)**: 삭제 확인 알림(`AlertModal`) 호출 후 삭제합니다.
+  * 모바일에서는 항상 표시, 데스크탑에서는 Hover 시 표시.
+  * **Execute (Play Icon)**: 해당 Endpoint의 실행 모달(`EndpointExecutionModal`)을 엽니다.
+  * **Delete (Trash Icon)**: 삭제 확인 알림(`AlertModal`) 호출 후 삭제합니다. (`Global Lock` 또는 `readonly` 상태 시 숨김)
 * **Content**:
   * **Name**: Endpoint 이름 (클릭 시 상세 페이지 `/endpoint/[id]` 이동)
   * **URI**: 경로 표시 (Truncated)
 * **Footer Info**:
   * **Service**: 소속 서비스 (Scope)
   * **Site**: 소속 사이트 (Scope)
+  * **Bookmark (Star Icon)**: 우측 하단에 위치. 클릭하여 즐겨찾기(Favorites) 등록/해제 토글.
 
 ### 3.2. Google Drive Sync (Backup & Restore)
 
@@ -73,11 +79,9 @@
   * Google 로그인 상태가 아닐 경우, 버튼 클릭 시 로그인 팝업을 호출합니다.
   * Access Token 만료 시(401 Error), 재로그인 및 재시도 프롬프트를 표시합니다.
 * **Backup**:
-  * `driveService.saveEndpoints` 호출.
-  * 저장 위치: Google Drive App Data Folder (`endpoints.json` 등).
+  * `driveService.saveEndpoints` 호출. 저장 위치: Google Drive App Data Folder.
 * **Restore**:
-  * `driveService.loadEndpoints` 호출.
-  * **Overwrite Warning**: 로컬 데이터를 덮어쓰기 전 사용자 확인(`confirm`)을 거칩니다.
+  * `driveService.loadEndpoints` 호출. 로컬 데이터를 덮어쓰기 전 사용자 확인(`confirm`)을 거칩니다.
 
 ### 3.3. Empty State
 
@@ -90,3 +94,4 @@
   * `endpoints`: 전체 데이터 목록
   * `searchTerm`, `filterApp`: 필터링 상태 (URL Query Params와 동기화)
   * `collapsedServices`: 접혀있는 서비스 그룹 상태 관리 (Set 구조)
+  * `isReadOnly`, `$appStateStore.isPageLocked`: 편집/삭제/동기화 기능 제한 여부

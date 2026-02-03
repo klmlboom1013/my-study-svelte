@@ -22,9 +22,11 @@
   * 데이터가 없을 경우 기본값 `WPAY`를 제공합니다.
 * **Name**: Endpoint 식별 이름 (필수).
 * **Scope (Service / Site)**:
-  * Application이 `WPAY`일 경우에만 표시됩니다.
-  * **Service**: `wpaystd2` (현재 고정값).
-  * **Site**: 선택된 Service에 따라 종속적인 옵션(`siteOptions`)을 제공합니다.
+  * Application 설정(`useServiceDistinction`)에 따라 동적으로 표시됩니다.
+  * `ProfileStore`의 설정값에서 Service 및 Domain(Site) 목록을 불러옵니다.
+  * **Service**: 선택 가능한 서비스 목록 제공.
+  * **Site**: 선택된 Service에 따라 종속적인 도메인 옵션(`siteOptions`)을 제공합니다.
+  * (`Global Lock` 상태 시 모든 입력 비활성화)
 * **Description**: Endpoint에 대한 설명.
 
 ### 2.2. Request Details Section

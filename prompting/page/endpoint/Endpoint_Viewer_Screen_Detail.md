@@ -19,7 +19,7 @@
 | **Breadcrumbs** | 탐색 경로 표시 (`Home` > `Test Endpoint` > `[Endpoint Name]`) |
 | **Title** | Endpoint Name |
 | **Description** | 설명 문구 (데이터가 없으면 default msg 표시) |
-| **Actions** | **Edit**: 수정 화면(`/endpoint/[id]/edit`)으로 이동<br>**Delete**: 삭제 확인 (`confirm` 창) 후 목록으로 이동 |
+| **Actions** | **Execute**: 실행 모달(`EndpointExecutionModal`) 호출<br>**Edit**: 수정 화면(`/endpoint/[id]/edit`)으로 이동 (잠금 시 숨김)<br>**Delete**: 삭제 확인 (`confirm` 창) 후 목록으로 이동 (잠금 시 숨김) |
 
 ### 2.2. Basic Information Section (Card)
 
