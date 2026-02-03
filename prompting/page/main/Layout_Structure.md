@@ -99,6 +99,7 @@
 * Test Endpoint (`/endpoint`)
 * API Collections (`/collections`)
 * API Categories (`/categories`)
+* Chatbot (`/chatbot`)
 
 ### 3.2. API Categories
 

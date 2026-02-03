@@ -78,12 +78,16 @@ API 요청 생성 시 기본값으로 주입되거나, 사용자가 선택할 �
 
 ### 4.1. Core Store: `settingsStore`
 
-* **역할**: 설정 데이터의 **Create, Read, Update, Delete (CRUD)**를 담당합니다.
-* **지속성 (Persistence)**: 모든 변경 사항은 `localStorage`에 즉시 반영되어 브라우저 새로고침 후에도 유지됩니다.
-* **데이터 구조**:
-  * `endpoint_parameters`: Global Params, Options, MID Context, Site Context 포함.
-  * `interface`: Sidebar, Dashboard 설정 포함.
-  * `applications`: Application 및 Service 설정 포함.
+80:
+81: ***역할**: 설정 데이터의 **Create, Read, Update, Delete (CRUD)**를 담당합니다.
+82:* **지속성 (Persistence)**: 데이터 성격에 따라 분리된 `localStorage` 키를 사용합니다.
+83: ***Storage Keys & Structure**:
+84:* `settings_store`:
+85:     *`endpoint_parameters`: Global Params, Options, MID Context, Site Context.
+86:* `interface`: Sidebar, Dashboard, Bookmarks 설정.
+87:     *`applications`: Application 및 Service 설정.
+88:* `api_categories`: API 카테고리 데이터 독립 저장.
+89:   * `api_collections`: API 컬렉션 데이터 독립 저장.
 
 ### 4.2. Helper Stores
 

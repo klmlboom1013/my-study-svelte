@@ -29,7 +29,7 @@
 ### 2.3. 상세 로직 및 상호작용 (Detailed Logic & Interaction)
 
 * **Filtering Logic**:
-  * **Application Filter**: MID Context 리스트는 현재 헤더에서 선택된 Application에 따라 필터링되지 **않고**, 탭 내부의 필터링 로직을 따릅니다.
+  * **Application Filter**: MID Context 리스트는 현재 헤더에서 선택된 Application이 'All'인 경우 전체 목록을, 특정 앱인 경우 해당 앱의 MID만 필터링하여 보여줍니다.
   * **WPAY Service Filter**: Application이 'WPAY'인 경우, 서비스 드롭다운을 통해 특정 서비스의 MID만 필터링하여 볼 수 있습니다.
 * **Dynamic UI**:
   * **Service Multi-Select**: Application 선택 값이 'WPAY'일 때만 서비스 선택 필드(MultiSelectBox)가 노출됩니다.

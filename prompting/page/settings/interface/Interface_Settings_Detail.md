@@ -17,17 +17,30 @@ Interface 설정은 크게 `Sidebar`와 `Dashboard` 두 가지 영역으로 구�
 ```typescript
 interface InterfaceSettings {
     sidebar: {
-        showReport: boolean;      // 리포트 메뉴 표시 여부 (Default: true)
-        showIssue: boolean;       // 이슈 메뉴 표시 여부 (Default: true)
-        showTestSuite: boolean;   // 테스트 스위트 메뉴 표시 여부 (Default: true)
-        showEndpoint: boolean;    // 엔드포인트 메뉴 표시 여부 (Default: true)
-        showCollections: boolean; // 컬렉션 메뉴 표시 여부 (Default: true)
-        showCategories: boolean;  // 카테고리 메뉴 표시 여부 (Default: true)
+        showReport: boolean;
+        showIssue: boolean;
+        showTestSuite: boolean;
+        showEndpoint: boolean;
+        showCollections: boolean;
+        showCategories: boolean;
+        showChatbot: boolean;
     };
     dashboard: {
-        showStats: boolean;          // 통계 위젯 표시 여부 (Default: true)
-        showRecentActivity: boolean; // 최근 활동 위젯 표시 여부 (Default: true)
+        showStats: boolean;
+        showRecentActivity: boolean;
     };
+    bookmarks: BookmarkSetting[]; // 북마크 통합 관리
+    starredEndpointIds: string[]; // 즐겨찾기 Endpoint ID 목록
+}
+
+interface BookmarkSetting {
+    id: string;          // e.g., 'api-categories'
+    name: string;
+    icon: string;
+    path: string;
+    isEnabled: boolean;  // 활성화 여부
+    showNewButton: boolean; // 목록 헤더의 'New' 버튼 표시 여부
+    listLimit: number;   // 목록 표시 개수 제한 (0: Unlimited)
 }
 ```
 
@@ -43,6 +56,7 @@ interface InterfaceSettings {
 * **Endpoint**: API 엔드포인트 관리 메뉴
 * **Collections**: 엔드포인트 컬렉션 메뉴
 * **Categories**: 카테고리 분류 메뉴
+* **Chatbot**: 챗봇 어시스턴트 메뉴
 
 #### 2.2.2. Dashboard Widgets (대시보드 위젯)
 
@@ -51,10 +65,18 @@ interface InterfaceSettings {
 * **Stats**: 전체 프로젝트의 통계 요약 (Endpoint 수, 테스트 성공률 등)
 * **Recent Activity**: 최근 수행한 작업 및 변경 이력 로그
 
+#### 2.2.3. Dashboard Bookmarks (북마크 설정)
+
+대시보드 하단에 표시되는 바로가기(Bookmark) 리스트의 동작을 설정합니다.
+
+* **표시 여부 (Show)**: 각 북마크 섹션(Categories, Collections, Favorites 등)의 노출 여부 제어.
+* **항목 수 제한 (List Limit)**: 리스트에 표시될 최대 아이템 개수 지정.
+* **New 버튼**: 각 섹션 헤더에 '새로 만들기(+)' 버튼 노출 여부.
+
 ### 2.3. 상세 로직 및 상호작용 (Detailed Logic & Interaction)
 
 * **실시간 반영 (Reactivity)**:
-  * 사용자가 토글을 클릭하는 순간 `updateInterface` 함수가 호출되며, `settingsStore`가 업데이트됩니다.
+  * 사용자가 토글을 클릭하거나 Limit을 변경하는 순간 `updateBookmark` 함수가 호출되며, `settingsStore`가 업데이트됩니다.
   * Svelte의 Store 구독 메커니즘에 의해, 별도의 저장 버튼 클릭 없이 즉시 사이드바나 대시보드 UI가 갱신됩니다.
 
 * **데이터 영속성 (Data Persistence)**:
@@ -66,3 +88,4 @@ interface InterfaceSettings {
 * **UI 표현**:
   * **Toggle Switch**: `ON(Blue)` / `OFF(Gray)` 상태로 시각화됩니다.
   * **Label Formatting**: 내부 키(key) 값(예: `showRecentActivity`)에서 접두어 `show`를 제거하고, 남은 문자열(예: `RecentActivity`)을 라벨로 표시합니다.
+  * **Input Number**: List Limit 설정 시 숫자 입력 필드를 제공합니다.
