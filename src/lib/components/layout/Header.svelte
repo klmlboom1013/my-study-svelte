@@ -296,6 +296,21 @@
                     </Tooltip>
                 </div>
 
+                <!-- Recent Activity Button (History) -->
+                <div>
+                    <Tooltip text="Recent Activity" delay={100}>
+                        <button
+                            onclick={() => goto("/recent-activity")}
+                            class="flex items-center justify-center rounded-lg size-8 hover:bg-slate-100 dark:hover:bg-border-dark text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer"
+                        >
+                            <span class="material-symbols-outlined text-[20px]"
+                                >history</span
+                            >
+                            <span class="sr-only">Recent Activity</span>
+                        </button>
+                    </Tooltip>
+                </div>
+
                 <!-- Lock Button -->
                 <Tooltip
                     text={isMobile

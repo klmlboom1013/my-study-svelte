@@ -1519,7 +1519,18 @@
                     const result = await resultPromise;
                     stepExec.result = result;
                     stepExec.status = "SUCCESS";
-                    stepExec.status = "SUCCESS";
+
+                    // Record execution log
+                    executionService.recordExecution({
+                        endpointId: stepExec.endpointId,
+                        endpointName: endpoint.name || endpoint.uri,
+                        status: "success",
+                        method: endpoint.method,
+                        url: stepExec.requestUrl,
+                        requestData: payload,
+                        responseData: result,
+                    });
+
                     processResponseData(index);
                     await checkNextStepCondition(index);
                 } finally {
@@ -1645,6 +1656,19 @@
                     stepExec.result = text;
                     stepExec.status = response.ok ? "SUCCESS" : "ERROR";
                 }
+
+                // Record execution log
+                executionService.recordExecution({
+                    endpointId: stepExec.endpointId,
+                    endpointName: endpoint.name || endpoint.uri,
+                    status: stepExec.status === "SUCCESS" ? "success" : "error",
+                    method: endpoint.method,
+                    url: stepExec.requestUrl,
+                    requestData: payload,
+                    responseData: stepExec.result,
+                    headers: headers as Record<string, string>,
+                });
+
                 processResponseData(index);
                 await checkNextStepCondition(index);
 
@@ -1658,6 +1682,16 @@
             } else {
                 stepExec.status = "ERROR";
                 stepExec.error = err.message;
+
+                // Record execution log for unintended errors
+                executionService.recordExecution({
+                    endpointId: stepExec.endpointId,
+                    endpointName: endpoint.name || endpoint.uri,
+                    status: "error",
+                    method: endpoint.method,
+                    url: stepExec.requestUrl || "Preparation Error",
+                    responseData: { error: err.message },
+                });
             }
         } finally {
             isExecuting = false;

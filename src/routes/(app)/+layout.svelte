@@ -15,9 +15,12 @@
         disconnectGoogle,
     } from "$lib/features/auth/services/authService";
     import { driveService } from "$lib/features/drive/services/driveService";
+    import { settingsStore } from "$lib/stores/settingsStore";
+    import { endpointService } from "$lib/features/endpoints/services/endpointService";
     import { get } from "svelte/store";
     import { getCookie } from "$lib/utils/cookie";
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
+    import FullLoading from "$lib/components/ui/FullLoading.svelte";
 
     let { children } = $props();
 
@@ -28,8 +31,14 @@
     let alertTitle = $state("");
     let alertMessage = $state("");
     let alertType = $state<"alert" | "confirm">("alert");
+    let alertConfirmText = $state("OK");
+    let alertCancelText = $state("Cancel");
     let onAlertConfirm = $state<(() => void) | undefined>(undefined);
     let onAlertCancel = $state<(() => void) | undefined>(undefined);
+
+    // Full Loading Overlay State
+    let isFullLoading = $state(false);
+    let loadingMessage = $state("");
 
     // Auto-close drawer on navigation
     afterNavigate(() => {
@@ -62,52 +71,97 @@
             }
         });
 
-        // Watch authStore for Access Token to trigger Auto-Restore
-        // This ensures we run ONLY when we have a valid token (e.g. after explicit login)
         const authUnsub = authStore.subscribe(async (state) => {
             if (state.accessToken && state.firebaseUser) {
-                // Prevent repeated restores if already restored recently?
-                // For now, we just restore. Since this runs on login.
-
-                // We should check if we already have a "restored" profile to avoid overwriting edits?
-                // But the requirement is "Auto-Restore on Login".
-
-                // Check if profile is default/guest before restoring?
-                // Or check timestamps?
-                // Let's try to restore.
-
                 try {
-                    // Verify if we really need to restore.
-                    // Maybe only if local profile is "fresh" (no saveDateTime) or user requests it?
-                    // But user wants "Auto Restore".
+                    // Ask user if they want to restore ALL data or just profile
+                    showAlert(
+                        "Restore Full Data",
+                        "Do you want to restore all data (including settings and endpoints) from Google Drive?\nClick 'Cancel' to restore only your profile.",
+                        "confirm",
+                        async () => {
+                            // Confirm: Full Restore
+                            try {
+                                isFullLoading = true;
+                                loadingMessage =
+                                    "Restoring all data from Google Drive...";
+                                const accessToken = state.accessToken as string;
 
-                    // Optimization: check if we just restored to avoid loops if store updates trigger this.
-                    // But store update of profile doesn't trigger authStore update.
+                                // 1. Restore Profile
+                                const profile =
+                                    await driveService.loadProfile(accessToken);
+                                if (profile) {
+                                    profile.restoreDateTime =
+                                        new Date().toISOString();
+                                    profileStore.updateProfile(profile);
+                                }
 
-                    const profile = await driveService.loadProfile(
-                        state.accessToken,
+                                // 2. Restore Settings
+                                const settings =
+                                    await driveService.loadSettings(
+                                        accessToken,
+                                    );
+                                if (settings) {
+                                    settingsStore.load(settings);
+                                }
+
+                                // 3. Restore Endpoints
+                                const endpoints =
+                                    await driveService.loadEndpoints(
+                                        accessToken,
+                                    );
+                                if (endpoints) {
+                                    endpointService.importEndpoints(endpoints);
+                                }
+
+                                console.log("Full data restored from Drive");
+                                showAlert(
+                                    "Restore Complete",
+                                    "All data has been successfully restored.",
+                                    "alert",
+                                    undefined,
+                                    undefined,
+                                    "OK",
+                                );
+                            } catch (err: any) {
+                                console.error("Full restore failed", err);
+                                showAlert(
+                                    "Restore Failed",
+                                    `An error occurred during restore: ${err.message}`,
+                                    "alert",
+                                    undefined,
+                                    undefined,
+                                    "OK",
+                                );
+                            } finally {
+                                isFullLoading = false;
+                            }
+                        },
+                        async () => {
+                            // Cancel: Profile Only Restore (DEFAULT)
+                            try {
+                                const profile = await driveService.loadProfile(
+                                    state.accessToken as string,
+                                );
+                                if (profile) {
+                                    profile.restoreDateTime =
+                                        new Date().toISOString();
+                                    profileStore.updateProfile(profile);
+                                    console.log(
+                                        "Profile only restored from Drive",
+                                    );
+                                }
+                            } catch (err: any) {
+                                console.error("Profile restore failed", err);
+                            }
+                        },
+                        "Connect",
+                        "Cancel",
                     );
-                    if (profile) {
-                        const current = get(profileStore);
-                        // Optional: Compare timestamps?
-                        // If Drive backup is newer than local save?
-                        // For now, Strict Auto-Restore as per request.
-
-                        profile.restoreDateTime = new Date().toISOString();
-                        profileStore.updateProfile(profile);
-                        console.log(
-                            "Auto-Restored profile from Drive via Token",
-                        );
-                    }
                 } catch (e: any) {
-                    console.error("Auto-Restore failed", e);
-                    // Check for 401 Unauthorized (Expired Token)
+                    console.error("Auto-Restore flow failed", e);
                     if (e.message && e.message.includes("401")) {
-                        console.warn(
-                            "Token expired. Disconnecting and prompting reconnect.",
-                        );
                         disconnectGoogle();
-                        // Trigger the connect prompt again
                         checkAndPromptGoogleConnect();
                     }
                 }
@@ -150,6 +204,19 @@
             userProfile.role = role;
         });
 
+        // Trigger Auto Google Connect if just logged in
+        const justLoggedIn = sessionStorage.getItem("justLoggedIn");
+        if (justLoggedIn) {
+            sessionStorage.removeItem("justLoggedIn");
+            const googleToken = get(authStore).accessToken;
+            if (!googleToken) {
+                console.log(
+                    "Just logged in, triggering auto Google connect...",
+                );
+                handleGoogleConnect();
+            }
+        }
+
         return () => {
             unsubscribe();
             profileUnsub();
@@ -171,8 +238,8 @@
 
         // Prompt
         showAlert(
-            "Google 계정 연결",
-            "프로필 백업을 자동 복구하려면 Google 계정 연결이 필요합니다.\n지금 연결하시겠습니까?",
+            "Connect Google Account",
+            "Google account connection is required to automatically restore your profile backup.\nConnect now?",
             "confirm",
             () => {
                 // Confirm: Connect
@@ -182,6 +249,8 @@
                 // Cancel: Suppress
                 sessionStorage.setItem("hasDeclinedGoogleConnect", "true");
             },
+            "Connect",
+            "Cancel",
         );
     }
 
@@ -191,7 +260,7 @@
             // Successful login will update authStore, triggering the subscription logic for Auto-Restore
         } catch (e) {
             console.error("Google Connect Failed", e);
-            showAlert("연결 실패", "Google 계정 연결에 실패했습니다.");
+            showAlert("Connection Failed", "Failed to connect Google account.");
         }
     }
 
@@ -201,10 +270,14 @@
         type: "alert" | "confirm" = "alert",
         onConfirm?: () => void,
         onCancel?: () => void,
+        confirmText = "OK",
+        cancelText = "Cancel",
     ) {
         alertTitle = title;
         alertMessage = message;
         alertType = type;
+        alertConfirmText = confirmText;
+        alertCancelText = cancelText;
         onAlertConfirm = onConfirm;
         onAlertCancel = onCancel;
         isAlertOpen = true;
@@ -218,9 +291,11 @@
     type={alertType}
     onConfirm={onAlertConfirm}
     onCancel={onAlertCancel}
-    confirmText="연결"
-    cancelText="취소"
+    confirmText={alertConfirmText}
+    cancelText={alertCancelText}
 />
+
+<FullLoading isOpen={isFullLoading} message={loadingMessage} />
 
 <div
     class="flex flex-col h-screen bg-slate-50 dark:bg-background-dark transition-colors duration-300"

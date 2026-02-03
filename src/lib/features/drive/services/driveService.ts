@@ -178,4 +178,27 @@ export const driveService = {
         }
         return null; // Not found
     },
+
+    // Helper: Save Execution Logs
+    async saveExecutionLogs(accessToken: string, data: any[]): Promise<void> {
+        const filename = "execution_logs.json";
+        const files = await this.listFiles(accessToken, filename);
+
+        if (files.length > 0) {
+            await this.updateFile(accessToken, files[0].id, data);
+        } else {
+            await this.createFile(accessToken, filename, data);
+        }
+    },
+
+    // Helper: Load Execution Logs
+    async loadExecutionLogs(accessToken: string): Promise<any[] | null> {
+        const filename = "execution_logs.json";
+        const files = await this.listFiles(accessToken, filename);
+
+        if (files.length > 0) {
+            return await this.downloadFile(accessToken, files[0].id);
+        }
+        return null; // Not found
+    },
 };

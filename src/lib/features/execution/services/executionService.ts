@@ -12,7 +12,24 @@ export interface ExecutionHistory {
     presets: ExecutionPreset[];
 }
 
+export interface ExecutionLog {
+    id: string;
+    endpointId: string;
+    endpointName: string;
+    timestamp: number;
+    status: 'success' | 'error' | 'warning' | 'info';
+    method?: string;
+    url?: string;
+    duration?: number;
+    requestData?: any;
+    responseData?: any;
+    queryParams?: Record<string, string>;
+    headers?: Record<string, string>;
+}
+
 const STORAGE_KEY = "execution_history";
+const LOG_STORAGE_KEY = "execution_logs";
+const MAX_LOGS = 50;
 
 export const executionService = {
     /**
@@ -106,6 +123,60 @@ export const executionService = {
     importHistory: (historyMap: Record<string, ExecutionHistory>): void => {
         if (!historyMap) return;
         executionService._saveAllHistory(historyMap);
+        notifyListeners();
+    },
+
+    /**
+     * Record a new execution log
+     */
+    recordExecution: (log: Omit<ExecutionLog, 'id' | 'timestamp'>): void => {
+        const logs = executionService.getExecutionLogs();
+        const newLog: ExecutionLog = {
+            ...log,
+            id: crypto.randomUUID(),
+            timestamp: Date.now()
+        };
+
+        logs.unshift(newLog);
+
+        // Limit to MAX_LOGS
+        const limitedLogs = logs.slice(0, MAX_LOGS);
+        localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(limitedLogs));
+        notifyListeners();
+    },
+
+    /**
+     * Get all execution logs
+     */
+    getExecutionLogs: (): ExecutionLog[] => {
+        const stored = localStorage.getItem(LOG_STORAGE_KEY);
+        return stored ? JSON.parse(stored) : [];
+    },
+
+    /**
+     * Clear all execution logs
+     */
+    clearExecutionLogs: (): void => {
+        localStorage.removeItem(LOG_STORAGE_KEY);
+        notifyListeners();
+    },
+
+    /**
+     * Import execution logs from Sync
+     */
+    importExecutionLogs: (newLogs: ExecutionLog[]): void => {
+        if (!Array.isArray(newLogs)) return;
+        localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(newLogs));
+        notifyListeners();
+    },
+
+    /**
+     * Delete a specific execution log
+     */
+    deleteExecutionLog: (logId: string): void => {
+        const logs = executionService.getExecutionLogs();
+        const filteredLogs = logs.filter(l => l.id !== logId);
+        localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(filteredLogs));
         notifyListeners();
     },
 

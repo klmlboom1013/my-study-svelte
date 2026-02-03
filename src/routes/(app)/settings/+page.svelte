@@ -1959,14 +1959,17 @@
                                         <div class="flex flex-col">
                                             <span
                                                 class="font-medium text-slate-900 dark:text-slate-100 capitalize"
-                                                >{key.replace("show", "")}</span
+                                                >{key
+                                                    .replace("show", "")
+                                                    .replace(/([A-Z])/g, " $1")
+                                                    .trim()}</span
                                             >
                                             <span
                                                 class="text-xs text-slate-500 dark:text-slate-400"
-                                                >Toggle visibility of {key.replace(
-                                                    "show",
-                                                    "",
-                                                )} menu item.</span
+                                                >Toggle visibility of {key
+                                                    .replace("show", "")
+                                                    .replace(/([A-Z])/g, " $1")
+                                                    .trim()} menu item.</span
                                             >
                                         </div>
                                         <label

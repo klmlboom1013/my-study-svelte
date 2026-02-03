@@ -301,7 +301,10 @@
             });
             setCookie("accessToken", token, 1);
             if (isModal && onComplete) onComplete();
-            else goto("/");
+            else {
+                sessionStorage.setItem("justLoggedIn", "true");
+                goto("/");
+            }
         } catch {
             alert("Failed to create access token");
         }

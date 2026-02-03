@@ -467,6 +467,18 @@
                         responseResult = JSON.stringify(resultData, null, 2);
                         scrollToBottom();
                         validateResponse(resultData, securityContext);
+
+                        // Record execution log
+                        executionService.recordExecution({
+                            endpointId: endpoint.id,
+                            endpointName: endpoint.name || endpoint.uri,
+                            status: "success",
+                            method: endpoint.method,
+                            url: `${selectedDomainPrefix}${endpoint.scope.site ? "/" + endpoint.scope.site : ""}${endpoint.uri}`,
+                            requestData: payload,
+                            responseData: resultData,
+                        });
+
                         stopExecution();
                     };
                     bc.onmessage = (event) => {
@@ -560,6 +572,24 @@
                     } catch {
                         responseResult = text;
                     }
+
+                    // Record execution log
+                    executionService.recordExecution({
+                        endpointId: endpoint.id,
+                        endpointName: endpoint.name || endpoint.uri,
+                        status:
+                            responseStatus >= 200 && responseStatus < 300
+                                ? "success"
+                                : "error",
+                        method: endpoint.method,
+                        url: fullUrl,
+                        requestData: payload,
+                        responseData: responseResult
+                            ? JSON.parse(responseResult)
+                            : null,
+                        headers: headers as Record<string, string>,
+                    });
+
                     scrollToBottom();
                 } catch (e) {
                     responseResult = "Error: " + (e as Error).message;

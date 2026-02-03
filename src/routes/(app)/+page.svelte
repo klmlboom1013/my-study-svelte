@@ -6,6 +6,10 @@
     import { decodeJwt } from "jose";
     import Footer from "$lib/components/layout/Footer.svelte";
     import { settingsStore } from "$lib/stores/settingsStore";
+    import {
+        executionService,
+        type ExecutionLog,
+    } from "$lib/features/execution/services/executionService";
 
     let isValid = $state(false);
 
@@ -99,6 +103,31 @@
         }
         return categories;
     });
+
+    // Recent Activity Real Data
+    let recentLogs = $state<ExecutionLog[]>([]);
+
+    onMount(() => {
+        // Load initial logs
+        recentLogs = executionService.getExecutionLogs().slice(0, 5);
+
+        // Listen for updates
+        const unsubscribe = executionService.onChange(() => {
+            recentLogs = executionService.getExecutionLogs().slice(0, 5);
+        });
+
+        return unsubscribe;
+    });
+
+    function formatRelativeTime(timestamp: number): string {
+        const now = Date.now();
+        const diff = now - timestamp;
+
+        if (diff < 60000) return "Just now";
+        if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+        if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+        return `${Math.floor(diff / 86400000)}d ago`;
+    }
 </script>
 
 {#if isValid}
@@ -300,6 +329,11 @@
                     </h3>
                     <div class="flex gap-2">
                         <button
+                            onclick={() => {
+                                recentLogs = executionService
+                                    .getExecutionLogs()
+                                    .slice(0, 5);
+                            }}
                             class="size-8 flex items-center justify-center rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-primary/50"
                         >
                             <span class="material-symbols-outlined text-[18px]"
@@ -349,162 +383,85 @@
                             <tbody
                                 class="divide-y divide-slate-200 dark:divide-slate-700 text-sm"
                             >
-                                <tr
-                                    class="group hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
-                                >
-                                    <td class="p-4">
-                                        <span
-                                            class="px-2 py-1 rounded text-xs font-bold bg-green-500/10 text-green-500 border border-green-500/20"
-                                            >GET</span
-                                        >
-                                    </td>
-                                    <td class="p-4">
-                                        <div class="flex flex-col">
-                                            <span
-                                                class="text-slate-900 dark:text-white font-mono"
-                                                >/v2/auth/validate</span
-                                            >
-                                            <span
-                                                class="text-slate-500 dark:text-slate-400 text-xs"
-                                                >Member Token</span
-                                            >
-                                        </div>
-                                    </td>
-                                    <td class="p-4">
-                                        <span
-                                            class="flex items-center gap-1.5 text-slate-900 dark:text-white"
-                                        >
-                                            <span
-                                                class="size-2 rounded-full bg-green-500"
-                                            ></span> 200 OK
-                                        </span>
-                                    </td>
-                                    <td
-                                        class="p-4 text-slate-500 dark:text-slate-400"
-                                        >45ms</td
+                                {#each recentLogs as log}
+                                    <tr
+                                        class="group hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
                                     >
-                                    <td
-                                        class="p-4 text-slate-500 dark:text-slate-400 text-right"
-                                        >2 min ago</td
-                                    >
-                                </tr>
-                                <tr
-                                    class="group hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
-                                >
-                                    <td class="p-4">
-                                        <span
-                                            class="px-2 py-1 rounded text-xs font-bold bg-blue-500/10 text-blue-500 border border-blue-500/20"
-                                            >POST</span
-                                        >
-                                    </td>
-                                    <td class="p-4">
-                                        <div class="flex flex-col">
+                                        <td class="p-4">
                                             <span
-                                                class="text-slate-900 dark:text-white font-mono"
-                                                >/v1/charges/create</span
+                                                class="px-2 py-1 rounded text-xs font-bold border {log.method ===
+                                                'GET'
+                                                    ? 'bg-green-500/10 text-green-500 border-green-500/20'
+                                                    : log.method === 'POST'
+                                                      ? 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                                                      : log.method === 'PUT' ||
+                                                          log.method === 'PATCH'
+                                                        ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+                                                        : log.method ===
+                                                            'DELETE'
+                                                          ? 'bg-red-500/10 text-red-500 border-red-500/20'
+                                                          : ''}"
+                                                >{log.method}</span
                                             >
+                                        </td>
+                                        <td class="p-4">
+                                            <div class="flex flex-col">
+                                                <span
+                                                    class="text-slate-900 dark:text-white font-mono truncate max-w-[200px]"
+                                                    title={log.url}
+                                                    >{log.url}</span
+                                                >
+                                                <span
+                                                    class="text-slate-500 dark:text-slate-400 text-xs"
+                                                    >{log.endpointName}</span
+                                                >
+                                            </div>
+                                        </td>
+                                        <td class="p-4">
                                             <span
-                                                class="text-slate-500 dark:text-slate-400 text-xs"
-                                                >Payment Processing</span
+                                                class="flex items-center gap-1.5 text-slate-900 dark:text-white"
                                             >
-                                        </div>
-                                    </td>
-                                    <td class="p-4">
-                                        <span
-                                            class="flex items-center gap-1.5 text-slate-900 dark:text-white"
+                                                <span
+                                                    class="size-2 rounded-full"
+                                                    class:bg-green-500={log.status ===
+                                                        "success"}
+                                                    class:bg-red-500={log.status ===
+                                                        "error"}
+                                                    class:bg-yellow-500={log.status ===
+                                                        "warning"}
+                                                    class:bg-blue-500={log.status ===
+                                                        "info"}
+                                                ></span>
+                                                {#if log.status === "success"}
+                                                    200 OK
+                                                {:else if log.status === "error"}
+                                                    Failed
+                                                {:else}
+                                                    {log.status}
+                                                {/if}
+                                            </span>
+                                        </td>
+                                        <td
+                                            class="p-4 text-slate-500 dark:text-slate-400"
+                                            >{log.duration || 0}ms</td
                                         >
-                                            <span
-                                                class="size-2 rounded-full bg-green-500"
-                                            ></span> 201 Created
-                                        </span>
-                                    </td>
-                                    <td
-                                        class="p-4 text-slate-500 dark:text-slate-400"
-                                        >120ms</td
-                                    >
-                                    <td
-                                        class="p-4 text-slate-500 dark:text-slate-400 text-right"
-                                        >15 min ago</td
-                                    >
-                                </tr>
-                                <tr
-                                    class="group hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
-                                >
-                                    <td class="p-4">
-                                        <span
-                                            class="px-2 py-1 rounded text-xs font-bold bg-yellow-500/10 text-yellow-500 border border-yellow-500/20"
-                                            >PUT</span
+                                        <td
+                                            class="p-4 text-slate-500 dark:text-slate-400 text-right"
+                                            >{formatRelativeTime(
+                                                log.timestamp,
+                                            )}</td
                                         >
-                                    </td>
-                                    <td class="p-4">
-                                        <div class="flex flex-col">
-                                            <span
-                                                class="text-slate-900 dark:text-white font-mono"
-                                                >/v2/security/pin</span
-                                            >
-                                            <span
-                                                class="text-slate-500 dark:text-slate-400 text-xs"
-                                                >PIN Management</span
-                                            >
-                                        </div>
-                                    </td>
-                                    <td class="p-4">
-                                        <span
-                                            class="flex items-center gap-1.5 text-slate-900 dark:text-white"
+                                    </tr>
+                                {:else}
+                                    <tr>
+                                        <td
+                                            colspan="5"
+                                            class="p-8 text-center text-slate-400 dark:text-slate-500"
                                         >
-                                            <span
-                                                class="size-2 rounded-full bg-red-500"
-                                            ></span> 401 Unauthorized
-                                        </span>
-                                    </td>
-                                    <td
-                                        class="p-4 text-slate-500 dark:text-slate-400"
-                                        >32ms</td
-                                    >
-                                    <td
-                                        class="p-4 text-slate-500 dark:text-slate-400 text-right"
-                                        >1 hour ago</td
-                                    >
-                                </tr>
-                                <tr
-                                    class="group hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
-                                >
-                                    <td class="p-4">
-                                        <span
-                                            class="px-2 py-1 rounded text-xs font-bold bg-green-500/10 text-green-500 border border-green-500/20"
-                                            >GET</span
-                                        >
-                                    </td>
-                                    <td class="p-4">
-                                        <div class="flex flex-col">
-                                            <span
-                                                class="text-slate-900 dark:text-white font-mono"
-                                                >/v1/tokens/list</span
-                                            >
-                                            <span
-                                                class="text-slate-500 dark:text-slate-400 text-xs"
-                                                >Payment Token</span
-                                            >
-                                        </div>
-                                    </td>
-                                    <td class="p-4">
-                                        <span
-                                            class="flex items-center gap-1.5 text-slate-900 dark:text-white"
-                                        >
-                                            <span
-                                                class="size-2 rounded-full bg-green-500"
-                                            ></span> 200 OK
-                                        </span>
-                                    </td>
-                                    <td
-                                        class="p-4 text-slate-500 dark:text-slate-400"
-                                        >210ms</td
-                                    >
-                                    <td
-                                        class="p-4 text-slate-500 dark:text-slate-400 text-right"
-                                        >3 hours ago</td
-                                    >
-                                </tr>
+                                            No recent activity found.
+                                        </td>
+                                    </tr>
+                                {/each}
                             </tbody>
                         </table>
                     </div>
@@ -512,6 +469,7 @@
                         class="p-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex justify-center"
                     >
                         <button
+                            onclick={() => goto("/recent-activity")}
                             class="text-sm text-primary font-medium hover:text-slate-900 dark:hover:text-white transition-colors"
                             >View full history</button
                         >
