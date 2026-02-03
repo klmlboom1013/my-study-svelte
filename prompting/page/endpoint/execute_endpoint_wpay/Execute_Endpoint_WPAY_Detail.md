@@ -104,8 +104,10 @@ WPAY 연동은 결제창 호출(`FORM` 방식)과 일반 API 호출(`REST` 방�
   * `request.formData()`를 통해 WPAY가 전송한 Form Data를 파싱.
   * 파싱된 데이터를 객체(`Record<string, string>`)로 변환하여 Page Component(`+page.svelte`)로 전달 (`export let form`).
 * **Client-Side Logic** (`+page.svelte`):
-  * 서버로부터 전달받은 `form.data`를 `BroadcastChannel` 및 `window.opener.postMessage`로 브로드캐스팅.
-  * 3초 후 팝업(자신)을 자동 종료.
+  * **Result Broadcasting**: 서버로부터 전달받은 `form.data`를 `BroadcastChannel`("wpay_channel") 및 `window.opener.postMessage`로 브로드캐스팅.
+  * **Collection Run Check**: 자동화된 컬렉션 실행(Automation) 중일 경우(`window.name`이 "col_run_"으로 시작), 다음 단계를 위해 **팝업을 자동으로 닫지 않고 유지**합니다.
+  * **Auto Close**: 일반 실행일 경우, 3초 후 팝업(자신)을 자동 종료합니다.
+  * **Remote Close Listener**: `WPAY_CLOSE` 시그널 수신 시 즉시 창을 닫습니다.
 
 ## 5. 코드 참조 (Code Reference)
 
