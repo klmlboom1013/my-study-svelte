@@ -1529,6 +1529,10 @@
                         url: stepExec.requestUrl,
                         requestData: payload,
                         responseData: result,
+                        statusCode: 200, // Explicit success for WPAY form submission
+                        application: endpoint.application,
+                        service: endpoint.scope?.service || "",
+                        site: endpoint.scope?.site || "",
                     });
 
                     processResponseData(index);
@@ -1667,6 +1671,10 @@
                     requestData: payload,
                     responseData: stepExec.result,
                     headers: headers as Record<string, string>,
+                    statusCode: response.status,
+                    application: endpoint.application,
+                    service: endpoint.scope?.service || "",
+                    site: endpoint.scope?.site || "",
                 });
 
                 processResponseData(index);

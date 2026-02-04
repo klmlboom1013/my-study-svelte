@@ -11,8 +11,10 @@
     import {
         executionService,
         type ExecutionPreset,
+        type ExecutionLog,
     } from "$lib/features/execution/services/executionService";
     import { wpayExecutionService } from "$lib/features/execution/services/wpayExecutionService";
+    import { endpointService } from "$lib/features/endpoints/services/endpointService";
     import { settingsStore } from "$lib/stores/settingsStore";
     import {
         generateSignature,
@@ -469,14 +471,22 @@
                         validateResponse(resultData, securityContext);
 
                         // Record execution log
+                        const logEndpoint =
+                            endpointService.getEndpoint(endpoint.id) ||
+                            endpoint;
+
                         executionService.recordExecution({
-                            endpointId: endpoint.id,
-                            endpointName: endpoint.name || endpoint.uri,
+                            endpointId: logEndpoint.id,
+                            endpointName: logEndpoint.name || logEndpoint.uri,
                             status: "success",
-                            method: endpoint.method,
-                            url: `${selectedDomainPrefix}${endpoint.scope.site ? "/" + endpoint.scope.site : ""}${endpoint.uri}`,
+                            method: logEndpoint.method,
+                            url: `${selectedDomainPrefix}${logEndpoint.scope.site ? "/" + logEndpoint.scope.site : ""}${logEndpoint.uri}`,
+                            statusCode: 200,
                             requestData: payload,
                             responseData: resultData,
+                            application: logEndpoint.application,
+                            service: logEndpoint.scope?.service || "",
+                            site: logEndpoint.scope?.site || "",
                         });
 
                         stopExecution();
@@ -574,21 +584,31 @@
                     }
 
                     // Record execution log
-                    executionService.recordExecution({
-                        endpointId: endpoint.id,
-                        endpointName: endpoint.name || endpoint.uri,
-                        status:
-                            responseStatus >= 200 && responseStatus < 300
-                                ? "success"
-                                : "error",
-                        method: endpoint.method,
+                    const logEndpoint =
+                        endpointService.getEndpoint(endpoint.id) || endpoint;
+
+                    const logEntry = {
+                        endpointId: logEndpoint.id,
+                        endpointName: logEndpoint.name || logEndpoint.uri,
+                        status: (responseStatus &&
+                        responseStatus >= 200 &&
+                        responseStatus < 300
+                            ? "success"
+                            : "error") as ExecutionLog["status"],
+                        statusCode: responseStatus || 0, // Ensure it's not null/undefined
+                        method: logEndpoint.method,
                         url: fullUrl,
                         requestData: payload,
                         responseData: responseResult
                             ? JSON.parse(responseResult)
                             : null,
                         headers: headers as Record<string, string>,
-                    });
+                        application: logEndpoint.application,
+                        service: logEndpoint.scope?.service || "",
+                        site: logEndpoint.scope?.site || "",
+                    };
+                    console.log("Saving Log Entry:", logEntry);
+                    executionService.recordExecution(logEntry);
 
                     scrollToBottom();
                 } catch (e) {

@@ -816,6 +816,7 @@
         { id: "bookmarks", label: "Bookmarks", icon: "bookmarks" },
         { id: "application", label: "Applications", icon: "apps" },
         { id: "endpoint", label: "Endpoint Parameters", icon: "tune" },
+        { id: "recent_activity", label: "Recent Activity", icon: "history" },
         { id: "localstorage", label: "LocalStorage", icon: "database" },
     ];
 
@@ -906,6 +907,51 @@
         }
 
         return [];
+    }
+
+    // --- Recent Activity Settings Helpers ---
+    function toggleRecentActivityColumn(col: string) {
+        const current = $settingsStore.recentActivity?.display?.columns || [];
+        const newCols = current.includes(col)
+            ? current.filter((c) => c !== col)
+            : [...current, col];
+
+        settingsStore.updateRecentActivity({
+            display: {
+                ...($settingsStore.recentActivity?.display || {
+                    columns: [],
+                }),
+                columns: newCols,
+            },
+        });
+    }
+
+    function toggleAppFilter(appName: string) {
+        const currentFilters = $settingsStore.recentActivity?.filter || {};
+        const newVal = !currentFilters[appName]; // Toggle (undefined/false -> true = Disabled? No, Logic needed)
+        // Logc: filter[appName] === false means DISABLED? Or ENABLED?
+        // User request: "어떤 데이터를 수집할껀지".
+        // Let's define: filter[appName] === false (or undefined) -> ENABLED (Default).
+        // filter[appName] === true -> DISABLED (Excluded).
+        // OR
+        // filter[appName] === true (Default) -> ENABLED.
+        // Let's stick to: Checked = Collection Enabled.
+        // So in store: filter[appName] = boolean (Enabled?). Default true.
+        // If undefined, treat as true.
+
+        // Wait, the store interface is `filter: Record<string, boolean>`.
+        // Let's assume key exists = setting exists.
+        // Value true = Enabled. Value false = Disabled.
+        // If key missing, default to true.
+
+        // So toggle logic:
+        const currentVal = currentFilters[appName] !== false; // Default true
+        settingsStore.updateRecentActivity({
+            filter: {
+                ...currentFilters,
+                [appName]: !currentVal,
+            },
+        });
     }
 </script>
 
@@ -2819,6 +2865,170 @@
                                     </div>
                                 {/each}
                             {/if}
+                        </div>
+                    </div>
+                </div>
+            {:else if activeCategory === "recent_activity"}
+                <div class="max-w-4xl space-y-6 p-6">
+                    <!-- Header -->
+                    <div class="mb-2">
+                        <h2
+                            class="text-xl font-bold text-slate-800 dark:text-white"
+                        >
+                            Recent Activity Settings
+                        </h2>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm">
+                            Configure data collection and display preferences
+                            for the Recent Activity log.
+                        </p>
+                    </div>
+
+                    <!-- Data Collection -->
+                    <div
+                        class="bg-white dark:bg-card-dark p-6 rounded-xl border border-slate-200 dark:border-border-dark space-y-6"
+                    >
+                        <h3
+                            class="text-lg font-semibold text-slate-800 dark:text-white pb-2 border-b border-slate-100 dark:border-border-dark"
+                        >
+                            Data Collection
+                        </h3>
+
+                        <!-- Global Switch -->
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div
+                                    class="font-medium text-slate-700 dark:text-slate-200"
+                                >
+                                    Enable Logging
+                                </div>
+                                <div class="text-xs text-slate-500">
+                                    Master switch to enable or disable all
+                                    activity logging.
+                                </div>
+                            </div>
+                            <label
+                                class="relative inline-flex items-center cursor-pointer"
+                            >
+                                <input
+                                    type="checkbox"
+                                    class="sr-only peer"
+                                    checked={$settingsStore.recentActivity
+                                        ?.enabled ?? true}
+                                    onchange={(e) =>
+                                        settingsStore.updateRecentActivity({
+                                            enabled: e.currentTarget.checked,
+                                        })}
+                                />
+                                <div
+                                    class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
+                                ></div>
+                            </label>
+                        </div>
+
+                        <!-- Max Log Count -->
+                        <div
+                            class="flex items-center justify-between py-4 border-t border-slate-100 dark:border-border-dark"
+                        >
+                            <div class="flex flex-col gap-1">
+                                <div
+                                    class="font-medium text-slate-700 dark:text-slate-200"
+                                >
+                                    Max Log Count
+                                </div>
+                                <div class="text-xs text-slate-500">
+                                    Maximum number of logs to keep (1-300).
+                                </div>
+                            </div>
+                            <input
+                                type="number"
+                                min="1"
+                                max="300"
+                                class="w-24 px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
+                                value={$settingsStore.recentActivity
+                                    ?.maxLogCount ?? 50}
+                                oninput={(e) => {
+                                    const val = parseInt(e.currentTarget.value);
+                                    if (val >= 1 && val <= 300) {
+                                        settingsStore.updateRecentActivity({
+                                            maxLogCount: val,
+                                        });
+                                    }
+                                }}
+                            />
+                        </div>
+                    </div>
+
+                    <!-- Display Options -->
+                    <div
+                        class="bg-white dark:bg-card-dark p-6 rounded-xl border border-slate-200 dark:border-border-dark space-y-6"
+                    >
+                        <h3
+                            class="text-lg font-semibold text-slate-800 dark:text-white pb-2 border-b border-slate-100 dark:border-border-dark"
+                        >
+                            Display Options
+                        </h3>
+
+                        <!-- Timestamp Format -->
+                        <div class="mb-6">
+                            <h4
+                                class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3"
+                            >
+                                Timestamp Format
+                            </h4>
+                            <select
+                                class="w-full max-w-md px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 text-sm"
+                                value={$settingsStore.recentActivity?.display
+                                    ?.timestampFormat ??
+                                    "YYYY. MM. DD HH24:MI:SS"}
+                                onchange={(e) =>
+                                    settingsStore.updateRecentActivity({
+                                        display: {
+                                            ...$settingsStore.recentActivity
+                                                ?.display,
+                                            timestampFormat:
+                                                e.currentTarget.value,
+                                        },
+                                    })}
+                            >
+                                {#each ["YYYY. MM. DD HH24:MI:SS", "YYYY. MM. DD HH24:MI:SS.FFF", "YYYY. MM. DD HH24:MI", "YY. MM. DD HH24:MI:SS", "YY. MM. DD HH24:MI:SS.FFF", "YY. MM. DD HH24:MI", "YYYY. MM. DD HH:MI:SS", "YYYY. MM. DD HH:MI:SS.FFF", "YYYY. MM. DD HH:MI", "YY. MM. DD HH:MI:SS", "YY. MM. DD HH:MI:SS.FFF", "YY. MM. DD HH:MI"] as format}
+                                    <option value={format}>{format}</option>
+                                {/each}
+                            </select>
+                            <p class="text-xs text-slate-500 mt-2">
+                                Select how timestamps are displayed. 'HH24' is
+                                for 24-hour clock, 'HH' includes AM/PM marker.
+                            </p>
+                        </div>
+
+                        <div>
+                            <h4
+                                class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3"
+                            >
+                                Visible Columns
+                            </h4>
+                            <div class="flex flex-wrap gap-4">
+                                {#each [{ label: "Timestamp", key: "timestamp" }, { label: "Application", key: "application" }, { label: "Endpoint Name", key: "endpointName" }, { label: "Method", key: "method" }, { label: "Status", key: "status" }, { label: "Result", key: "result" }, { label: "Actions", key: "actions" }] as col}
+                                    <label
+                                        class="flex items-center gap-2 cursor-pointer"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700"
+                                            checked={$settingsStore.recentActivity?.display?.columns?.includes(
+                                                col.key,
+                                            ) ?? true}
+                                            onchange={() =>
+                                                toggleRecentActivityColumn(
+                                                    col.key,
+                                                )}
+                                        />
+                                        <span
+                                            class="text-sm text-slate-600 dark:text-slate-400"
+                                            >{col.label}</span
+                                        >
+                                    </label>
+                                {/each}
+                            </div>
                         </div>
                     </div>
                 </div>

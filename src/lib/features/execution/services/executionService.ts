@@ -1,3 +1,6 @@
+import { get } from 'svelte/store';
+import { settingsStore } from '$lib/stores/settingsStore';
+
 export interface ExecutionPreset {
     id: string;
     name: string;
@@ -18,6 +21,7 @@ export interface ExecutionLog {
     endpointName: string;
     timestamp: number;
     status: 'success' | 'error' | 'warning' | 'info';
+    statusCode?: number;
     method?: string;
     url?: string;
     duration?: number;
@@ -25,6 +29,9 @@ export interface ExecutionLog {
     responseData?: any;
     queryParams?: Record<string, string>;
     headers?: Record<string, string>;
+    application?: string;
+    service?: string;
+    site?: string;
 }
 
 const STORAGE_KEY = "execution_history";
@@ -139,8 +146,10 @@ export const executionService = {
 
         logs.unshift(newLog);
 
-        // Limit to MAX_LOGS
-        const limitedLogs = logs.slice(0, MAX_LOGS);
+        // Limit to maxLogCount from settings
+        const settings = get(settingsStore);
+        const maxLogs = settings.recentActivity?.maxLogCount ?? 50;
+        const limitedLogs = logs.slice(0, maxLogs);
         localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(limitedLogs));
         notifyListeners();
     },

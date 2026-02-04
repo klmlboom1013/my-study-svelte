@@ -130,6 +130,20 @@ export interface ApplicationService {
     domains: ApplicationDomain;
 }
 
+export interface RecentActivityConfig {
+    enabled: boolean;
+    maxLogCount: number;
+    collection: {
+        endpoint: boolean;
+        collection: boolean;
+    };
+    filter: Record<string, boolean>; // AppName: boolean
+    display: {
+        columns: string[];
+        timestampFormat: string;
+    };
+}
+
 export interface Application {
     id: string; // Internal ID for UI rendering keys
     appName: string;
@@ -154,6 +168,7 @@ export interface SettingsStoreData {
     apiCategories: ApiCategory[];
     apiCollections: ApiCollection[];
     applications: Application[];
+    recentActivity: RecentActivityConfig;
 }
 
 const defaultSettings: SettingsStoreData = {
@@ -180,7 +195,20 @@ const defaultSettings: SettingsStoreData = {
     },
     apiCategories: [],
     apiCollections: [],
-    applications: []
+    applications: [],
+    recentActivity: {
+        enabled: true,
+        maxLogCount: 50,
+        collection: {
+            endpoint: true,
+            collection: true
+        },
+        filter: {},
+        display: {
+            columns: ['timestamp', 'application', 'endpointName', 'method', 'status', 'result', 'actions'],
+            timestampFormat: 'YYYY. MM. DD HH24:MI:SS'
+        }
+    }
 };
 
 // Default Bookmarks Initializer
@@ -293,7 +321,11 @@ function createSettingsStore() {
                     },
                     apiCategories: finalCategories,
                     apiCollections: finalCollections,
-                    applications: migratedApplications
+                    applications: migratedApplications,
+                    recentActivity: {
+                        ...defaultSettings.recentActivity,
+                        ...(parsedOld.recentActivity || {})
+                    }
                 };
 
                 // Ensure bookmarks exist if missing (migration)
@@ -499,6 +531,15 @@ function createSettingsStore() {
         setApplications: (apps: Application[]) => update(s => ({
             ...s,
             applications: apps
+        })),
+
+        // Recent Activity
+        updateRecentActivity: (config: Partial<RecentActivityConfig>) => update(s => ({
+            ...s,
+            recentActivity: {
+                ...s.recentActivity,
+                ...config
+            }
         })),
 
         // Bookmarks

@@ -15,6 +15,7 @@
     } from "$lib/features/auth/services/authService";
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
     import FullLoading from "$lib/components/ui/FullLoading.svelte";
+    import { settingsStore } from "$lib/stores/settingsStore";
 
     let logs = $state<ExecutionLog[]>([]);
     let selectedLog = $state<ExecutionLog | null>(null);
@@ -45,15 +46,42 @@
         isAlertOpen = true;
     }
 
-    const dateFormatter = new Intl.DateTimeFormat("ko-KR", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-    });
+    const formatDate = (timestamp: number) => {
+        const format =
+            $settingsStore.recentActivity?.display?.timestampFormat ||
+            "YYYY. MM. DD HH24:MI:SS";
+        const date = new Date(timestamp);
+
+        const pad = (n: number) => n.toString().padStart(2, "0");
+        const pad3 = (n: number) => n.toString().padStart(3, "0");
+
+        const year = date.getFullYear();
+        const month = pad(date.getMonth() + 1);
+        const day = pad(date.getDate());
+        const hours24 = date.getHours();
+        const hours12 = hours24 % 12 || 12;
+        const minutes = pad(date.getMinutes());
+        const seconds = pad(date.getSeconds());
+        const milliseconds = pad3(date.getMilliseconds());
+        const ampm = hours24 >= 12 ? "pm" : "am";
+
+        let formatted = format;
+        formatted = formatted.replace("YYYY", year.toString());
+        formatted = formatted.replace("YY", year.toString().slice(-2));
+        formatted = formatted.replace("MM", month);
+        formatted = formatted.replace("DD", day);
+        formatted = formatted.replace("HH24", pad(hours24));
+        formatted = formatted.replace("HH", pad(hours12));
+        formatted = formatted.replace("MI", minutes);
+        formatted = formatted.replace("SS", seconds);
+        formatted = formatted.replace("FFF", milliseconds);
+
+        if (format.includes("HH") && !format.includes("HH24")) {
+            return `${ampm} ${formatted}`;
+        }
+
+        return formatted;
+    };
 
     onMount(() => {
         const loadLogs = () => {
@@ -67,7 +95,18 @@
         return unsubscribe;
     });
 
-    const getStatusColor = (status: string) => {
+    const getStatusColor = (status: string, code?: number) => {
+        if (code) {
+            if (code >= 200 && code < 300)
+                return "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400";
+            if (code >= 300 && code < 400)
+                return "text-blue-600 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400";
+            if (code >= 400 && code < 500)
+                return "text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400";
+            if (code >= 500)
+                return "text-rose-600 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400";
+        }
+
         switch (status) {
             case "success":
                 return "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400";
@@ -298,11 +337,11 @@
                     >
                         <th
                             class="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                            >Status</th
+                            >Timestamp</th
                         >
                         <th
                             class="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                            >Method</th
+                            >Application</th
                         >
                         <th
                             class="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
@@ -310,12 +349,18 @@
                         >
                         <th
                             class="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                            >URL / Path</th
+                            >Method</th
                         >
                         <th
                             class="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                            >Timestamp</th
+                            >Status</th
                         >
+                        {#if $settingsStore.recentActivity?.display?.columns?.includes("result") ?? true}
+                            <th
+                                class="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                >Result</th
+                            >
+                        {/if}
                         <th
                             class="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right"
                             >Actions</th
@@ -327,14 +372,68 @@
                         <tr
                             class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group"
                         >
+                            <td
+                                class="px-4 py-4 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400"
+                            >
+                                {formatDate(log.timestamp)}
+                            </td>
+                            <td class="px-4 py-4 max-w-xs xl:max-w-md">
+                                <div class="flex flex-col gap-1">
+                                    {#if log.application}
+                                        <div class="flex items-center gap-2">
+                                            <span
+                                                class="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
+                                            >
+                                                {log.application}
+                                            </span>
+                                        </div>
+                                        {#if log.service || log.site}
+                                            <div
+                                                class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1"
+                                            >
+                                                {#if log.service}
+                                                    <span class="font-medium"
+                                                        >{log.service}</span
+                                                    >
+                                                {/if}
+                                                {#if log.service && log.site}
+                                                    <span
+                                                        class="text-slate-300 dark:text-slate-600"
+                                                        >/</span
+                                                    >
+                                                {/if}
+                                                {#if log.site}
+                                                    <span>{log.site}</span>
+                                                {/if}
+                                            </div>
+                                        {/if}
+                                    {:else}
+                                        <div
+                                            class="text-xs text-slate-500 dark:text-slate-400 truncate"
+                                            title={log.url}
+                                        >
+                                            {log.url}
+                                        </div>
+                                    {/if}
+                                </div>
+                            </td>
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span
-                                    class="px-2 py-1 rounded text-[11px] font-bold uppercase {getStatusColor(
-                                        log.status,
-                                    )}"
+                                <button
+                                    class="text-left group/link focus:outline-none"
+                                    onclick={() =>
+                                        goto(`/endpoint/${log.endpointId}`)}
                                 >
-                                    {log.status}
-                                </span>
+                                    <div
+                                        class="font-medium text-slate-900 dark:text-slate-100 group-hover/link:text-primary dark:group-hover/link:text-blue-400 transition-colors"
+                                    >
+                                        {log.endpointName}
+                                    </div>
+                                    <div
+                                        class="text-[10px] text-slate-400 font-mono group-hover/link:text-slate-500 dark:group-hover/link:text-slate-300 transition-colors"
+                                    >
+                                        {log.endpointId}
+                                    </div>
+                                </button>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <span
@@ -344,30 +443,32 @@
                                 </span>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <div
-                                    class="font-medium text-slate-900 dark:text-slate-100"
+                                <span
+                                    class="px-2 py-1 rounded text-[11px] font-bold uppercase {getStatusColor(
+                                        log.status,
+                                        log.statusCode,
+                                    )}"
+                                    title="Code: {log.statusCode}, Status: {log.status}"
                                 >
-                                    {log.endpointName}
-                                </div>
-                                <div
-                                    class="text-[10px] text-slate-400 font-mono"
-                                >
-                                    {log.endpointId}
-                                </div>
+                                    {log.statusCode
+                                        ? log.statusCode
+                                        : `${log.status} (No Code)`}
+                                </span>
                             </td>
-                            <td class="px-4 py-4 max-w-xs xl:max-w-md">
-                                <div
-                                    class="text-xs text-slate-500 dark:text-slate-400 truncate"
-                                    title={log.url}
-                                >
-                                    {log.url}
-                                </div>
-                            </td>
-                            <td
-                                class="px-4 py-4 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400"
-                            >
-                                {dateFormatter.format(log.timestamp)}
-                            </td>
+                            {#if $settingsStore.recentActivity?.display?.columns?.includes("result") ?? true}
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span
+                                        class="text-sm font-medium {log.status ===
+                                        'success'
+                                            ? 'text-green-600 dark:text-green-400'
+                                            : 'text-red-600 dark:text-red-400'}"
+                                    >
+                                        {log.status === "success"
+                                            ? "Success"
+                                            : "Failed"}
+                                    </span>
+                                </td>
+                            {/if}
                             <td class="px-4 py-4 whitespace-nowrap text-right">
                                 <div
                                     class="flex items-center justify-end gap-1"
@@ -382,17 +483,7 @@
                                             >visibility</span
                                         >
                                     </button>
-                                    <button
-                                        onclick={() =>
-                                            goto(`/endpoint/${log.endpointId}`)}
-                                        class="p-1.5 text-slate-400 hover:text-primary dark:hover:text-blue-400 transition-colors"
-                                        title="Go to endpoint"
-                                    >
-                                        <span
-                                            class="material-symbols-outlined text-[18px]"
-                                            >open_in_new</span
-                                        >
-                                    </button>
+
                                     <button
                                         onclick={() => handleDeleteLog(log.id)}
                                         class="p-1.5 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"
