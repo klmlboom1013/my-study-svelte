@@ -440,6 +440,7 @@
                     if (sigField)
                         payload[sigField.name] = requestValues[sigField.name];
 
+                    const startTime = performance.now();
                     wpayExecutionService.submitForm(
                         fullUrl,
                         endpoint.method || "POST",
@@ -468,6 +469,9 @@
                         responseStatus = 200;
                         responseResult = JSON.stringify(resultData, null, 2);
                         scrollToBottom();
+                        const endTime = performance.now();
+                        const latency = Math.round(endTime - startTime);
+
                         validateResponse(resultData, securityContext);
 
                         // Record execution log
@@ -487,6 +491,7 @@
                             application: logEndpoint.application,
                             service: logEndpoint.scope?.service || "",
                             site: logEndpoint.scope?.site || "",
+                            latency,
                         });
 
                         stopExecution();
@@ -562,6 +567,7 @@
                             fullUrl += (fullUrl.includes("?") ? "&" : "?") + qp;
                     }
 
+                    const startTime = performance.now();
                     const response = await fetch("/api/proxy", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -575,6 +581,8 @@
 
                     responseStatus = response.status;
                     const text = await response.text();
+                    const endTime = performance.now();
+                    const latency = Math.round(endTime - startTime);
                     try {
                         const data = JSON.parse(text);
                         responseResult = JSON.stringify(data, null, 2);
@@ -606,6 +614,7 @@
                         application: logEndpoint.application,
                         service: logEndpoint.scope?.service || "",
                         site: logEndpoint.scope?.site || "",
+                        latency,
                     };
                     console.log("Saving Log Entry:", logEntry);
                     executionService.recordExecution(logEntry);

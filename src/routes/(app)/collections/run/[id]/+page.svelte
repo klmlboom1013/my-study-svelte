@@ -1507,6 +1507,7 @@
                 // Small delay to let popup attach listener
                 await new Promise((r) => setTimeout(r, 500));
 
+                const startTime = performance.now();
                 // Submit Form
                 wpayExecutionService.submitForm(
                     fullUrl,
@@ -1517,6 +1518,9 @@
 
                 try {
                     const result = await resultPromise;
+                    const endTime = performance.now();
+                    const latency = Math.round(endTime - startTime);
+
                     stepExec.result = result;
                     stepExec.status = "SUCCESS";
 
@@ -1533,6 +1537,7 @@
                         application: endpoint.application,
                         service: endpoint.scope?.service || "",
                         site: endpoint.scope?.site || "",
+                        latency,
                     });
 
                     processResponseData(index);
@@ -1638,6 +1643,7 @@
 
                 stepExec.requestUrl = fullUrl;
 
+                const startTime = performance.now();
                 const response = await fetch("/api/proxy", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -1650,6 +1656,8 @@
                 });
 
                 const text = await response.text();
+                const endTime = performance.now();
+                const latency = Math.round(endTime - startTime);
                 try {
                     const data = JSON.parse(text);
                     stepExec.result = data;
@@ -1675,6 +1683,7 @@
                     application: endpoint.application,
                     service: endpoint.scope?.service || "",
                     site: endpoint.scope?.site || "",
+                    latency,
                 });
 
                 processResponseData(index);

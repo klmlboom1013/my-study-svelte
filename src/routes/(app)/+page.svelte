@@ -105,18 +105,42 @@
     });
 
     // Recent Activity Real Data
+    let allLogs = $state<ExecutionLog[]>([]);
     let recentLogs = $state<ExecutionLog[]>([]);
 
     onMount(() => {
         // Load initial logs
-        recentLogs = executionService.getExecutionLogs().slice(0, 5);
+        allLogs = executionService.getExecutionLogs();
+        recentLogs = allLogs.slice(0, 5);
 
         // Listen for updates
         const unsubscribe = executionService.onChange(() => {
-            recentLogs = executionService.getExecutionLogs().slice(0, 5);
+            allLogs = executionService.getExecutionLogs();
+            recentLogs = allLogs.slice(0, 5);
         });
 
         return unsubscribe;
+    });
+
+    // Statistics Calculation
+    let stats = $derived.by(() => {
+        const total = allLogs.length;
+        const failed = allLogs.filter((log) => !isSuccessfulLog(log)).length;
+        const avgLatency =
+            total > 0
+                ? Math.round(
+                      allLogs.reduce(
+                          (acc, log) => acc + (log.latency || 0),
+                          0,
+                      ) / total,
+                  )
+                : 0;
+
+        return {
+            total: total.toLocaleString(),
+            failed: failed.toLocaleString(),
+            avgLatency: `${avgLatency}ms`,
+        };
     });
 
     function formatRelativeTime(timestamp: number): string {
@@ -127,6 +151,58 @@
         if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
         if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
         return `${Math.floor(diff / 86400000)}d ago`;
+    }
+
+    function getNestedValue(obj: any, path: string) {
+        if (!path || !obj) return null;
+        const parts = path.split(".");
+        let current = obj;
+        for (const part of parts) {
+            if (current === null || current === undefined) return null;
+            current = current[part];
+        }
+        return current;
+    }
+
+    function isSuccessfulLog(log: ExecutionLog): boolean {
+        const appName = log.application;
+        const appCriteria = appName
+            ? $settingsStore.recentActivity?.successCriteria?.[appName]
+            : null;
+        const defaultCriteria =
+            $settingsStore.recentActivity?.successCriteria?.["Default"];
+        const criteria = appCriteria || defaultCriteria;
+
+        if (criteria?.field && criteria?.successValues?.length > 0) {
+            let val = getNestedValue(log.responseData, criteria.field);
+            if (val === null || val === undefined) {
+                val = (log as any)[criteria.field];
+            }
+            if (val !== null && val !== undefined) {
+                return criteria.successValues.includes(String(val));
+            }
+        }
+
+        return log.status === "success";
+    }
+
+    function getDisplayResult(log: ExecutionLog) {
+        const path = $settingsStore.recentActivity?.display?.resultPath;
+        if (path) {
+            const val = getNestedValue(log.responseData, path);
+            if (val !== null && val !== undefined) {
+                if (typeof val === "object") return JSON.stringify(val);
+                return String(val);
+            }
+        }
+        return isSuccessfulLog(log) ? "Success" : "Failed";
+    }
+
+    function getStatusColor(log: ExecutionLog) {
+        if (isSuccessfulLog(log)) {
+            return "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400";
+        }
+        return "text-rose-600 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400";
     }
 </script>
 
@@ -230,19 +306,11 @@
                         <p
                             class="text-slate-900 dark:text-white text-3xl font-bold leading-none"
                         >
-                            1,240
+                            {stats.total}
                         </p>
-                        <span
-                            class="text-[#0bda5b] text-sm font-medium bg-[#0bda5b]/10 px-1.5 py-0.5 rounded flex items-center"
-                        >
-                            <span
-                                class="material-symbols-outlined text-[14px] mr-0.5"
-                                >trending_up</span
-                            > 5%
-                        </span>
                     </div>
                     <p class="text-slate-400 dark:text-slate-500 text-xs mt-2">
-                        Last 24 hours
+                        All-time execution count
                     </p>
                 </div>
                 <div
@@ -252,7 +320,7 @@
                         class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
                     >
                         <span
-                            class="material-symbols-outlined text-6xl text-red-500"
+                            class="material-symbols-outlined text-6xl text-rose-500"
                             >error</span
                         >
                     </div>
@@ -265,19 +333,11 @@
                         <p
                             class="text-slate-900 dark:text-white text-3xl font-bold leading-none"
                         >
-                            12
+                            {stats.failed}
                         </p>
-                        <span
-                            class="text-[#fa6238] text-sm font-medium bg-[#fa6238]/10 px-1.5 py-0.5 rounded flex items-center"
-                        >
-                            <span
-                                class="material-symbols-outlined text-[14px] mr-0.5"
-                                >trending_up</span
-                            > 1.2%
-                        </span>
                     </div>
                     <p class="text-slate-400 dark:text-slate-500 text-xs mt-2">
-                        Requires attention
+                        Based on custom success criteria
                     </p>
                 </div>
                 <div
@@ -300,19 +360,11 @@
                         <p
                             class="text-slate-900 dark:text-white text-3xl font-bold leading-none"
                         >
-                            145ms
+                            {stats.avgLatency}
                         </p>
-                        <span
-                            class="text-[#0bda5b] text-sm font-medium bg-[#0bda5b]/10 px-1.5 py-0.5 rounded flex items-center"
-                        >
-                            <span
-                                class="material-symbols-outlined text-[14px] mr-0.5"
-                                >trending_down</span
-                            > 10ms
-                        </span>
                     </div>
                     <p class="text-slate-400 dark:text-slate-500 text-xs mt-2">
-                        Optimal performance
+                        Average response time
                     </p>
                 </div>
             </div>
@@ -327,27 +379,6 @@
                     >
                         Recent Activity
                     </h3>
-                    <div class="flex gap-2">
-                        <button
-                            onclick={() => {
-                                recentLogs = executionService
-                                    .getExecutionLogs()
-                                    .slice(0, 5);
-                            }}
-                            class="size-8 flex items-center justify-center rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-primary/50"
-                        >
-                            <span class="material-symbols-outlined text-[18px]"
-                                >refresh</span
-                            >
-                        </button>
-                        <button
-                            class="size-8 flex items-center justify-center rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-primary/50"
-                        >
-                            <span class="material-symbols-outlined text-[18px]"
-                                >filter_list</span
-                            >
-                        </button>
-                    </div>
                 </div>
                 <div
                     class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden"
@@ -359,12 +390,20 @@
                                     class="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50"
                                 >
                                     <th
-                                        class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-24"
-                                        >Method</th
+                                        class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                        >Time</th
                                     >
                                     <th
                                         class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                                        >Endpoint</th
+                                        >Application</th
+                                    >
+                                    <th
+                                        class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                        >Endpoint Name</th
+                                    >
+                                    <th
+                                        class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-20"
+                                        >Method</th
                                     >
                                     <th
                                         class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
@@ -372,11 +411,11 @@
                                     >
                                     <th
                                         class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                                        >Latency</th
+                                        >Result</th
                                     >
                                     <th
-                                        class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right"
-                                        >Time</th
+                                        class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                        >Latency</th
                                     >
                                 </tr>
                             </thead>
@@ -387,9 +426,58 @@
                                     <tr
                                         class="group hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
                                     >
+                                        <td
+                                            class="p-4 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400"
+                                        >
+                                            {formatRelativeTime(log.timestamp)}
+                                        </td>
+                                        <td class="p-4">
+                                            <div class="flex flex-col gap-0.5">
+                                                {#if log.application}
+                                                    <span
+                                                        class="px-2 py-0.5 w-fit rounded text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
+                                                    >
+                                                        {log.application}
+                                                    </span>
+                                                    {#if log.service || log.site}
+                                                        <span
+                                                            class="text-[10px] text-slate-500 dark:text-slate-400 font-mono"
+                                                        >
+                                                            {log.service ||
+                                                                ""}{log.service &&
+                                                            log.site
+                                                                ? "/"
+                                                                : ""}{log.site ||
+                                                                ""}
+                                                        </span>
+                                                    {/if}
+                                                {:else}
+                                                    <span
+                                                        class="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[120px]"
+                                                        title={log.url}
+                                                    >
+                                                        {log.url}
+                                                    </span>
+                                                {/if}
+                                            </div>
+                                        </td>
+                                        <td class="p-4">
+                                            <div class="flex flex-col">
+                                                <span
+                                                    class="text-slate-900 dark:text-white font-medium truncate max-w-[200px]"
+                                                    title={log.endpointName}
+                                                    >{log.endpointName}</span
+                                                >
+                                                <span
+                                                    class="text-slate-500 dark:text-slate-400 text-[10px] font-mono truncate max-w-[200px]"
+                                                    title={log.url}
+                                                    >{log.url}</span
+                                                >
+                                            </div>
+                                        </td>
                                         <td class="p-4">
                                             <span
-                                                class="px-2 py-1 rounded text-xs font-bold border {log.method ===
+                                                class="px-2 py-1 rounded text-[10px] font-bold border {log.method ===
                                                 'GET'
                                                     ? 'bg-green-500/10 text-green-500 border-green-500/20'
                                                     : log.method === 'POST'
@@ -405,57 +493,50 @@
                                             >
                                         </td>
                                         <td class="p-4">
-                                            <div class="flex flex-col">
-                                                <span
-                                                    class="text-slate-900 dark:text-white font-mono truncate max-w-[200px]"
-                                                    title={log.url}
-                                                    >{log.url}</span
-                                                >
-                                                <span
-                                                    class="text-slate-500 dark:text-slate-400 text-xs"
-                                                    >{log.endpointName}</span
-                                                >
-                                            </div>
+                                            <span
+                                                class="px-2 py-1 rounded text-[11px] font-bold uppercase {getStatusColor(
+                                                    log,
+                                                )}"
+                                            >
+                                                {log.statusCode || log.status}
+                                            </span>
                                         </td>
                                         <td class="p-4">
                                             <span
-                                                class="flex items-center gap-1.5 text-slate-900 dark:text-white"
+                                                class="px-2 py-1 text-[10px] font-bold rounded-full uppercase {isSuccessfulLog(
+                                                    log,
+                                                )
+                                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
+                                                    : 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'}"
+                                                title={JSON.stringify(
+                                                    log.responseData,
+                                                )}
                                             >
-                                                <span
-                                                    class="size-2 rounded-full"
-                                                    class:bg-green-500={log.status ===
-                                                        "success"}
-                                                    class:bg-red-500={log.status ===
-                                                        "error"}
-                                                    class:bg-yellow-500={log.status ===
-                                                        "warning"}
-                                                    class:bg-blue-500={log.status ===
-                                                        "info"}
-                                                ></span>
-                                                {#if log.status === "success"}
-                                                    200 OK
-                                                {:else if log.status === "error"}
-                                                    Failed
-                                                {:else}
-                                                    {log.status}
-                                                {/if}
+                                                {getDisplayResult(log)}
                                             </span>
                                         </td>
-                                        <td
-                                            class="p-4 text-slate-500 dark:text-slate-400"
-                                            >{log.duration || 0}ms</td
-                                        >
-                                        <td
-                                            class="p-4 text-slate-500 dark:text-slate-400 text-right"
-                                            >{formatRelativeTime(
-                                                log.timestamp,
-                                            )}</td
-                                        >
+                                        <td class="p-4 whitespace-nowrap">
+                                            <div
+                                                class="flex items-center gap-1.5"
+                                            >
+                                                <span
+                                                    class="text-xs font-medium text-slate-600 dark:text-slate-300"
+                                                >
+                                                    {log.latency || 0}ms
+                                                </span>
+                                                {#if (log.latency || 0) > 500}
+                                                    <span
+                                                        class="w-1.5 h-1.5 rounded-full bg-amber-500"
+                                                        title="Slow response"
+                                                    ></span>
+                                                {/if}
+                                            </div>
+                                        </td>
                                     </tr>
                                 {:else}
                                     <tr>
                                         <td
-                                            colspan="5"
+                                            colspan="7"
                                             class="p-8 text-center text-slate-400 dark:text-slate-500"
                                         >
                                             No recent activity found.

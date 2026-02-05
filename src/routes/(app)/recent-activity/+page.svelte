@@ -22,6 +22,44 @@
     let isDetailModalOpen = $state(false);
     let copiedSection = $state<string | null>(null);
 
+    // Pagination State
+    let currentPage = $state(1);
+    const itemsPerPage = $derived(
+        $settingsStore.recentActivity?.itemsPerPage || 20,
+    );
+
+    const filteredLogs = $derived(
+        logs.filter((log) => {
+            if (!log.application) return true;
+            const config =
+                $settingsStore.recentActivity?.displayFilter?.[log.application];
+            if (config) {
+                if (config.enabled === false) return false;
+                if (log.service && config.services?.[log.service] === false)
+                    return false;
+            }
+            return true;
+        }),
+    );
+
+    const totalPages = $derived(Math.ceil(filteredLogs.length / itemsPerPage));
+    const paginatedLogs = $derived(
+        filteredLogs.slice(
+            (currentPage - 1) * itemsPerPage,
+            currentPage * itemsPerPage,
+        ),
+    );
+
+    // Reset current page when filters or itemsPerPage change
+    $effect(() => {
+        // This is a simple way to ensure we don't end up on an empty page
+        if (currentPage > totalPages && totalPages > 0) {
+            currentPage = totalPages;
+        } else if (totalPages === 0) {
+            currentPage = 1;
+        }
+    });
+
     // Sync State
     let syncState = $state<"idle" | "backup" | "restore">("idle");
     let isAlertOpen = $state(false);
@@ -95,29 +133,12 @@
         return unsubscribe;
     });
 
-    const getStatusColor = (status: string, code?: number) => {
-        if (code) {
-            if (code >= 200 && code < 300)
-                return "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400";
-            if (code >= 300 && code < 400)
-                return "text-blue-600 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400";
-            if (code >= 400 && code < 500)
-                return "text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400";
-            if (code >= 500)
-                return "text-rose-600 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400";
+    function getStatusColor(log: ExecutionLog) {
+        if (isSuccessfulLog(log)) {
+            return "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400";
         }
-
-        switch (status) {
-            case "success":
-                return "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400";
-            case "error":
-                return "text-rose-600 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400";
-            case "warning":
-                return "text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400";
-            default:
-                return "text-blue-600 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400";
-        }
-    };
+        return "text-rose-600 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400";
+    }
 
     function handleClearHistory() {
         showAlert(
@@ -238,6 +259,53 @@
             console.error("Failed to copy: ", err);
         }
     }
+
+    function getNestedValue(obj: any, path: string) {
+        if (!path || !obj) return null;
+        const parts = path.split(".");
+        let current = obj;
+        for (const part of parts) {
+            if (current === null || current === undefined) return null;
+            current = current[part];
+        }
+        return current;
+    }
+
+    function isSuccessfulLog(log: ExecutionLog): boolean {
+        const appName = log.application;
+        const appCriteria = appName
+            ? $settingsStore.recentActivity?.successCriteria?.[appName]
+            : null;
+        const defaultCriteria =
+            $settingsStore.recentActivity?.successCriteria?.["Default"];
+        const criteria = appCriteria || defaultCriteria;
+
+        if (criteria?.field && criteria?.successValues?.length > 0) {
+            let val = getNestedValue(log.responseData, criteria.field);
+            if (val === null || val === undefined) {
+                // Fallback to top-level status if field not found in responseData
+                val = (log as any)[criteria.field];
+            }
+            if (val !== null && val !== undefined) {
+                return criteria.successValues.includes(String(val));
+            }
+        }
+
+        // Final fallback to original status
+        return log.status === "success";
+    }
+
+    function getDisplayResult(log: ExecutionLog) {
+        const path = $settingsStore.recentActivity?.display?.resultPath;
+        if (path) {
+            const val = getNestedValue(log.responseData, path);
+            if (val !== null && val !== undefined) {
+                if (typeof val === "object") return JSON.stringify(val);
+                return String(val);
+            }
+        }
+        return isSuccessfulLog(log) ? "Success" : "Failed";
+    }
 </script>
 
 <svelte:head>
@@ -335,173 +403,316 @@
                     <tr
                         class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800"
                     >
-                        <th
-                            class="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                            >Timestamp</th
-                        >
-                        <th
-                            class="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                            >Application</th
-                        >
-                        <th
-                            class="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                            >Endpoint Name</th
-                        >
-                        <th
-                            class="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                            >Method</th
-                        >
-                        <th
-                            class="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                            >Status</th
-                        >
-                        {#if $settingsStore.recentActivity?.display?.columns?.includes("result") ?? true}
+                        {#if $settingsStore.recentActivity?.display?.visibleColumns?.timestamp ?? true}
+                            <th
+                                class="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                >Timestamp</th
+                            >
+                        {/if}
+                        {#if $settingsStore.recentActivity?.display?.visibleColumns?.application ?? true}
+                            <th
+                                class="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                >Application</th
+                            >
+                        {/if}
+                        {#if $settingsStore.recentActivity?.display?.visibleColumns?.endpointName ?? true}
+                            <th
+                                class="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                >Endpoint Name</th
+                            >
+                        {/if}
+                        {#if $settingsStore.recentActivity?.display?.visibleColumns?.method ?? true}
+                            <th
+                                class="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                >Method</th
+                            >
+                        {/if}
+                        {#if $settingsStore.recentActivity?.display?.visibleColumns?.status ?? true}
+                            <th
+                                class="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                >Status</th
+                            >
+                        {/if}
+                        {#if $settingsStore.recentActivity?.display?.visibleColumns?.result ?? true}
                             <th
                                 class="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                                 >Result</th
                             >
                         {/if}
-                        <th
-                            class="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right"
-                            >Actions</th
-                        >
+                        {#if $settingsStore.recentActivity?.display?.visibleColumns?.latency ?? true}
+                            <th
+                                class="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                                >Latency</th
+                            >
+                        {/if}
+                        {#if $settingsStore.recentActivity?.display?.visibleColumns?.actions ?? true}
+                            <th
+                                class="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right"
+                                >Actions</th
+                            >
+                        {/if}
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                    {#each logs as log (log.id)}
+                    {#each paginatedLogs as log (log.id)}
                         <tr
                             class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group"
                         >
-                            <td
-                                class="px-4 py-4 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400"
-                            >
-                                {formatDate(log.timestamp)}
-                            </td>
-                            <td class="px-4 py-4 max-w-xs xl:max-w-md">
-                                <div class="flex flex-col gap-1">
-                                    {#if log.application}
-                                        <div class="flex items-center gap-2">
-                                            <span
-                                                class="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
-                                            >
-                                                {log.application}
-                                            </span>
-                                        </div>
-                                        {#if log.service || log.site}
+                            {#if $settingsStore.recentActivity?.display?.visibleColumns?.timestamp ?? true}
+                                <td
+                                    class="px-4 py-4 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400"
+                                >
+                                    {formatDate(log.timestamp)}
+                                </td>
+                            {/if}
+                            {#if $settingsStore.recentActivity?.display?.visibleColumns?.application ?? true}
+                                <td class="px-4 py-4 max-w-xs xl:max-w-md">
+                                    <div class="flex flex-col gap-1">
+                                        {#if log.application}
                                             <div
-                                                class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1"
+                                                class="flex items-center gap-2"
                                             >
-                                                {#if log.service}
-                                                    <span class="font-medium"
-                                                        >{log.service}</span
-                                                    >
-                                                {/if}
-                                                {#if log.service && log.site}
-                                                    <span
-                                                        class="text-slate-300 dark:text-slate-600"
-                                                        >/</span
-                                                    >
-                                                {/if}
-                                                {#if log.site}
-                                                    <span>{log.site}</span>
-                                                {/if}
+                                                <span
+                                                    class="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
+                                                >
+                                                    {log.application}
+                                                </span>
+                                            </div>
+                                            {#if log.service || log.site}
+                                                <div
+                                                    class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1"
+                                                >
+                                                    {#if log.service}
+                                                        <span
+                                                            class="font-medium"
+                                                            >{log.service}</span
+                                                        >
+                                                    {/if}
+                                                    {#if log.service && log.site}
+                                                        <span
+                                                            class="text-slate-300 dark:text-slate-600"
+                                                            >/</span
+                                                        >
+                                                    {/if}
+                                                    {#if log.site}
+                                                        <span>{log.site}</span>
+                                                    {/if}
+                                                </div>
+                                            {/if}
+                                        {:else}
+                                            <div
+                                                class="text-xs text-slate-500 dark:text-slate-400 truncate"
+                                                title={log.url}
+                                            >
+                                                {log.url}
                                             </div>
                                         {/if}
-                                    {:else}
+                                    </div>
+                                </td>
+                            {/if}
+                            {#if $settingsStore.recentActivity?.display?.visibleColumns?.endpointName ?? true}
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <button
+                                        class="text-left group/link focus:outline-none"
+                                        onclick={() =>
+                                            goto(`/endpoint/${log.endpointId}`)}
+                                    >
                                         <div
-                                            class="text-xs text-slate-500 dark:text-slate-400 truncate"
-                                            title={log.url}
+                                            class="font-medium text-slate-900 dark:text-slate-100 group-hover/link:text-primary dark:group-hover/link:text-blue-400 transition-colors"
                                         >
-                                            {log.url}
+                                            {log.endpointName}
                                         </div>
-                                    {/if}
-                                </div>
-                            </td>
-                            <td class="px-4 py-4 whitespace-nowrap">
-                                <button
-                                    class="text-left group/link focus:outline-none"
-                                    onclick={() =>
-                                        goto(`/endpoint/${log.endpointId}`)}
-                                >
-                                    <div
-                                        class="font-medium text-slate-900 dark:text-slate-100 group-hover/link:text-primary dark:group-hover/link:text-blue-400 transition-colors"
-                                    >
-                                        {log.endpointName}
-                                    </div>
-                                    <div
-                                        class="text-[10px] text-slate-400 font-mono group-hover/link:text-slate-500 dark:group-hover/link:text-slate-300 transition-colors"
-                                    >
-                                        {log.endpointId}
-                                    </div>
-                                </button>
-                            </td>
-                            <td class="px-4 py-4 whitespace-nowrap">
-                                <span
-                                    class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-                                >
-                                    {log.method || "POST"}
-                                </span>
-                            </td>
-                            <td class="px-4 py-4 whitespace-nowrap">
-                                <span
-                                    class="px-2 py-1 rounded text-[11px] font-bold uppercase {getStatusColor(
-                                        log.status,
-                                        log.statusCode,
-                                    )}"
-                                    title="Code: {log.statusCode}, Status: {log.status}"
-                                >
-                                    {log.statusCode
-                                        ? log.statusCode
-                                        : `${log.status} (No Code)`}
-                                </span>
-                            </td>
-                            {#if $settingsStore.recentActivity?.display?.columns?.includes("result") ?? true}
+                                        <div
+                                            class="text-[10px] text-slate-400 font-mono group-hover/link:text-slate-500 dark:group-hover/link:text-slate-300 transition-colors"
+                                        >
+                                            {log.endpointId}
+                                        </div>
+                                    </button>
+                                </td>
+                            {/if}
+                            {#if $settingsStore.recentActivity?.display?.visibleColumns?.method ?? true}
                                 <td class="px-4 py-4 whitespace-nowrap">
                                     <span
-                                        class="text-sm font-medium {log.status ===
-                                        'success'
-                                            ? 'text-green-600 dark:text-green-400'
-                                            : 'text-red-600 dark:text-red-400'}"
+                                        class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
                                     >
-                                        {log.status === "success"
-                                            ? "Success"
-                                            : "Failed"}
+                                        {log.method || "POST"}
                                     </span>
                                 </td>
                             {/if}
-                            <td class="px-4 py-4 whitespace-nowrap text-right">
-                                <div
-                                    class="flex items-center justify-end gap-1"
+                            {#if $settingsStore.recentActivity?.display?.visibleColumns?.status ?? true}
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span
+                                        class="px-2 py-1 rounded text-[11px] font-bold uppercase {getStatusColor(
+                                            log,
+                                        )}"
+                                        title="Code: {log.statusCode}, Status: {log.status}"
+                                    >
+                                        {log.statusCode
+                                            ? log.statusCode
+                                            : `${log.status} (No Code)`}
+                                    </span>
+                                </td>
+                            {/if}
+                            {#if $settingsStore.recentActivity?.display?.visibleColumns?.result ?? true}
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span
+                                        class="px-2 py-1 text-[10px] font-bold rounded-full uppercase {isSuccessfulLog(
+                                            log,
+                                        )
+                                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
+                                            : 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'}"
+                                        title={JSON.stringify(log.responseData)}
+                                    >
+                                        {getDisplayResult(log)}
+                                    </span>
+                                </td>
+                            {/if}
+                            {#if $settingsStore.recentActivity?.display?.visibleColumns?.latency ?? true}
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <div class="flex items-center gap-1.5">
+                                        <span
+                                            class="text-xs font-medium text-slate-600 dark:text-slate-300"
+                                        >
+                                            {log.latency}ms
+                                        </span>
+                                        {#if log.latency > 500}
+                                            <span
+                                                class="w-1.5 h-1.5 rounded-full bg-amber-500"
+                                                title="Slow response"
+                                            ></span>
+                                        {/if}
+                                    </div>
+                                </td>
+                            {/if}
+                            {#if $settingsStore.recentActivity?.display?.visibleColumns?.actions ?? true}
+                                <td
+                                    class="px-4 py-4 whitespace-nowrap text-right"
                                 >
-                                    <button
-                                        onclick={() => showDetails(log)}
-                                        class="p-1.5 text-slate-400 hover:text-primary dark:hover:text-blue-400 transition-colors"
-                                        title="View Details"
+                                    <div
+                                        class="flex items-center justify-end gap-1"
                                     >
-                                        <span
-                                            class="material-symbols-outlined text-[18px]"
-                                            >visibility</span
-                                        >
-                                    </button>
+                                        {#if $settingsStore.recentActivity?.display?.actions?.showDetails ?? true}
+                                            <button
+                                                onclick={() => showDetails(log)}
+                                                class="p-1.5 text-slate-400 hover:text-primary dark:hover:text-blue-400 transition-colors"
+                                                title="View Details"
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-[18px]"
+                                                    >visibility</span
+                                                >
+                                            </button>
+                                        {/if}
 
-                                    <button
-                                        onclick={() => handleDeleteLog(log.id)}
-                                        class="p-1.5 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"
-                                        title="Delete log"
-                                    >
-                                        <span
-                                            class="material-symbols-outlined text-[18px]"
-                                            >delete</span
-                                        >
-                                    </button>
-                                </div>
-                            </td>
+                                        {#if $settingsStore.recentActivity?.display?.actions?.showDelete ?? true}
+                                            <button
+                                                onclick={() =>
+                                                    handleDeleteLog(log.id)}
+                                                class="p-1.5 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"
+                                                title="Delete log"
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-[18px]"
+                                                    >delete</span
+                                                >
+                                            </button>
+                                        {/if}
+                                    </div>
+                                </td>
+                            {/if}
                         </tr>
                     {/each}
 
-                    {#if logs.length === 0}
+                    {#if filteredLogs.length > itemsPerPage}
                         <tr>
-                            <td colspan="6" class="px-4 py-12 text-center">
+                            <td
+                                colspan={Object.values(
+                                    $settingsStore.recentActivity?.display
+                                        ?.visibleColumns || {},
+                                ).filter((v) => v !== false).length || 8}
+                                class="px-4 py-4"
+                            >
+                                <div class="flex items-center justify-between">
+                                    <div
+                                        class="text-xs text-slate-500 dark:text-slate-400"
+                                    >
+                                        Showing {(currentPage - 1) *
+                                            itemsPerPage +
+                                            1} to {Math.min(
+                                            currentPage * itemsPerPage,
+                                            filteredLogs.length,
+                                        )} of {filteredLogs.length} entries
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <button
+                                            class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                            disabled={currentPage === 1}
+                                            onclick={() => (currentPage = 1)}
+                                            title="First Page"
+                                        >
+                                            <span
+                                                class="material-symbols-outlined text-[18px]"
+                                                >first_page</span
+                                            >
+                                        </button>
+                                        <button
+                                            class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                            disabled={currentPage === 1}
+                                            onclick={() => currentPage--}
+                                            title="Previous Page"
+                                        >
+                                            <span
+                                                class="material-symbols-outlined text-[18px]"
+                                                >chevron_left</span
+                                            >
+                                        </button>
+
+                                        <div
+                                            class="flex items-center px-3 text-xs font-medium text-slate-700 dark:text-slate-300"
+                                        >
+                                            Page {currentPage} of {totalPages}
+                                        </div>
+
+                                        <button
+                                            class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                            disabled={currentPage ===
+                                                totalPages}
+                                            onclick={() => currentPage++}
+                                            title="Next Page"
+                                        >
+                                            <span
+                                                class="material-symbols-outlined text-[18px]"
+                                                >chevron_right</span
+                                            >
+                                        </button>
+                                        <button
+                                            class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                            disabled={currentPage ===
+                                                totalPages}
+                                            onclick={() =>
+                                                (currentPage = totalPages)}
+                                            title="Last Page"
+                                        >
+                                            <span
+                                                class="material-symbols-outlined text-[18px]"
+                                                >last_page</span
+                                            >
+                                        </button>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    {/if}
+
+                    {#if filteredLogs.length === 0}
+                        <tr>
+                            <td
+                                colspan={Object.values(
+                                    $settingsStore.recentActivity?.display
+                                        ?.visibleColumns || {},
+                                ).filter((v) => v !== false).length || 8}
+                                class="px-4 py-12 text-center"
+                            >
                                 <div
                                     class="size-16 bg-slate-50 dark:bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300 dark:text-slate-600"
                                 >
@@ -565,8 +776,11 @@
                                 >
                                 <span
                                     class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase {getStatusColor(
-                                        selectedLog.status,
-                                    )}">{selectedLog.status}</span
+                                        selectedLog,
+                                    )}"
+                                    >{isSuccessfulLog(selectedLog)
+                                        ? "Success"
+                                        : "Failed"}</span
                                 >
                             </div>
                         </div>
@@ -587,9 +801,7 @@
                                 >Timestamp</span
                             >
                             <span class="text-sm dark:text-slate-300"
-                                >{dateFormatter.format(
-                                    selectedLog.timestamp,
-                                )}</span
+                                >{formatDate(selectedLog.timestamp)}</span
                             >
                         </div>
                         <div class="flex flex-col">

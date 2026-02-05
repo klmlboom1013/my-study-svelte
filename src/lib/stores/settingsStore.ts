@@ -130,18 +130,46 @@ export interface ApplicationService {
     domains: ApplicationDomain;
 }
 
+export interface AppFilterConfig {
+    enabled: boolean;
+    services: Record<string, boolean>; // ServiceName: boolean
+}
+
+export interface SuccessCriterion {
+    field: string;
+    successValues: string[];
+}
+
 export interface RecentActivityConfig {
     enabled: boolean;
     maxLogCount: number;
+    itemsPerPage?: number;
     collection: {
         endpoint: boolean;
         collection: boolean;
     };
+    collectionFilter: Record<string, AppFilterConfig>;
+    displayFilter: Record<string, AppFilterConfig>;
     filter: Record<string, boolean>; // AppName: boolean
     display: {
-        columns: string[];
+        visibleColumns: {
+            timestamp: boolean;
+            application: boolean;
+            endpointName: boolean;
+            method: boolean;
+            status: boolean;
+            result: boolean;
+            latency: boolean;
+            actions: boolean;
+        };
         timestampFormat: string;
+        resultPath?: string;
+        actions?: {
+            showDetails: boolean;
+            showDelete: boolean;
+        };
     };
+    successCriteria?: Record<string, SuccessCriterion>;
 }
 
 export interface Application {
@@ -199,14 +227,41 @@ const defaultSettings: SettingsStoreData = {
     recentActivity: {
         enabled: true,
         maxLogCount: 50,
+        itemsPerPage: 20,
         collection: {
             endpoint: true,
             collection: true
         },
+        collectionFilter: {},
+        displayFilter: {},
         filter: {},
         display: {
-            columns: ['timestamp', 'application', 'endpointName', 'method', 'status', 'result', 'actions'],
-            timestampFormat: 'YYYY. MM. DD HH24:MI:SS'
+            visibleColumns: {
+                timestamp: true,
+                application: true,
+                endpointName: true,
+                method: true,
+                status: true,
+                result: true,
+                latency: true,
+                actions: true
+            },
+            timestampFormat: 'YYYY. MM. DD HH24:MI:SS',
+            resultPath: 'body.message',
+            actions: {
+                showDetails: true,
+                showDelete: true
+            }
+        },
+        successCriteria: {
+            'WPAY': {
+                field: 'body.code',
+                successValues: ['0000', '200']
+            },
+            'Default': {
+                field: 'status',
+                successValues: ['200', '201']
+            }
         }
     }
 };
@@ -324,7 +379,16 @@ function createSettingsStore() {
                     applications: migratedApplications,
                     recentActivity: {
                         ...defaultSettings.recentActivity,
-                        ...(parsedOld.recentActivity || {})
+                        display: {
+                            ...defaultSettings.recentActivity.display,
+                            ...(parsedOld.recentActivity?.display || {}),
+                            visibleColumns: {
+                                ...defaultSettings.recentActivity.display.visibleColumns,
+                                ...(parsedOld.recentActivity?.display?.visibleColumns || {})
+                            }
+                        },
+                        collectionFilter: parsedOld.recentActivity?.collectionFilter || {},
+                        displayFilter: parsedOld.recentActivity?.displayFilter || {}
                     }
                 };
 

@@ -32,6 +32,7 @@ export interface ExecutionLog {
     application?: string;
     service?: string;
     site?: string;
+    latency?: number;
 }
 
 const STORAGE_KEY = "execution_history";
@@ -137,6 +138,23 @@ export const executionService = {
      * Record a new execution log
      */
     recordExecution: (log: Omit<ExecutionLog, 'id' | 'timestamp'>): void => {
+        const settings = get(settingsStore);
+
+        // 1. Global Enable Check
+        if (settings.recentActivity?.enabled === false) return;
+
+        // 2. Application/Service Collection Filter Check
+        if (log.application) {
+            const appConfig = settings.recentActivity?.collectionFilter?.[log.application];
+            if (appConfig) {
+                // Application-level logging disabled
+                if (appConfig.enabled === false) return;
+
+                // Service-level logging disabled
+                if (log.service && appConfig.services?.[log.service] === false) return;
+            }
+        }
+
         const logs = executionService.getExecutionLogs();
         const newLog: ExecutionLog = {
             ...log,
@@ -147,7 +165,6 @@ export const executionService = {
         logs.unshift(newLog);
 
         // Limit to maxLogCount from settings
-        const settings = get(settingsStore);
         const maxLogs = settings.recentActivity?.maxLogCount ?? 50;
         const limitedLogs = logs.slice(0, maxLogs);
         localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(limitedLogs));
