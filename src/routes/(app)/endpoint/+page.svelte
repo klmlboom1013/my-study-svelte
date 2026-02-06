@@ -8,6 +8,7 @@
     import {
         authStore,
         loginWithGoogle,
+        checkDriveConnection,
     } from "$lib/features/auth/services/authService";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
@@ -16,6 +17,7 @@
 
     import { settingsStore } from "$lib/stores/settingsStore";
     import { appStateStore } from "$lib/stores/appStateStore";
+    import { executionService } from "$lib/features/execution/services/executionService";
 
     let endpoints = $state<Endpoint[]>([]);
     let searchTerm = $state("");
@@ -34,8 +36,38 @@
     let selectedEndpoint = $state<Endpoint | null>(null);
 
     function openExecutionModal(endpoint: Endpoint) {
+        if (!checkDriveConnection()) {
+            showAlert(
+                "Google Drive Connection Required",
+                "Google Drive is not connected. Please connect your Google account to enable executing endpoints and ensure your results are backed up.",
+                "confirm",
+                handleGoogleLogin,
+            );
+            return;
+        }
         selectedEndpoint = endpoint;
         isExecutionModalOpen = true;
+    }
+
+    async function handleGoogleLogin() {
+        try {
+            await loginWithGoogle();
+        } catch (e) {
+            console.error("Login failed", e);
+        }
+    }
+
+    function handleNewEndpoint() {
+        if (checkDriveConnection()) {
+            goto("/endpoint/new");
+        } else {
+            showAlert(
+                "Google Drive Connection Required",
+                "Google Drive is not connected. Please connect your Google account to enable creating new endpoints and ensure your data is backed up.",
+                "confirm",
+                handleGoogleLogin,
+            );
+        }
     }
 
     function showAlert(
@@ -202,6 +234,15 @@
     }
 
     function handleDelete(id: string) {
+        if (!checkDriveConnection()) {
+            showAlert(
+                "Google Drive Connection Required",
+                "Google Drive is not connected. Please connect your Google account to enable deleting endpoints and ensure your sync is up to date.",
+                "confirm",
+                handleGoogleLogin,
+            );
+            return;
+        }
         showAlert(
             "Delete Endpoint",
             "Are you sure you want to delete this endpoint?",
@@ -235,12 +276,17 @@
 
         try {
             syncState = "backup";
-            // Get latest data directly from service
+            // 1. Backup Endpoints
             const dataToSave = endpointService.getEndpoints();
             await driveService.saveEndpoints(token, dataToSave);
+
+            // 2. Backup Execution History (Presets)
+            const historyToSave = executionService.getAllHistory();
+            await driveService.saveExecutionHistory(token, historyToSave);
+
             showAlert(
                 "Success",
-                "Backup successful! (Saved to Google Drive App Data)",
+                "Backup successful! (Endpoints and Presets saved)",
             );
         } catch (error: any) {
             console.error(error);
@@ -309,8 +355,19 @@
                     const data = await driveService.loadEndpoints(token);
                     if (data) {
                         endpointService.importEndpoints(data);
+
+                        // Also restore Execution History (Presets)
+                        const historyData =
+                            await driveService.loadExecutionHistory(token);
+                        if (historyData) {
+                            executionService.importHistory(historyData);
+                        }
+
                         endpoints = endpointService.getEndpoints();
-                        showAlert("Success", "Restore successful!");
+                        showAlert(
+                            "Success",
+                            "Restore successful! (Endpoints and Presets restored)",
+                        );
                     } else {
                         showAlert("Info", "No backup found.");
                     }
@@ -378,7 +435,7 @@
     bind:endpoint={selectedEndpoint}
 />
 
-<div class="max-w-7xl mx-auto py-8 px-4">
+<div class="max-w-7xl mx-auto py-8 px-6">
     <Breadcrumbs items={breadcrumbItems} />
     <div class="mb-6">
         {#snippet syncButtons()}
@@ -441,7 +498,7 @@
                 <div class="hidden md:flex items-center gap-2">
                     {#if !isReadOnly && !$appStateStore.isPageLocked}
                         <button
-                            onclick={() => goto("/endpoint/new")}
+                            onclick={handleNewEndpoint}
                             class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all shrink-0"
                         >
                             <span class="material-symbols-outlined text-[20px]"
@@ -516,7 +573,7 @@
             </p>
             {#if !searchTerm && !isReadOnly}
                 <button
-                    onclick={() => goto("/endpoint/new")}
+                    onclick={handleNewEndpoint}
                     class="text-primary font-medium hover:underline hidden md:inline-block"
                 >
                     Create new endpoint

@@ -21,6 +21,8 @@
     import { getCookie } from "$lib/utils/cookie";
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
     import FullLoading from "$lib/components/ui/FullLoading.svelte";
+    import { executionService } from "$lib/features/execution/services/executionService";
+    import { collectionExecutionService } from "$lib/features/execution/services/collectionExecutionService";
 
     let { children } = $props();
 
@@ -112,6 +114,46 @@
                                     );
                                 if (endpoints) {
                                     endpointService.importEndpoints(endpoints);
+                                }
+
+                                // 4. Restore Execution History (Presets)
+                                const history =
+                                    await driveService.loadExecutionHistory(
+                                        accessToken,
+                                    );
+                                if (history) {
+                                    executionService.importHistory(history);
+                                }
+
+                                // 5. Restore Execution Logs
+                                const logs =
+                                    await driveService.loadExecutionLogs(
+                                        accessToken,
+                                    );
+                                if (logs) {
+                                    executionService.importExecutionLogs(logs);
+                                }
+
+                                // 6. Restore Collection Execution History (Presets)
+                                const collectionHistory =
+                                    await driveService.loadCollectionExecutionHistory(
+                                        accessToken,
+                                    );
+                                if (collectionHistory) {
+                                    collectionExecutionService.importHistory(
+                                        collectionHistory,
+                                    );
+                                }
+
+                                // 7. [NEW] Scavenge individual collection presets for migration
+                                const individualHistory =
+                                    await driveService.scavengeIndividualCollectionPresets(
+                                        accessToken,
+                                    );
+                                if (Object.keys(individualHistory).length > 0) {
+                                    collectionExecutionService.importHistory(
+                                        individualHistory,
+                                    );
                                 }
 
                                 console.log("Full data restored from Drive");

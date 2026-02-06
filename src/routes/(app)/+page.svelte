@@ -3,7 +3,6 @@
     import { goto } from "$app/navigation";
     // import { validateAccessToken } from "$lib/utils/auth/accessToken"; // Removed. used API.
     import { deleteCookie, getCookie } from "$lib/utils/cookie";
-    import { decodeJwt } from "jose";
     import Footer from "$lib/components/layout/Footer.svelte";
     import { settingsStore } from "$lib/stores/settingsStore";
     import {
@@ -21,40 +20,9 @@
             return;
         }
 
-        try {
-            // Decode token to get mid (unverified first)
-            const payload = decodeJwt(accessToken);
-            const mid = payload.mid as string;
-
-            if (!mid) {
-                console.error("No mid in token");
-                deleteCookie("accessToken");
-                goto("/signin");
-                return;
-            }
-
-            // const valid = await validateAccessToken(accessToken, mid);
-            // Replace with API call
-            const res = await fetch("/api/auth/validate", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ token: accessToken, mid }),
-            });
-            const { isValid: valid } = await res.json();
-
-            if (!valid) {
-                // Invalid token, clear and redirect
-                deleteCookie("accessToken");
-                goto("/signin");
-                return;
-            }
-
-            isValid = true;
-        } catch (e) {
-            console.error("Token decode/validation failed", e);
-            deleteCookie("accessToken");
-            goto("/signin");
-        }
+        // Token is present, grant access.
+        // Real authentication state is managed by authStore/Firebase in +layout.svelte
+        isValid = true;
     });
 
     function handleLogout() {
@@ -285,87 +253,99 @@
 
         <!-- Statistics Cards -->
         {#if $settingsStore.interface?.dashboard?.showStats}
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Total Requests -->
                 <div
-                    class="flex flex-col gap-1 rounded-xl p-5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 relative overflow-hidden group"
+                    class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md group"
                 >
-                    <div
-                        class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
-                    >
-                        <span
-                            class="material-symbols-outlined text-6xl text-primary"
-                            >bar_chart</span
+                    <div class="flex items-start justify-between">
+                        <div class="space-y-1">
+                            <span
+                                class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider"
+                                >Total Requests</span
+                            >
+                            <div
+                                class="text-3xl font-black text-slate-800 dark:text-slate-100"
+                            >
+                                {stats.total}
+                            </div>
+                            <p
+                                class="text-slate-400 dark:text-slate-500 text-xs mt-2"
+                            >
+                                All-time execution count
+                            </p>
+                        </div>
+                        <div
+                            class="size-10 rounded-xl bg-blue-500/10 flex items-center justify-center transition-colors group-hover:bg-blue-500/20 shrink-0"
                         >
+                            <span
+                                class="material-symbols-outlined text-blue-500 text-[22px]"
+                                >bar_chart</span
+                            >
+                        </div>
                     </div>
-                    <p
-                        class="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider"
-                    >
-                        Total Requests
-                    </p>
-                    <div class="flex items-end gap-3 mt-1">
-                        <p
-                            class="text-slate-900 dark:text-white text-3xl font-bold leading-none"
-                        >
-                            {stats.total}
-                        </p>
-                    </div>
-                    <p class="text-slate-400 dark:text-slate-500 text-xs mt-2">
-                        All-time execution count
-                    </p>
                 </div>
+
+                <!-- Failed Requests -->
                 <div
-                    class="flex flex-col gap-1 rounded-xl p-5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 relative overflow-hidden group"
+                    class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md group"
                 >
-                    <div
-                        class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
-                    >
-                        <span
-                            class="material-symbols-outlined text-6xl text-rose-500"
-                            >error</span
+                    <div class="flex items-start justify-between">
+                        <div class="space-y-1">
+                            <span
+                                class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider"
+                                >Failed Requests</span
+                            >
+                            <div class="text-3xl font-black text-rose-500">
+                                {stats.failed}
+                            </div>
+                            <p
+                                class="text-slate-400 dark:text-slate-500 text-xs mt-2"
+                            >
+                                Based on custom success criteria
+                            </p>
+                        </div>
+                        <div
+                            class="size-10 rounded-xl bg-rose-500/10 flex items-center justify-center transition-colors group-hover:bg-rose-500/20 shrink-0"
                         >
+                            <span
+                                class="material-symbols-outlined text-rose-500 text-[22px]"
+                                >error</span
+                            >
+                        </div>
                     </div>
-                    <p
-                        class="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider"
-                    >
-                        Failed Requests
-                    </p>
-                    <div class="flex items-end gap-3 mt-1">
-                        <p
-                            class="text-slate-900 dark:text-white text-3xl font-bold leading-none"
-                        >
-                            {stats.failed}
-                        </p>
-                    </div>
-                    <p class="text-slate-400 dark:text-slate-500 text-xs mt-2">
-                        Based on custom success criteria
-                    </p>
                 </div>
+
+                <!-- Avg Latency -->
                 <div
-                    class="flex flex-col gap-1 rounded-xl p-5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 relative overflow-hidden group"
+                    class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md group"
                 >
-                    <div
-                        class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
-                    >
-                        <span
-                            class="material-symbols-outlined text-6xl text-blue-400"
-                            >timer</span
+                    <div class="flex items-start justify-between">
+                        <div class="space-y-1">
+                            <span
+                                class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider"
+                                >Avg Latency</span
+                            >
+                            <div
+                                class="text-3xl font-black text-slate-800 dark:text-slate-100"
+                            >
+                                {stats.avgLatency}
+                            </div>
+                            <p
+                                class="text-slate-400 dark:text-slate-500 text-xs mt-2"
+                            >
+                                Average response time
+                            </p>
+                        </div>
+                        <div
+                            class="size-10 rounded-xl bg-amber-500/10 flex items-center justify-center transition-colors group-hover:bg-amber-500/20 shrink-0"
                         >
+                            <span
+                                class="material-symbols-outlined text-amber-500 text-[22px]"
+                                >timer</span
+                            >
+                        </div>
                     </div>
-                    <p
-                        class="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider"
-                    >
-                        Avg Latency
-                    </p>
-                    <div class="flex items-end gap-3 mt-1">
-                        <p
-                            class="text-slate-900 dark:text-white text-3xl font-bold leading-none"
-                        >
-                            {stats.avgLatency}
-                        </p>
-                    </div>
-                    <p class="text-slate-400 dark:text-slate-500 text-xs mt-2">
-                        Average response time
-                    </p>
                 </div>
             </div>
         {/if}

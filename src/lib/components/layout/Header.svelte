@@ -10,7 +10,9 @@
         initAuth,
         authStore,
         loginWithGoogle,
+        checkDriveConnection,
     } from "$lib/features/auth/services/authService";
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
     import { profileStore } from "$lib/stores/profileStore";
     import { syncService } from "$lib/features/drive/services/syncService";
 
@@ -42,9 +44,18 @@
         showUserControls = true,
     }: Props = $props();
 
-    // Global Search Logic
+    // State Management
     let headerSearchTerm = $state("");
     let isMobile = $state(false);
+    let showDriveAlert = $state(false);
+
+    function handleNewEndpoint() {
+        if (checkDriveConnection()) {
+            goto("/endpoint/new");
+        } else {
+            showDriveAlert = true;
+        }
+    }
 
     // Use Shared Store for Selected App
     // We can't bind directly to store object property in Svelte 5 easily if we want reactivity?
@@ -284,7 +295,7 @@
                 <div class="hidden md:block">
                     <Tooltip text="new Endpoint" delay={100}>
                         <button
-                            onclick={() => goto("/endpoint/new")}
+                            onclick={handleNewEndpoint}
                             class="flex items-center justify-center rounded-lg size-8 hover:bg-slate-100 dark:hover:bg-border-dark text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             disabled={$appStateStore.isPageLocked}
                         >
@@ -379,3 +390,11 @@
         {/if}
     </div>
 </header>
+
+<AlertModal
+    bind:isOpen={showDriveAlert}
+    title="Google Drive Connection Required"
+    message="Google Drive is not connected. Please connect your Google account to enable creating new endpoints and ensure your data is backed up."
+    confirmText="Connect Now"
+    onConfirm={handleGoogleLogin}
+/>

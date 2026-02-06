@@ -8,6 +8,7 @@ let driveFileId: string | null = null;
 let debounceTimer: ReturnType<typeof setTimeout>;
 
 import { executionService } from "$lib/features/execution/services/executionService"; // Import added
+import { collectionExecutionService } from "$lib/features/execution/services/collectionExecutionService";
 
 export const syncService = {
     init: () => {
@@ -28,6 +29,11 @@ export const syncService = {
 
         // Listen for Execution History Changes (Presets)
         executionService.onChange(() => {
+            syncService.scheduleSave();
+        });
+
+        // Listen for Collection Execution History Changes
+        collectionExecutionService.onChange(() => {
             syncService.scheduleSave();
         });
     },
@@ -54,6 +60,18 @@ export const syncService = {
                     executionService.importHistory(data.executionHistory);
                     console.log("Synced Execution History from Drive");
                 }
+
+                if (data.collectionExecutionHistory) {
+                    collectionExecutionService.importHistory(data.collectionExecutionHistory);
+                    console.log("Synced Collection Execution History from Drive");
+                }
+            }
+
+            // [NEW] Scavenge individual presets that might not be in config.json yet
+            const individualHistory = await driveService.scavengeIndividualCollectionPresets(accessToken);
+            if (Object.keys(individualHistory).length > 0) {
+                console.log(`Merging ${Object.keys(individualHistory).length} scavenged collection histories.`);
+                collectionExecutionService.importHistory(individualHistory);
             }
         } catch (e: any) {
             console.error("Sync Load Error:", e);
@@ -85,6 +103,7 @@ export const syncService = {
             const content = {
                 endpoints,
                 executionHistory,
+                collectionExecutionHistory: collectionExecutionService.getAllHistory(),
                 updatedAt: Date.now()
             };
 

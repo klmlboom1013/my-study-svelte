@@ -1,3 +1,5 @@
+import type { AssertionResult } from "./testResultService";
+
 export interface CollectionStepExecution {
     stepId: string;
     endpointId: string;
@@ -16,6 +18,9 @@ export interface CollectionStepExecution {
     normalizedResult?: any; // Recursively processed (decrypted/decoded) result for mapping
     mappedOptions?: Record<string, any[]>; // Dynamic options provided by mapping
     requestUrl?: string; // Final URL used for the request
+    assertionResults?: AssertionResult[]; // Results of test assertions
+    latency?: number; // Response time in ms
+    endpointName?: string; // Display name of the endpoint
 }
 
 export interface CollectionExecutionPreset {
@@ -115,6 +120,22 @@ export const collectionExecutionService = {
      */
     clearAll: (): void => {
         localStorage.removeItem(STORAGE_KEY);
+        notifyListeners();
+    },
+
+    /**
+     * Export all history for Sync
+     */
+    getAllHistory: (): Record<string, CollectionExecutionHistory> => {
+        return collectionExecutionService._getAllHistory();
+    },
+
+    /**
+     * Import history from Sync
+     */
+    importHistory: (historyMap: Record<string, CollectionExecutionHistory>): void => {
+        if (!historyMap) return;
+        collectionExecutionService._saveAllHistory(historyMap);
         notifyListeners();
     },
 

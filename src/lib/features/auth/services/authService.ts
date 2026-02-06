@@ -68,9 +68,16 @@ export const logout = async () => {
 };
 
 export const disconnectGoogle = () => {
-
     authStore.update((curr) => ({
         ...curr,
         accessToken: null,
     }));
+};
+
+/**
+ * Checks if Google Drive is connected (access token exists)
+ */
+import { get } from "svelte/store";
+export const checkDriveConnection = (): boolean => {
+    return !!get(authStore).accessToken;
 };

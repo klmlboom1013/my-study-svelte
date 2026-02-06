@@ -12,6 +12,10 @@
         RequestType,
     } from "$lib/types/endpoint";
     import { endpointService } from "$lib/features/endpoints/services/endpointService";
+    import {
+        loginWithGoogle,
+        checkDriveConnection,
+    } from "$lib/features/auth/services/authService";
     import RequestDataJsonModal from "$lib/components/endpoint/RequestDataJsonModal.svelte";
     import ResponseDataJsonModal from "$lib/components/endpoint/ResponseDataJsonModal.svelte";
     import TypeSelector from "$lib/components/endpoint/TypeSelector.svelte";
@@ -217,7 +221,24 @@
         }
     });
 
+    async function handleGoogleLogin() {
+        try {
+            await loginWithGoogle();
+        } catch (e) {
+            console.error("Login failed", e);
+        }
+    }
+
     function handleSave() {
+        if (!checkDriveConnection()) {
+            alertTitle = "Google Drive Connection Required";
+            alertMessage =
+                "Google Drive is not connected. Please connect your Google account to enable updating endpoints and ensure your data is backed up.";
+            alertOnConfirm = handleGoogleLogin;
+            isAlertOpen = true;
+            return;
+        }
+
         const updatedEndpoint: Endpoint = {
             id: endpointId,
             application: selectedApplication,
@@ -256,7 +277,7 @@
     }
 </script>
 
-<div class="w-full max-w-7xl mx-auto py-8 px-4">
+<div class="w-full max-w-7xl mx-auto py-8 px-6">
     <Breadcrumbs
         items={[
             { label: "Home", href: "/" },
@@ -730,5 +751,7 @@
     bind:isOpen={isAlertOpen}
     title={alertTitle}
     message={alertMessage}
+    type={alertTitle.includes("Connection") ? "confirm" : "alert"}
+    confirmText={alertTitle.includes("Connection") ? "Connect Now" : "OK"}
     onConfirm={alertOnConfirm}
 />

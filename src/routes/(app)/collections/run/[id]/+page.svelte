@@ -1,5 +1,6 @@
 <script lang="ts">
     import { page } from "$app/stores";
+    import { goto } from "$app/navigation";
     import { settingsStore } from "$lib/stores/settingsStore";
     import { endpointService } from "$lib/features/endpoints/services/endpointService";
     import { driveService } from "$lib/features/drive/services/driveService";
@@ -14,6 +15,7 @@
         authStore,
         loginWithGoogle,
     } from "$lib/features/auth/services/authService";
+    import { testResultService } from "$lib/features/execution/services/testResultService";
     import { appStateStore } from "$lib/stores/appStateStore";
     import { get } from "svelte/store";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
@@ -45,6 +47,8 @@
         Menu,
         CloudUpload,
         CloudDownload,
+        ShieldCheck,
+        XCircle,
     } from "lucide-svelte";
     import { slide, fade, scale } from "svelte/transition";
     import ExecutionParameterForm from "$lib/components/endpoint/ExecutionParameterForm.svelte";
@@ -73,6 +77,7 @@
     let stepsExecution = $state<CollectionStepExecution[]>([]);
     let activeStepIndex = $state(0);
     let lastLoadedId = $state<string | null>(null);
+    let lastLoadedPresetId = $state<string | null>(null);
     let isExecuting = $state(false);
     let selectedDomainPrefixes = $state<Record<string, string>>({});
     let popupWindow: Window | null = null; // Plain variable to avoid proxying
@@ -80,6 +85,8 @@
     // Run All Control State
     let isRunningAll = $state(false);
     let stopRequested = $state(false);
+    let autoRunStarted = $state(false);
+    let isInitialized = $state(false);
 
     function signalClosePopup() {
         try {
@@ -217,34 +224,53 @@
     // Initialize logic
     $effect(() => {
         if (collection) {
+            const autoRunRequested =
+                $page.url.searchParams.get("autoRun") === "true";
+            const presetId = $page.url.searchParams.get("presetId");
             const history = collectionExecutionService.getHistory(
                 collection.id,
             );
             collectionPresets = history.presets;
 
-            // If the collection ID has changed, reset the execution state
-            if (collection.id !== lastLoadedId) {
+            const preset = presetId
+                ? history.presets.find((p) => p.id === presetId)
+                : null;
+
+            // Force re-initialization if:
+            // 1. Collection changed
+            // 2. A new auto-run is requested (prevents reuse stale state)
+            // 3. A specific preset is requested via URL
+            if (
+                collection.id !== lastLoadedId ||
+                (autoRunRequested && !autoRunStarted) ||
+                presetId !== lastLoadedPresetId
+            ) {
                 stepsExecution = [];
                 activeStepIndex = 0;
                 selectedDomainPrefixes = {};
+                isInitialized = false;
                 lastLoadedId = collection.id;
+                lastLoadedPresetId = presetId;
             }
 
             if (stepsExecution.length === 0) {
-                const lastUsed = history.lastUsed;
+                const sourceSteps = preset
+                    ? preset.steps
+                    : history.lastUsed?.steps;
+
                 stepsExecution =
                     collection.steps?.map((step) => {
-                        const lastStepData = lastUsed?.steps?.find(
+                        const sourceStepData = sourceSteps?.find(
                             (s) => s.stepId === step.id,
                         );
 
                         let baseValues;
-                        if (lastStepData) {
-                            if (lastStepData.domainPrefix) {
+                        if (sourceStepData) {
+                            if (sourceStepData.domainPrefix) {
                                 selectedDomainPrefixes[step.id] =
-                                    lastStepData.domainPrefix;
+                                    sourceStepData.domainPrefix;
                             }
-                            baseValues = { ...lastStepData.requestValues };
+                            baseValues = { ...sourceStepData.requestValues };
                         } else {
                             const endpoint = endpointService.getEndpoint(
                                 step.endpointId,
@@ -268,22 +294,26 @@
                         return {
                             stepId: step.id,
                             endpointId: step.endpointId,
+                            endpointName:
+                                step.name ||
+                                endpoint?.name ||
+                                endpoint?.uri ||
+                                "Unnamed Step",
                             requestValues: baseValues,
                             status: "READY",
                             sentRequest: undefined,
                             signatureSourceString: undefined,
-                            // New fields for signature verification display
                             responseSignatureRawString: undefined,
                             responseCalculatedSignature: undefined,
                             responseValidationSuccess: undefined,
                             error: undefined,
                             result: undefined,
-                            mappedOptions: lastStepData?.mappedOptions || {},
-                            requestUrl: lastStepData?.requestUrl,
+                            mappedOptions: sourceStepData?.mappedOptions || {},
+                            requestUrl: sourceStepData?.requestUrl,
                         };
                     }) || [];
 
-                // Set initial domain prefixes if not from lastUsed
+                // Set initial domain prefixes if not from source
                 collection.steps?.forEach((step) => {
                     if (!selectedDomainPrefixes[step.id]) {
                         selectedDomainPrefixes[step.id] = getInitialDomain(
@@ -296,7 +326,40 @@
                 for (let i = 0; i < stepsExecution.length; i++) {
                     applyMappings(i);
                 }
+
+                isInitialized = true;
             }
+        }
+    });
+
+    // Auto Run Handle
+    $effect(() => {
+        const autoRun = $page.url.searchParams.get("autoRun");
+        const returnTo = $page.url.searchParams.get("returnTo");
+
+        if (
+            autoRun === "true" &&
+            collection &&
+            isInitialized &&
+            !isExecuting &&
+            !isRunningAll &&
+            !autoRunStarted
+        ) {
+            autoRunStarted = true;
+            // Clear the auto-run parameters from the URL immediately after starting
+            const newUrl = new URL($page.url.href);
+            newUrl.searchParams.delete("autoRun");
+            newUrl.searchParams.delete("presetId");
+            newUrl.searchParams.delete("returnTo");
+            window.history.replaceState({}, "", newUrl.toString());
+
+            // Wait for potential effects to settle
+            setTimeout(async () => {
+                await handleRunAll();
+                if (returnTo) {
+                    goto(returnTo);
+                }
+            }, 1000);
         }
     });
 
@@ -1135,6 +1198,114 @@
         }
     }
 
+    function evaluateAssertions(
+        index: number,
+        result: any,
+        latency: number,
+        statusCode: number,
+    ) {
+        const stepDef = collection?.steps?.[index];
+        if (!stepDef || !stepDef.assertions || stepDef.assertions.length === 0)
+            return [];
+
+        const results: any[] = [];
+        const normalizedResult =
+            stepsExecution[index].normalizedResult || result;
+
+        for (const assertion of stepDef.assertions) {
+            if (!assertion.enabled) continue;
+
+            let actualValue: any = "";
+            let success = false;
+            let message = "";
+
+            try {
+                switch (assertion.type) {
+                    case "STATUS_CODE":
+                        actualValue = statusCode;
+                        break;
+                    case "LATENCY":
+                        actualValue = latency;
+                        break;
+                    case "JSON_BODY":
+                        if (assertion.field) {
+                            actualValue = assertion.field
+                                .split(".")
+                                .reduce(
+                                    (obj, key) => obj?.[key],
+                                    normalizedResult,
+                                );
+                        } else {
+                            actualValue = normalizedResult;
+                        }
+                        break;
+                    case "HEADER":
+                        // Header check might need raw response headers, but for now we check result if it contains headers
+                        // Usually proxy returns headers. Let's see if we have them.
+                        // For now fallback to empty or result fields if they look like headers
+                        actualValue = "";
+                        break;
+                    case "REGEXP":
+                        actualValue =
+                            typeof result === "string"
+                                ? result
+                                : JSON.stringify(result);
+                        break;
+                }
+
+                const op = assertion.operator;
+                const target = assertion.value;
+                const strActual = String(actualValue ?? "");
+
+                switch (op) {
+                    case "equals":
+                        success = strActual === target;
+                        if (!success)
+                            message = `Expected ${target}, got ${strActual}`;
+                        break;
+                    case "notEquals":
+                        success = strActual !== target;
+                        if (!success) message = `Should not be ${target}`;
+                        break;
+                    case "contains":
+                        success = strActual.includes(target);
+                        if (!success) message = `Should contain ${target}`;
+                        break;
+                    case "lessThan":
+                        success = Number(actualValue) < Number(target);
+                        if (!success) message = `Should be less than ${target}`;
+                        break;
+                    case "greaterThan":
+                        success = Number(actualValue) > Number(target);
+                        if (!success)
+                            message = `Should be greater than ${target}`;
+                        break;
+                    case "exists":
+                        success =
+                            actualValue !== undefined && actualValue !== null;
+                        if (!success) message = `Field should exist`;
+                        break;
+                    case "isNotEmpty":
+                        success = strActual.trim() !== "";
+                        if (!success) message = `Should not be empty`;
+                        break;
+                }
+            } catch (e) {
+                success = false;
+                message = `Evaluation error: ${(e as Error).message}`;
+            }
+
+            results.push({
+                assertionId: assertion.id,
+                success,
+                actualValue: String(actualValue ?? "undefined"),
+                message,
+            });
+        }
+
+        return results;
+    }
+
     function flattenDecryptedData(
         data: any,
         fields: ResponseDataField[],
@@ -1410,7 +1581,8 @@
                     );
 
                     if (!popupWindow) {
-                        stepExec.status = "SUCCESS";
+                        stepExec.status = "ERROR";
+                        stepExec.error = "Popup blocked by browser.";
                         isExecuting = false;
                         showAlert(
                             "Popup Blocked",
@@ -1437,7 +1609,8 @@
                     console.error(
                         "Popup Blocked: No window reference available.",
                     );
-                    stepExec.status = "SUCCESS"; // Mark as success to stop spinning? Or FAIL?
+                    stepExec.status = "ERROR";
+                    stepExec.error = "Popup blocked by browser.";
                     isExecuting = false;
                     showAlert(
                         "Popup Blocked",
@@ -1541,6 +1714,12 @@
                     });
 
                     processResponseData(index);
+                    stepExec.assertionResults = evaluateAssertions(
+                        index,
+                        result,
+                        latency,
+                        200, // Form submission success assumes 200
+                    );
                     await checkNextStepCondition(index);
                 } finally {
                     // ALWAYS close the popup after step execution (success or error)
@@ -1662,11 +1841,13 @@
                     const data = JSON.parse(text);
                     stepExec.result = data;
                     stepExec.status = response.ok ? "SUCCESS" : "ERROR";
+                    stepExec.latency = latency;
                     if (!response.ok)
                         stepExec.error = `HTTP ${response.status}: ${text}`;
                 } catch {
                     stepExec.result = text;
                     stepExec.status = response.ok ? "SUCCESS" : "ERROR";
+                    stepExec.latency = latency;
                 }
 
                 // Record execution log
@@ -1687,6 +1868,12 @@
                 });
 
                 processResponseData(index);
+                stepExec.assertionResults = evaluateAssertions(
+                    index,
+                    stepExec.result,
+                    latency,
+                    response.status,
+                );
                 await checkNextStepCondition(index);
 
                 await scrollToBottom();
@@ -1786,6 +1973,14 @@
                     signalClosePopup(); // Close popup on error or stop
                     break;
                 }
+            }
+
+            // Record overall collection test result
+            if (collection) {
+                testResultService.recordFromExecution(
+                    collection,
+                    stepsExecution,
+                );
             }
         } finally {
             isRunningAll = false;
@@ -2627,6 +2822,97 @@
                                                     />
                                                 </div>
                                             {/if}
+                                        </div>
+                                    {/if}
+
+                                    <!-- 3. Test Assertions Section -->
+                                    {#if stepExec.assertionResults && stepExec.assertionResults.length > 0}
+                                        <div
+                                            class="space-y-4 pt-6 border-t border-slate-100 dark:border-slate-800"
+                                            in:slide
+                                        >
+                                            <div
+                                                class="flex items-center gap-2 px-1"
+                                            >
+                                                <ShieldCheck
+                                                    size={18}
+                                                    class="text-indigo-500"
+                                                />
+                                                <h3
+                                                    class="text-lg font-bold text-slate-800 dark:text-slate-200"
+                                                >
+                                                    Test Assertions
+                                                </h3>
+                                            </div>
+                                            <div
+                                                class="grid grid-cols-1 md:grid-cols-2 gap-3"
+                                            >
+                                                {#each stepExec.assertionResults as result}
+                                                    {@const assertion =
+                                                        collection.steps?.[
+                                                            activeStepIndex
+                                                        ]?.assertions?.find(
+                                                            (a) =>
+                                                                a.id ===
+                                                                result.assertionId,
+                                                        )}
+                                                    <div
+                                                        class="p-3 rounded-xl border {result.success
+                                                            ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/50'
+                                                            : 'bg-red-50/50 dark:bg-red-900/10 border-red-200 dark:border-red-800/50'} flex items-start gap-3 transition-all hover:shadow-md"
+                                                    >
+                                                        {#if result.success}
+                                                            <CheckCircle2
+                                                                size={16}
+                                                                class="text-emerald-500 shrink-0 mt-0.5"
+                                                            />
+                                                        {:else}
+                                                            <XCircle
+                                                                size={16}
+                                                                class="text-red-500 shrink-0 mt-0.5"
+                                                            />
+                                                        {/if}
+                                                        <div
+                                                            class="flex-1 min-w-0"
+                                                        >
+                                                            <div
+                                                                class="flex items-center justify-between gap-2"
+                                                            >
+                                                                <span
+                                                                    class="text-[10px] font-bold {result.success
+                                                                        ? 'text-emerald-700 dark:text-emerald-400'
+                                                                        : 'text-red-700 dark:text-red-400'} uppercase tracking-tight"
+                                                                >
+                                                                    {assertion?.type ||
+                                                                        "Assertion"}
+                                                                </span>
+                                                            </div>
+                                                            <p
+                                                                class="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5 truncate"
+                                                            >
+                                                                {assertion?.field
+                                                                    ? `${assertion.field} `
+                                                                    : ""}{assertion?.operator}
+                                                                {assertion?.value}
+                                                            </p>
+                                                            {#if !result.success && result.message}
+                                                                <p
+                                                                    class="text-[10px] text-red-500 font-semibold mt-1 leading-tight"
+                                                                >
+                                                                    {result.message}
+                                                                </p>
+                                                            {/if}
+                                                        </div>
+                                                        <div
+                                                            class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded {result.success
+                                                                ? 'bg-emerald-500/10 text-emerald-600'
+                                                                : 'bg-red-500/10 text-red-600'} shrink-0"
+                                                        >
+                                                            {result.actualValue}
+                                                        </div>
+                                                    </div>
+                                                {/each}
+                                            </div>
                                         </div>
                                     {/if}
                                 </div>

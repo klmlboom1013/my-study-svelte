@@ -234,7 +234,7 @@
     onCancel={onAlertCancel}
 />
 
-<div class="max-w-7xl mx-auto py-8 px-4">
+<div class="max-w-7xl mx-auto py-8 px-6">
     <Breadcrumbs
         items={[{ label: "Home", href: "/" }, { label: "API Categories" }]}
     />

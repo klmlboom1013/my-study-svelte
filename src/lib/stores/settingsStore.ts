@@ -42,6 +42,16 @@ export interface ApiCategory {
     isBookmarked?: boolean;
 }
 
+export interface Assertion {
+    id: string;
+    enabled: boolean;
+    type: 'STATUS_CODE' | 'JSON_BODY' | 'LATENCY' | 'HEADER' | 'REGEXP';
+    field?: string; // e.g., "$.resultCode"
+    operator: 'equals' | 'notEquals' | 'contains' | 'lessThan' | 'greaterThan' | 'exists' | 'isNotEmpty';
+    value: string;
+    description?: string;
+}
+
 export interface CollectionStep {
     id: string;
     endpointId: string;
@@ -63,6 +73,7 @@ export interface CollectionStep {
         operator: 'equals' | 'notEquals' | 'contains' | 'isNotEmpty' | 'validSignature';
     }[];
     conditionLogic?: 'AND' | 'OR';
+    assertions?: Assertion[];
 }
 
 export interface ApiCollection {

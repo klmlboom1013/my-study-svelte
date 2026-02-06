@@ -328,69 +328,73 @@
         : "Restoring your history from Google Drive..."}
 />
 
-<div class="flex flex-col gap-6">
+<div class="max-w-7xl mx-auto py-8 px-6">
     <Breadcrumbs
         items={[{ label: "Home", href: "/" }, { label: "Recent Activity" }]}
     />
 
-    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div class="flex flex-col gap-2">
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">
-                Recent Activity
-            </h1>
-            <p class="text-slate-500 dark:text-slate-400">
-                View your recent endpoint execution history.
-            </p>
-        </div>
-
-        <div class="flex items-center gap-2">
-            <button
-                onclick={handleDriveBackup}
-                disabled={syncState !== "idle"}
-                class="px-3 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors flex items-center gap-1.5"
-            >
-                {#if syncState === "backup"}
-                    <span
-                        class="material-symbols-outlined text-[16px] animate-spin"
-                        >sync</span
-                    >
-                    <span>Wait...</span>
-                {:else}
-                    <span class="material-symbols-outlined text-[16px]"
-                        >cloud_upload</span
-                    >
-                    <span>Backup</span>
-                {/if}
-            </button>
-
-            <button
-                onclick={handleDriveRestore}
-                disabled={syncState !== "idle"}
-                class="px-3 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors flex items-center gap-1.5"
-            >
-                {#if syncState === "restore"}
-                    <span
-                        class="material-symbols-outlined text-[16px] animate-spin"
-                        >sync</span
-                    >
-                    <span>Wait...</span>
-                {:else}
-                    <span class="material-symbols-outlined text-[16px]"
-                        >cloud_download</span
-                    >
-                    <span>Restore</span>
-                {/if}
-            </button>
-
-            <button
-                onclick={handleClearHistory}
-                class="px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10 rounded-lg border border-rose-200 dark:border-rose-500/20 transition-colors flex items-center gap-1.5"
-            >
-                <span class="material-symbols-outlined text-[16px]"
-                    >delete_sweep</span
+    <div class="mb-6">
+        <div class="flex items-end justify-between gap-4 mb-4 md:mb-6">
+            <div class="space-y-1">
+                <h1
+                    class="text-3xl font-bold text-slate-900 dark:text-white mb-2"
                 >
-                Clear All History
-            </button>
+                    Recent Activity
+                </h1>
+                <p class="text-slate-500 dark:text-slate-400">
+                    View your recent endpoint execution history.
+                </p>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button
+                    onclick={handleDriveBackup}
+                    disabled={syncState !== "idle"}
+                    class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors"
+                >
+                    {#if syncState === "backup"}
+                        <span
+                            class="material-symbols-outlined text-[18px] animate-spin"
+                            >sync</span
+                        >
+                        <span>Wait...</span>
+                    {:else}
+                        <span class="material-symbols-outlined text-[18px]"
+                            >cloud_upload</span
+                        >
+                        <span>Backup</span>
+                    {/if}
+                </button>
+
+                <button
+                    onclick={handleDriveRestore}
+                    disabled={syncState !== "idle"}
+                    class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors"
+                >
+                    {#if syncState === "restore"}
+                        <span
+                            class="material-symbols-outlined text-[18px] animate-spin"
+                            >sync</span
+                        >
+                        <span>Wait...</span>
+                    {:else}
+                        <span class="material-symbols-outlined text-[18px]"
+                            >cloud_download</span
+                        >
+                        <span>Restore</span>
+                    {/if}
+                </button>
+
+                <button
+                    onclick={handleClearHistory}
+                    class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-rose-600 bg-white border border-rose-200 rounded-lg hover:bg-rose-50 dark:bg-slate-800 dark:text-rose-400 dark:border-rose-500/20 dark:hover:bg-rose-500/10 shadow-sm transition-colors"
+                >
+                    <span class="material-symbols-outlined text-[18px]"
+                        >delete_sweep</span
+                    >
+                    <span>Clear All History</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -575,7 +579,7 @@
                                         >
                                             {log.latency}ms
                                         </span>
-                                        {#if log.latency > 500}
+                                        {#if (log.latency ?? 0) > 500}
                                             <span
                                                 class="w-1.5 h-1.5 rounded-full bg-amber-500"
                                                 title="Slow response"

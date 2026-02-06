@@ -7,6 +7,11 @@
     import DataDefinitionTable from "$lib/components/endpoint/DataDefinitionTable.svelte";
     import EndpointExecutionModal from "$lib/components/endpoint/EndpointExecutionModal.svelte";
     import { appStateStore } from "$lib/stores/appStateStore";
+    import {
+        loginWithGoogle,
+        checkDriveConnection,
+    } from "$lib/features/auth/services/authService";
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
 
     let endpointId = $state("");
     let endpoint = $state<Endpoint | null>(null);
@@ -14,10 +19,51 @@
     // Execution Modal State
     let isExecutionModalOpen = $state(false);
 
+    // Alert Modal State
+    let isAlertOpen = $state(false);
+    let alertTitle = $state("");
+    let alertMessage = $state("");
+    let onAlertConfirm: (() => void) | undefined = $state(undefined);
+
+    function showAlert(title: string, message: string, onConfirm?: () => void) {
+        alertTitle = title;
+        alertMessage = message;
+        onAlertConfirm = onConfirm;
+        isAlertOpen = true;
+    }
+
+    async function handleGoogleLogin() {
+        try {
+            await loginWithGoogle();
+        } catch (e) {
+            console.error("Login failed", e);
+        }
+    }
+
     function openExecutionModal() {
+        if (!checkDriveConnection()) {
+            showAlert(
+                "Google Drive Connection Required",
+                "Google Drive is not connected. Please connect your Google account to enable executing endpoints and ensure your results are backed up.",
+                handleGoogleLogin,
+            );
+            return;
+        }
         if (endpoint) {
             isExecutionModalOpen = true;
         }
+    }
+
+    function handleEdit() {
+        if (!checkDriveConnection()) {
+            showAlert(
+                "Google Drive Connection Required",
+                "Google Drive is not connected. Please connect your Google account to enable editing endpoints and ensure your data is backed up.",
+                handleGoogleLogin,
+            );
+            return;
+        }
+        goto(`/endpoint/${endpointId}/edit`);
     }
 
     $effect(() => {
@@ -36,10 +82,23 @@
     });
 
     function handleDelete() {
-        if (confirm("Are you sure you want to delete this endpoint?")) {
-            endpointService.deleteEndpoint(endpointId);
-            goto("/endpoint");
+        if (!checkDriveConnection()) {
+            showAlert(
+                "Google Drive Connection Required",
+                "Google Drive is not connected. Please connect your Google account to enable deleting endpoints and ensure your sync is up to date.",
+                handleGoogleLogin,
+            );
+            return;
         }
+
+        showAlert(
+            "Delete Endpoint",
+            "Are you sure you want to delete this endpoint? This action cannot be undone.",
+            () => {
+                endpointService.deleteEndpoint(endpointId);
+                goto("/endpoint");
+            },
+        );
     }
 
     function getSignatureMethodLabel(method?: string) {
@@ -51,7 +110,7 @@
     }
 </script>
 
-<div class="w-full max-w-7xl mx-auto py-8 px-0 md:px-4">
+<div class="w-full max-w-7xl mx-auto py-8 px-0 md:px-6">
     <div class="px-4 md:px-0">
         <Breadcrumbs
             items={[
@@ -88,7 +147,7 @@
                         Delete
                     </button>
                     <button
-                        onclick={() => goto(`/endpoint/${endpointId}/edit`)}
+                        onclick={handleEdit}
                         class="hidden md:flex flex-1 md:flex-none items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium shadow-sm shadow-primary/20"
                     >
                         <span class="material-symbols-outlined text-[20px]"
@@ -312,3 +371,12 @@
         {/if}
     {/if}
 </div>
+
+<AlertModal
+    bind:isOpen={isAlertOpen}
+    title={alertTitle}
+    message={alertMessage}
+    type={onAlertConfirm ? "confirm" : "alert"}
+    confirmText={alertTitle.includes("Connection") ? "Connect Now" : "OK"}
+    onConfirm={onAlertConfirm}
+/>

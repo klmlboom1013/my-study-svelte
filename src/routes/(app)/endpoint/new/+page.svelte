@@ -11,6 +11,10 @@
         RequestType,
     } from "$lib/types/endpoint";
     import { endpointService } from "$lib/features/endpoints/services/endpointService";
+    import {
+        loginWithGoogle,
+        checkDriveConnection,
+    } from "$lib/features/auth/services/authService";
 
     import RequestDataJsonModal from "$lib/components/endpoint/RequestDataJsonModal.svelte";
     import ResponseDataJsonModal from "$lib/components/endpoint/ResponseDataJsonModal.svelte";
@@ -152,7 +156,24 @@
 
     let signatureMethod = $state<string>("");
 
+    async function handleGoogleLogin() {
+        try {
+            await loginWithGoogle();
+        } catch (e) {
+            console.error("Login failed", e);
+        }
+    }
+
     function handleSave() {
+        if (!checkDriveConnection()) {
+            alertTitle = "Google Drive Connection Required";
+            alertMessage =
+                "Google Drive is not connected. Please connect your Google account to enable saving endpoints and ensure your data is backed up.";
+            alertOnConfirm = handleGoogleLogin;
+            isAlertOpen = true;
+            return;
+        }
+
         const newEndpoint: Endpoint = {
             id: crypto.randomUUID(),
             name,
@@ -642,5 +663,7 @@
     bind:isOpen={isAlertOpen}
     title={alertTitle}
     message={alertMessage}
+    type={alertTitle.includes("Connection") ? "confirm" : "alert"}
+    confirmText={alertTitle.includes("Connection") ? "Connect Now" : "OK"}
     onConfirm={alertOnConfirm}
 />

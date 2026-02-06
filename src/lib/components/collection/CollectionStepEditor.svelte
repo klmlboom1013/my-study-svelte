@@ -9,6 +9,7 @@
     import { onMount } from "svelte";
     import { slide } from "svelte/transition";
     import CollectionConditionFieldSelector from "./CollectionConditionFieldSelector.svelte";
+    import AssertionEditor from "./AssertionEditor.svelte";
 
     interface Props {
         step: CollectionStep;
@@ -730,6 +731,13 @@
                         >
                     </div>
                 {/if}
+            </div>
+
+            <!-- Assertion Editor Area -->
+            <div
+                class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800"
+            >
+                <AssertionEditor {step} {onUpdate} />
             </div>
         </div>
     {/if}

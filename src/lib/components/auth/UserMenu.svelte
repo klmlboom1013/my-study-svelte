@@ -59,11 +59,24 @@
         }
     };
 
-    const handleAppSignOut = () => {
-        // Expire access token
-        setCookie("accessToken", "", -1);
-        isOpen = false;
-        goto("/signin");
+    const handleAppSignOut = async () => {
+        if (!confirm("로그아웃 하시겠습니까?")) return;
+
+        isLoading = true;
+        try {
+            // Expire access token
+            setCookie("accessToken", "", -1);
+
+            // Sign out of Firebase as well
+            await logoutGoogle();
+
+            isOpen = false;
+            goto("/signin");
+        } catch (e) {
+            console.error("Sign out failed:", e);
+        } finally {
+            isLoading = false;
+        }
     };
 
     function toggle() {

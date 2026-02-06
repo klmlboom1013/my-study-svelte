@@ -13,6 +13,7 @@
     import Modal from "$lib/components/ui/Modal.svelte";
     import ApiCollectionForm from "./ApiCollectionForm.svelte";
     import { get } from "svelte/store";
+    import { collectionExecutionService } from "$lib/features/execution/services/collectionExecutionService";
 
     // Alert Modal State
     let isAlertOpen = $state(false);
@@ -90,7 +91,19 @@
             syncState = "backup";
             const dataToSave = get(settingsStore);
             await driveService.saveSettings(token, dataToSave);
-            showAlert("Success", "Backup successful!");
+
+            // Backup Collection Execution History (Presets)
+            const collectionHistory =
+                collectionExecutionService.getAllHistory();
+            await driveService.saveCollectionExecutionHistory(
+                token,
+                collectionHistory,
+            );
+
+            showAlert(
+                "Success",
+                "Backup successful! (Settings and Collection Presets saved)",
+            );
         } catch (error: any) {
             console.error(error);
             showAlert("Error", `Backup failed: ${error.message}`);
@@ -122,7 +135,22 @@
                     const data = await driveService.loadSettings(token);
                     if (data) {
                         settingsStore.load(data);
-                        showAlert("Success", "Restore successful!");
+
+                        // Restore Collection Execution History (Presets)
+                        const collectionHistory =
+                            await driveService.loadCollectionExecutionHistory(
+                                token,
+                            );
+                        if (collectionHistory) {
+                            collectionExecutionService.importHistory(
+                                collectionHistory,
+                            );
+                        }
+
+                        showAlert(
+                            "Success",
+                            "Restore successful! (Settings and Collection Presets restored)",
+                        );
                     } else {
                         showAlert("Info", "No backup found.");
                     }
@@ -177,7 +205,7 @@
     onCancel={onAlertCancel}
 />
 
-<div class="max-w-7xl mx-auto py-8 px-4">
+<div class="max-w-7xl mx-auto py-8 px-6">
     <Breadcrumbs
         items={[{ label: "Home", href: "/" }, { label: "API Collections" }]}
     />
