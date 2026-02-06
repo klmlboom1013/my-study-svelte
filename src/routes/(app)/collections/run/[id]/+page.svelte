@@ -123,7 +123,7 @@
 
     // FAB State
     let isFabMenuOpen = $state(false);
-    let isButtonInView = $state(true);
+
     let bottomAnchor = $state<HTMLElement | null>(null);
 
     let alertType = $state<"alert" | "confirm">("alert");
@@ -2229,42 +2229,47 @@
                     </div>
                 </div>
 
-                <div class="flex items-center justify-end gap-2 mt-4">
-                    <button
-                        onclick={handleBackupToDrive}
-                        disabled={syncState !== "idle" ||
-                            $appStateStore.isPageLocked}
-                        class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+                <div class="flex flex-wrap items-center justify-end gap-3 mt-8">
+                    <!-- Backup & Restore Group -->
+                    <div
+                        class="grid grid-cols-2 md:flex items-center gap-2 w-full md:w-auto order-1"
                     >
-                        {#if syncState === "backup"}
-                            <Loader2 size={16} class="animate-spin" />
-                            <span>Wait...</span>
-                        {:else}
-                            <CloudUpload size={16} />
-                            <span>Backup</span>
-                        {/if}
-                    </button>
-                    <button
-                        onclick={handleRestoreFromDrive}
-                        disabled={syncState !== "idle" ||
-                            $appStateStore.isPageLocked}
-                        class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
-                    >
-                        {#if syncState === "restore"}
-                            <Loader2 size={16} class="animate-spin" />
-                            <span>Wait...</span>
-                        {:else}
-                            <CloudDownload size={16} />
-                            <span>Restore</span>
-                        {/if}
-                    </button>
+                        <button
+                            onclick={handleBackupToDrive}
+                            disabled={syncState !== "idle" ||
+                                $appStateStore.isPageLocked}
+                            class="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed w-full md:w-auto"
+                        >
+                            {#if syncState === "backup"}
+                                <Loader2 size={16} class="animate-spin" />
+                                <span>Wait...</span>
+                            {:else}
+                                <CloudUpload size={16} />
+                                <span>Backup</span>
+                            {/if}
+                        </button>
+                        <button
+                            onclick={handleRestoreFromDrive}
+                            disabled={syncState !== "idle" ||
+                                $appStateStore.isPageLocked}
+                            class="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed w-full md:w-auto"
+                        >
+                            {#if syncState === "restore"}
+                                <Loader2 size={16} class="animate-spin" />
+                                <span>Wait...</span>
+                            {:else}
+                                <CloudDownload size={16} />
+                                <span>Restore</span>
+                            {/if}
+                        </button>
+                    </div>
 
-                    <!-- Presets Dropdown -->
-                    <div class="relative">
+                    <!-- Presets Group -->
+                    <div class="relative w-full md:w-auto order-2">
                         <button
                             onclick={() =>
                                 (isPresetDropdownOpen = !isPresetDropdownOpen)}
-                            class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                            class="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                         >
                             <History size={16} />
                             <span>Presets</span>
@@ -2340,17 +2345,20 @@
                         {/if}
                     </div>
 
+                    <!-- Reset Button -->
                     <button
                         onclick={handleReset}
-                        class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                        class="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors w-full md:w-auto order-3"
                     >
                         <RotateCcw size={16} />
                         <span>Reset</span>
                     </button>
+
+                    <!-- Run All Button -->
                     <button
                         onclick={handleRunAll}
                         disabled={isExecuting || isRunningAll}
-                        class="flex items-center gap-2 px-6 py-2 text-sm font-bold text-white bg-green-600 rounded-lg hover:bg-green-700 shadow-lg shadow-green-600/20 disabled:opacity-50 transition-all active:scale-95"
+                        class="flex items-center justify-center gap-2 px-6 py-3 text-sm font-black text-white bg-green-600 rounded-xl hover:bg-green-700 shadow-lg shadow-green-600/20 disabled:opacity-50 transition-all active:scale-95 w-full md:w-auto order-4"
                     >
                         {#if isExecuting || isRunningAll}
                             <Loader2 size={18} class="animate-spin" />
@@ -2445,7 +2453,7 @@
             </div>
 
             <!-- Content: Active Step Editor -->
-            <div class="lg:col-span-3 space-y-6">
+            <div class="lg:col-span-3 space-y-6 relative">
                 {#if stepsExecution[activeStepIndex]}
                     {@const stepExec = stepsExecution[activeStepIndex]}
                     {@const endpoint = endpointService.getEndpoint(
@@ -2453,95 +2461,40 @@
                     )}
 
                     <div
-                        class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm"
+                        class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm"
                     >
                         <!-- Step Header -->
                         <div
-                            class="p-5 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-col gap-4"
+                            class="p-4 md:p-5 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-col gap-4"
                         >
-                            <div class="flex flex-col gap-3 flex-1 min-w-0">
+                            <div class="flex flex-col gap-4 flex-1 min-w-0">
                                 <!-- Row 1: App & Method & Actions -->
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-2">
-                                        <span
-                                            class="px-2 py-0.5 rounded text-[11px] font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                                        >
-                                            {endpoint?.application}
-                                        </span>
-                                        <span
-                                            class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-                                        >
-                                            {endpoint?.method}
-                                        </span>
+                                <div
+                                    class="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                                >
+                                    <div
+                                        class="flex items-center gap-2 flex-wrap"
+                                    >
+                                        <div class="flex items-center gap-2">
+                                            <span
+                                                class="px-2 py-0.5 rounded text-[11px] font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                                            >
+                                                {endpoint?.application}
+                                            </span>
+                                            <span
+                                                class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                                            >
+                                                {endpoint?.method}
+                                            </span>
+                                        </div>
                                         <div
-                                            class="w-px h-3 bg-slate-300 dark:bg-slate-700 mx-1"
+                                            class="hidden sm:block w-px h-3 bg-slate-300 dark:bg-slate-700 mx-1"
                                         ></div>
                                         <span
-                                            class="text-[10px] font-bold text-primary uppercase tracking-widest"
+                                            class="text-[10px] font-bold text-primary uppercase tracking-widest min-w-fit"
                                             >Step {activeStepIndex + 1}</span
                                         >
                                     </div>
-
-                                    <button
-                                        use:observerAction={(node) => {
-                                            const observer =
-                                                new IntersectionObserver(
-                                                    ([entry]) => {
-                                                        isButtonInView =
-                                                            entry.isIntersecting;
-                                                    },
-                                                    { threshold: 0 },
-                                                );
-                                            observer.observe(node);
-                                            return {
-                                                destroy() {
-                                                    observer.disconnect();
-                                                },
-                                            };
-                                        }}
-                                        onclick={() => {
-                                            if (
-                                                stepExec.status === "EXECUTING"
-                                            ) {
-                                                handleStop();
-                                            } else {
-                                                stopRequested = false;
-                                                executeStep(
-                                                    activeStepIndex,
-                                                    false,
-                                                    `exec_${Date.now()}`,
-                                                );
-                                            }
-                                        }}
-                                        class="flex items-center justify-center gap-2 px-5 py-2 text-sm font-bold text-white transition-all hover:scale-105 active:scale-95 shrink-0 rounded-lg shadow-sm disabled:opacity-70 disabled:scale-100 {stepExec.status ===
-                                        'EXECUTING'
-                                            ? 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
-                                            : stepExec.status === 'READY'
-                                              ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
-                                              : 'bg-green-600 hover:bg-green-700 shadow-green-600/20'}"
-                                    >
-                                        {#if stepExec.status === "EXECUTING"}
-                                            <div
-                                                class="relative flex items-center justify-center"
-                                            >
-                                                <Loader2
-                                                    size={16}
-                                                    class="animate-spin opacity-50 absolute"
-                                                />
-                                                <X size={12} strokeWidth={3} />
-                                            </div>
-                                            Stop
-                                        {:else if stepExec.status === "READY"}
-                                            <Check size={16} />
-                                            Ready
-                                        {:else}
-                                            <Play
-                                                size={16}
-                                                fill="currentColor"
-                                            />
-                                            Execute
-                                        {/if}
-                                    </button>
                                 </div>
 
                                 <!-- Row 2: Name -->
@@ -2559,75 +2512,86 @@
                                     </p>
                                 {/if}
 
-                                <!-- URL & Domain Row -->
-                                <div class="flex flex-wrap items-center gap-3">
-                                    <select
-                                        value={selectedDomainPrefixes[
-                                            stepExec.stepId
-                                        ]}
-                                        onchange={(e) => {
-                                            const val = e.currentTarget.value;
-                                            selectedDomainPrefixes[
-                                                stepExec.stepId
-                                            ] = val;
-                                            updateAllStepDomains(
-                                                stepExec.stepId,
-                                                val,
-                                            );
-                                        }}
-                                        class="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-blue-500/30"
-                                    >
-                                        {#each getAvailableDomains(stepExec.endpointId) as dom}
-                                            <option value={dom.value}
-                                                >{dom.label}</option
-                                            >
-                                        {/each}
-                                    </select>
-
+                                <!-- Metadata Grid -->
+                                <div
+                                    class="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap items-center gap-3"
+                                >
                                     <div
-                                        class="flex items-center gap-1.5 px-2 py-1.5 rounded bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/30"
+                                        class="flex items-center gap-2 w-full lg:w-auto"
                                     >
-                                        <span
-                                            class="text-[10px] uppercase font-bold opacity-70"
-                                            >Site</span
+                                        <select
+                                            value={selectedDomainPrefixes[
+                                                stepExec.stepId
+                                            ]}
+                                            onchange={(e) => {
+                                                const val =
+                                                    e.currentTarget.value;
+                                                selectedDomainPrefixes[
+                                                    stepExec.stepId
+                                                ] = val;
+                                                updateAllStepDomains(
+                                                    stepExec.stepId,
+                                                    val,
+                                                );
+                                            }}
+                                            class="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-blue-500/30"
                                         >
-                                        <span class="text-xs font-semibold"
-                                            >{endpoint?.scope?.site}</span
-                                        >
+                                            {#each getAvailableDomains(stepExec.endpointId) as dom}
+                                                <option value={dom.value}
+                                                    >{dom.label}</option
+                                                >
+                                            {/each}
+                                        </select>
                                     </div>
 
                                     <div
-                                        class="w-px h-3 bg-slate-300 dark:bg-slate-700 mx-1"
-                                    ></div>
+                                        class="flex items-center gap-3 w-full lg:w-auto"
+                                    >
+                                        <div
+                                            class="flex-1 lg:flex-none flex items-center gap-2 px-3 py-1.5 rounded bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/30"
+                                        >
+                                            <span
+                                                class="text-[10px] uppercase font-bold opacity-70"
+                                                >Site</span
+                                            >
+                                            <span class="text-xs font-semibold"
+                                                >{endpoint?.scope?.site}</span
+                                            >
+                                        </div>
 
-                                    <div class="flex items-center gap-1.5">
-                                        <span
-                                            class="text-slate-500 dark:text-slate-400 text-xs"
-                                            >Type</span
+                                        <div
+                                            class="flex-1 lg:flex-none flex items-center gap-2 px-3 py-1.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-100 dark:border-amber-800/30"
                                         >
-                                        <span
-                                            class="px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
-                                        >
-                                            {endpoint?.requestType}
-                                        </span>
+                                            <span
+                                                class="text-[10px] uppercase font-bold opacity-70"
+                                                >Type</span
+                                            >
+                                            <span class="text-xs font-semibold"
+                                                >{endpoint?.requestType}</span
+                                            >
+                                        </div>
                                     </div>
 
                                     {#if endpoint?.config?.contentType}
-                                        <div class="flex items-center gap-1.5">
-                                            <span
-                                                class="text-slate-500 dark:text-slate-400 text-xs"
-                                                >Content-Type</span
+                                        <div class="w-full lg:w-auto">
+                                            <div
+                                                class="flex items-center gap-2 px-3 py-1.5 rounded bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-800/30"
                                             >
-                                            <span
-                                                class="px-1.5 py-0.5 rounded text-xs font-semibold bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
-                                            >
-                                                {endpoint.config.contentType}
-                                            </span>
+                                                <span
+                                                    class="text-[10px] uppercase font-bold opacity-70 whitespace-nowrap"
+                                                    >Content-Type</span
+                                                >
+                                                <span
+                                                    class="text-xs font-semibold truncate"
+                                                    >{endpoint.config
+                                                        .contentType}</span
+                                                >
+                                            </div>
                                         </div>
                                     {/if}
 
                                     <div
-                                        class="px-3 py-2 bg-white dark:bg-slate-950/50 rounded border border-slate-200 dark:border-slate-800 font-mono text-xs text-slate-600 dark:text-slate-400 break-all w-full flex flex-wrap items-center gap-1 mt-1"
+                                        class="px-3 py-2.5 bg-white dark:bg-slate-950/50 rounded-xl border border-slate-200 dark:border-slate-800 font-mono text-[11px] text-slate-600 dark:text-slate-400 break-all w-full flex flex-wrap items-center gap-1 mt-1 leading-relaxed"
                                     >
                                         {#if selectedDomainPrefixes[stepExec.stepId]}
                                             <span class="text-slate-400"
@@ -2650,7 +2614,7 @@
                             <!-- Parameters Section -->
                             <div class="space-y-6">
                                 <div
-                                    class="flex items-center justify-between px-1"
+                                    class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1"
                                 >
                                     <div class="flex items-center gap-2">
                                         <Code size={18} class="text-blue-500" />
@@ -2663,7 +2627,7 @@
                                     <button
                                         onclick={() =>
                                             applyMappings(activeStepIndex)}
-                                        class="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1.5"
+                                        class="w-fit text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-lg flex items-center gap-1.5"
                                     >
                                         <RotateCcw size={12} />
                                         Refresh from Mappings
@@ -2920,6 +2884,105 @@
                         </div>
                     </div>
                 {/if}
+
+                <!-- Floating Action Button (FAB) -->
+                {#if stepsExecution[activeStepIndex]}
+                    {@const stepExec = stepsExecution[activeStepIndex]}
+                    <div
+                        class="lg:absolute lg:top-0 lg:right-0 lg:h-full lg:w-0 lg:pointer-events-none z-50 fixed bottom-10 right-10 flex flex-col items-center"
+                    >
+                        <div
+                            class="lg:sticky lg:top-[calc(100vh-160px)] lg:translate-x-12 lg:pointer-events-auto flex flex-col items-center gap-3"
+                            transition:scale={{ duration: 200, start: 0.8 }}
+                        >
+                            {#if isFabMenuOpen}
+                                <div
+                                    transition:slide={{
+                                        axis: "y",
+                                        duration: 200,
+                                    }}
+                                    class="flex flex-col gap-3 items-center mb-1"
+                                >
+                                    <button
+                                        onclick={scrollToTop}
+                                        class="h-11 w-11 rounded-full shadow-lg bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
+                                        title="Scroll to Top"
+                                    >
+                                        <ArrowUp size={20} />
+                                    </button>
+                                    <button
+                                        onclick={() => {
+                                            showSavePresetDialog = true;
+                                            isFabMenuOpen = false;
+                                        }}
+                                        class="h-11 w-11 rounded-full shadow-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800"
+                                        title="Save as Preset"
+                                    >
+                                        <Save size={20} />
+                                    </button>
+                                    <button
+                                        onclick={() => {
+                                            showLoadPresetDialog = true;
+                                            isFabMenuOpen = false;
+                                        }}
+                                        class="h-11 w-11 rounded-full shadow-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800"
+                                        title="Load Preset"
+                                    >
+                                        <FolderOpen size={20} />
+                                    </button>
+                                </div>
+                            {/if}
+
+                            <div class="flex items-center gap-3">
+                                <button
+                                    onclick={() =>
+                                        (isFabMenuOpen = !isFabMenuOpen)}
+                                    class="h-12 w-12 rounded-full shadow-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 transition-all active:scale-95"
+                                    title="Menu"
+                                >
+                                    {#if isFabMenuOpen}
+                                        <X size={24} />
+                                    {:else}
+                                        <Menu size={24} />
+                                    {/if}
+                                </button>
+
+                                <button
+                                    class="h-16 w-16 rounded-3xl shadow-2xl flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 {stepExec.status ===
+                                    'EXECUTING'
+                                        ? 'bg-red-500 hover:bg-red-600 shadow-red-500/30'
+                                        : stepExec.status === 'READY'
+                                          ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/30'
+                                          : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'}"
+                                    onclick={() => {
+                                        if (stepExec.status === "EXECUTING") {
+                                            handleStop();
+                                        } else {
+                                            stopRequested = false;
+                                            executeStep(activeStepIndex);
+                                        }
+                                    }}
+                                >
+                                    {#if stepExec.status === "EXECUTING"}
+                                        <div
+                                            class="relative flex items-center justify-center"
+                                        >
+                                            <Loader2
+                                                size={28}
+                                                class="animate-spin opacity-50 absolute"
+                                            />
+                                            <X size={20} strokeWidth={3} />
+                                        </div>
+                                    {:else if stepExec.status === "READY"}
+                                        <Check size={28} strokeWidth={3} />
+                                    {:else}
+                                        <Play size={28} fill="currentColor" />
+                                    {/if}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {/if}
             </div>
         </div>
     {:else}
@@ -2942,95 +3005,6 @@
                 >
                     Back to Collections
                 </a>
-            </div>
-        </div>
-    {/if}
-
-    {#if !isButtonInView && stepsExecution[activeStepIndex]}
-        {@const stepExec = stepsExecution[activeStepIndex]}
-        <div
-            class="fixed bottom-10 right-10 z-50 flex flex-col gap-3 items-center"
-            transition:scale={{ duration: 200, start: 0.8 }}
-        >
-            {#if isFabMenuOpen}
-                <div
-                    transition:slide={{ axis: "y", duration: 200 }}
-                    class="flex flex-col gap-3 items-center mb-1"
-                >
-                    <button
-                        onclick={scrollToTop}
-                        class="h-11 w-11 rounded-full shadow-lg bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
-                        title="Scroll to Top"
-                    >
-                        <ArrowUp size={20} />
-                    </button>
-                    <button
-                        onclick={() => {
-                            showSavePresetDialog = true;
-                            isFabMenuOpen = false;
-                        }}
-                        class="h-11 w-11 rounded-full shadow-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800"
-                        title="Save as Preset"
-                    >
-                        <Save size={20} />
-                    </button>
-                    <!-- Preset dropdown trigger could be added here or handled via separate UI -->
-                    <button
-                        onclick={() => {
-                            showLoadPresetDialog = true;
-                            isFabMenuOpen = false;
-                        }}
-                        class="h-11 w-11 rounded-full shadow-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800"
-                        title="Load Preset"
-                    >
-                        <FolderOpen size={20} />
-                    </button>
-                </div>
-            {/if}
-
-            <div class="flex items-center gap-3">
-                <button
-                    onclick={() => (isFabMenuOpen = !isFabMenuOpen)}
-                    class="h-12 w-12 rounded-full shadow-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 transition-all active:scale-95"
-                    title="Menu"
-                >
-                    {#if isFabMenuOpen}
-                        <X size={24} />
-                    {:else}
-                        <Menu size={24} />
-                    {/if}
-                </button>
-
-                <button
-                    class="h-16 w-16 rounded-3xl shadow-2xl flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 {stepExec.status ===
-                    'EXECUTING'
-                        ? 'bg-red-500 hover:bg-red-600 shadow-red-500/30'
-                        : stepExec.status === 'READY'
-                          ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/30'
-                          : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'}"
-                    onclick={() => {
-                        if (stepExec.status === "EXECUTING") {
-                            handleStop();
-                        } else {
-                            stopRequested = false;
-                            executeStep(activeStepIndex);
-                        }
-                    }}
-                >
-                    {#if stepExec.status === "EXECUTING"}
-                        <div class="relative flex items-center justify-center">
-                            <Loader2
-                                size={28}
-                                class="animate-spin opacity-50 absolute"
-                            />
-                            <X size={20} strokeWidth={3} />
-                        </div>
-                    {:else if stepExec.status === "READY"}
-                        <Check size={28} strokeWidth={3} />
-                    {:else}
-                        <Play size={28} fill="currentColor" />
-                    {/if}
-                </button>
             </div>
         </div>
     {/if}

@@ -3329,11 +3329,13 @@
                                     >
                                         <div>
                                             <label
+                                                for="success-judging-field-{app.appName}"
                                                 class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider"
                                             >
                                                 Success Judging Field
                                             </label>
                                             <input
+                                                id="success-judging-field-{app.appName}"
                                                 type="text"
                                                 class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200 text-sm"
                                                 placeholder="e.g. body.code, status"
@@ -3371,11 +3373,13 @@
                                         </div>
                                         <div>
                                             <label
+                                                for="success-values-{app.appName}"
                                                 class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider"
                                             >
                                                 Success Values (Comma separated)
                                             </label>
                                             <input
+                                                id="success-values-{app.appName}"
                                                 type="text"
                                                 class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200 text-sm"
                                                 placeholder="e.g. 0000, 200, OK"
@@ -3443,11 +3447,13 @@
                                 >
                                     <div>
                                         <label
+                                            for="default-success-judging-field"
                                             class="block text-xs font-semibold text-blue-600/70 dark:text-blue-400/70 mb-1.5 uppercase tracking-wider"
                                         >
                                             Success Judging Field
                                         </label>
                                         <input
+                                            id="default-success-judging-field"
                                             type="text"
                                             class="w-full px-3 py-2 bg-white/80 border border-blue-200 rounded-lg focus:outline-none focus:border-blue-500 dark:bg-slate-900 dark:border-blue-900/50 dark:text-slate-200 text-sm"
                                             placeholder="e.g. status"
@@ -3482,11 +3488,13 @@
                                     </div>
                                     <div>
                                         <label
+                                            for="default-success-values"
                                             class="block text-xs font-semibold text-blue-600/70 dark:text-blue-400/70 mb-1.5 uppercase tracking-wider"
                                         >
                                             Success Values
                                         </label>
                                         <input
+                                            id="default-success-values"
                                             type="text"
                                             class="w-full px-3 py-2 bg-white/80 border border-blue-200 rounded-lg focus:outline-none focus:border-blue-500 dark:bg-slate-900 dark:border-blue-900/50 dark:text-slate-200 text-sm"
                                             placeholder="e.g. 200, 201"

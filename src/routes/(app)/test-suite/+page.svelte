@@ -9,6 +9,7 @@
         type CollectionExecutionPreset,
     } from "$lib/features/execution/services/collectionExecutionService";
     import { onMount, onDestroy } from "svelte";
+    import { fade, slide, scale } from "svelte/transition";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import {
         ShieldCheck,
@@ -20,6 +21,8 @@
         TrendingUp,
         BarChart3,
         ChevronRight,
+        ChevronDown,
+        Check,
         Filter,
         Loader2,
     } from "lucide-svelte";
@@ -28,7 +31,6 @@
         authStore,
         loginWithGoogle,
     } from "$lib/features/auth/services/authService";
-    import { fade, slide, scale } from "svelte/transition";
     import { page } from "$app/stores";
     import { goto } from "$app/navigation";
     import ResultDetailModal from "$lib/components/test-suite/ResultDetailModal.svelte";
@@ -68,6 +70,7 @@
     let selectedPresets = $state<Record<string, string>>({});
     let isBackupLoading = $state(false);
     let isRestoreLoading = $state(false);
+    let openDropdownId = $state<string | null>(null);
     let unsubscribe: (() => void) | null = null;
 
     // Stats
@@ -253,11 +256,10 @@
                         collectionExecutionService.importHistory(presets);
                     if (history) testResultService.importResults(history);
 
-                    showAlert(
-                        "Restore Successful",
-                        "Test suite data has been restored.",
-                        "alert",
-                    );
+                    // Use URL parameter for success message after navigation
+                    const newUrl = new URL(window.location.href);
+                    newUrl.searchParams.set("restore", "success");
+                    window.location.href = newUrl.toString();
                 } catch (error: any) {
                     showAlert(
                         "Restore Error",
@@ -269,6 +271,20 @@
                 }
             },
         );
+    }
+
+    function toggleDropdown(id: string, event: MouseEvent) {
+        event.stopPropagation();
+        if (openDropdownId === id) {
+            openDropdownId = null;
+        } else {
+            openDropdownId = id;
+        }
+    }
+
+    function selectPreset(collectionId: string, presetId: string) {
+        selectedPresets[collectionId] = presetId;
+        openDropdownId = null;
     }
 
     function runCollection(
@@ -416,7 +432,9 @@
     />
 
     <!-- Header Section -->
-    <div class="flex items-end justify-between gap-4 mb-4 md:mb-6">
+    <div
+        class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4 md:mb-6"
+    >
         <div class="space-y-1">
             <h1 class="text-3xl font-bold text-slate-900 dark:text-white mb-2">
                 Test Suite Dashboard
@@ -426,7 +444,7 @@
             </p>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2 mt-4 md:mt-0">
             <button
                 onclick={handleBackup}
                 disabled={isBackupLoading}
@@ -820,27 +838,72 @@
                                             >Execution Preset</span
                                         >
                                     </div>
-                                    <div class="relative group/select">
-                                        <select
-                                            bind:value={
-                                                selectedPresets[summary.id]
-                                            }
-                                            class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 text-[11px] font-bold text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all appearance-none cursor-pointer"
+                                    <div class="relative">
+                                        <button
+                                            type="button"
+                                            onclick={(e) =>
+                                                toggleDropdown(summary.id, e)}
+                                            class="w-full flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 text-[11px] font-bold text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer hover:border-indigo-500/50"
                                         >
-                                            {#each summary.presets as preset}
-                                                <option value={preset.id}
-                                                    >{preset.name}</option
-                                                >
-                                            {/each}
-                                        </select>
-                                        <div
-                                            class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover/select:text-indigo-500 transition-colors"
-                                        >
-                                            <ChevronRight
+                                            <span class="truncate pr-2">
+                                                {summary.presets.find(
+                                                    (p) =>
+                                                        p.id ===
+                                                        selectedPresets[
+                                                            summary.id
+                                                        ],
+                                                )?.name || "Select Preset"}
+                                            </span>
+                                            <ChevronDown
                                                 size={14}
-                                                class="rotate-90"
+                                                class="text-slate-400 transition-transform duration-200 {openDropdownId ===
+                                                summary.id
+                                                    ? 'rotate-180'
+                                                    : ''}"
                                             />
-                                        </div>
+                                        </button>
+
+                                        {#if openDropdownId === summary.id}
+                                            <div
+                                                class="absolute z-50 left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl overflow-hidden min-w-[120px]"
+                                                transition:fade={{
+                                                    duration: 100,
+                                                }}
+                                            >
+                                                <div
+                                                    class="max-h-40 overflow-y-auto py-1"
+                                                >
+                                                    {#each summary.presets as preset}
+                                                        <button
+                                                            type="button"
+                                                            onclick={(e) => {
+                                                                e.stopPropagation();
+                                                                selectPreset(
+                                                                    summary.id,
+                                                                    preset.id,
+                                                                );
+                                                            }}
+                                                            class="w-full flex items-center justify-between px-3 py-2 text-[11px] font-semibold text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50 {selectedPresets[
+                                                                summary.id
+                                                            ] === preset.id
+                                                                ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-500/10'
+                                                                : 'text-slate-600 dark:text-slate-300'}"
+                                                        >
+                                                            <span
+                                                                class="truncate"
+                                                                >{preset.name}</span
+                                                            >
+                                                            {#if selectedPresets[summary.id] === preset.id}
+                                                                <Check
+                                                                    size={12}
+                                                                    class="shrink-0 ml-2"
+                                                                />
+                                                            {/if}
+                                                        </button>
+                                                    {/each}
+                                                </div>
+                                            </div>
+                                        {/if}
                                     </div>
                                 </div>
                             {/if}

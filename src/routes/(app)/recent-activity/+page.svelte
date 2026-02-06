@@ -334,7 +334,9 @@
     />
 
     <div class="mb-6">
-        <div class="flex items-end justify-between gap-4 mb-4 md:mb-6">
+        <div
+            class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4 md:mb-6"
+        >
             <div class="space-y-1">
                 <h1
                     class="text-3xl font-bold text-slate-900 dark:text-white mb-2"
@@ -346,7 +348,7 @@
                 </p>
             </div>
 
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2 mt-4 md:mt-0">
                 <button
                     onclick={handleDriveBackup}
                     disabled={syncState !== "idle"}
@@ -401,7 +403,7 @@
     <div
         class="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-border-dark overflow-hidden shadow-sm"
     >
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto hidden md:block">
             <table class="w-full text-left border-collapse min-w-[800px]">
                 <thead>
                     <tr
@@ -626,121 +628,184 @@
                             {/if}
                         </tr>
                     {/each}
-
-                    {#if filteredLogs.length > itemsPerPage}
-                        <tr>
-                            <td
-                                colspan={Object.values(
-                                    $settingsStore.recentActivity?.display
-                                        ?.visibleColumns || {},
-                                ).filter((v) => v !== false).length || 8}
-                                class="px-4 py-4"
-                            >
-                                <div class="flex items-center justify-between">
-                                    <div
-                                        class="text-xs text-slate-500 dark:text-slate-400"
-                                    >
-                                        Showing {(currentPage - 1) *
-                                            itemsPerPage +
-                                            1} to {Math.min(
-                                            currentPage * itemsPerPage,
-                                            filteredLogs.length,
-                                        )} of {filteredLogs.length} entries
-                                    </div>
-                                    <div class="flex items-center gap-1">
-                                        <button
-                                            class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                                            disabled={currentPage === 1}
-                                            onclick={() => (currentPage = 1)}
-                                            title="First Page"
-                                        >
-                                            <span
-                                                class="material-symbols-outlined text-[18px]"
-                                                >first_page</span
-                                            >
-                                        </button>
-                                        <button
-                                            class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                                            disabled={currentPage === 1}
-                                            onclick={() => currentPage--}
-                                            title="Previous Page"
-                                        >
-                                            <span
-                                                class="material-symbols-outlined text-[18px]"
-                                                >chevron_left</span
-                                            >
-                                        </button>
-
-                                        <div
-                                            class="flex items-center px-3 text-xs font-medium text-slate-700 dark:text-slate-300"
-                                        >
-                                            Page {currentPage} of {totalPages}
-                                        </div>
-
-                                        <button
-                                            class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                                            disabled={currentPage ===
-                                                totalPages}
-                                            onclick={() => currentPage++}
-                                            title="Next Page"
-                                        >
-                                            <span
-                                                class="material-symbols-outlined text-[18px]"
-                                                >chevron_right</span
-                                            >
-                                        </button>
-                                        <button
-                                            class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                                            disabled={currentPage ===
-                                                totalPages}
-                                            onclick={() =>
-                                                (currentPage = totalPages)}
-                                            title="Last Page"
-                                        >
-                                            <span
-                                                class="material-symbols-outlined text-[18px]"
-                                                >last_page</span
-                                            >
-                                        </button>
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                    {/if}
-
-                    {#if filteredLogs.length === 0}
-                        <tr>
-                            <td
-                                colspan={Object.values(
-                                    $settingsStore.recentActivity?.display
-                                        ?.visibleColumns || {},
-                                ).filter((v) => v !== false).length || 8}
-                                class="px-4 py-12 text-center"
-                            >
-                                <div
-                                    class="size-16 bg-slate-50 dark:bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300 dark:text-slate-600"
-                                >
-                                    <span
-                                        class="material-symbols-outlined text-[32px]"
-                                        >history</span
-                                    >
-                                </div>
-                                <h3
-                                    class="text-slate-900 dark:text-white font-medium"
-                                >
-                                    No execution history found
-                                </h3>
-                                <p
-                                    class="text-sm text-slate-500 dark:text-slate-400 mt-1"
-                                >
-                                    Run endpoints to see your history here.
-                                </p>
-                            </td>
-                        </tr>
-                    {/if}
                 </tbody>
             </table>
         </div>
+
+        <!-- Mobile Card View -->
+        <div class="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+            {#each paginatedLogs as log (log.id)}
+                <div class="p-4 space-y-3">
+                    <div class="flex items-start justify-between">
+                        <div class="flex flex-col gap-1">
+                            <span
+                                class="text-[10px] text-slate-400 font-medium"
+                            >
+                                {formatDate(log.timestamp)}
+                            </span>
+                            <div
+                                class="font-semibold text-slate-900 dark:text-slate-100 line-clamp-1"
+                            >
+                                {log.endpointName}
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            {#if $settingsStore.recentActivity?.display?.actions?.showDetails ?? true}
+                                <button
+                                    onclick={() => showDetails(log)}
+                                    class="p-1.5 text-slate-400 hover:text-primary dark:hover:text-blue-400 transition-colors"
+                                >
+                                    <span
+                                        class="material-symbols-outlined text-[20px]"
+                                        >visibility</span
+                                    >
+                                </button>
+                            {/if}
+                            {#if $settingsStore.recentActivity?.display?.actions?.showDelete ?? true}
+                                <button
+                                    onclick={() => handleDeleteLog(log.id)}
+                                    class="p-1.5 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"
+                                >
+                                    <span
+                                        class="material-symbols-outlined text-[20px]"
+                                        >delete</span
+                                    >
+                                </button>
+                            {/if}
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        {#if log.application}
+                            <span
+                                class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
+                            >
+                                {log.application}
+                            </span>
+                        {/if}
+                        <span
+                            class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                        >
+                            {log.method || "POST"}
+                        </span>
+                        <span
+                            class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {getStatusColor(
+                                log,
+                            )}"
+                        >
+                            {log.statusCode || log.status}
+                        </span>
+                    </div>
+
+                    <div class="flex items-center justify-between text-[11px]">
+                        <div class="flex items-center gap-2">
+                            <span class="text-slate-500 dark:text-slate-400"
+                                >Result:</span
+                            >
+                            <span
+                                class="font-bold uppercase {isSuccessfulLog(log)
+                                    ? 'text-emerald-600 dark:text-emerald-400'
+                                    : 'text-rose-600 dark:text-rose-400'}"
+                            >
+                                {getDisplayResult(log)}
+                            </span>
+                        </div>
+                        <div
+                            class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400"
+                        >
+                            <span class="material-symbols-outlined text-[14px]"
+                                >timer</span
+                            >
+                            <span>{log.latency}ms</span>
+                        </div>
+                    </div>
+                </div>
+            {/each}
+        </div>
+
+        {#if filteredLogs.length === 0}
+            <div class="px-4 py-12 text-center">
+                <div
+                    class="size-16 bg-slate-50 dark:bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300 dark:text-slate-600"
+                >
+                    <span class="material-symbols-outlined text-[32px]"
+                        >history</span
+                    >
+                </div>
+                <h3 class="text-slate-900 dark:text-white font-medium">
+                    No execution history found
+                </h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    Run endpoints to see your history here.
+                </p>
+            </div>
+        {/if}
+
+        {#if filteredLogs.length > itemsPerPage}
+            <div
+                class="px-4 py-4 border-t border-slate-100 dark:divide-slate-800 bg-slate-50/50 dark:bg-slate-800/20"
+            >
+                <div
+                    class="flex flex-col sm:flex-row items-center justify-between gap-4"
+                >
+                    <div class="text-xs text-slate-500 dark:text-slate-400">
+                        Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(
+                            currentPage * itemsPerPage,
+                            filteredLogs.length,
+                        )} of {filteredLogs.length} entries
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button
+                            class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            disabled={currentPage === 1}
+                            onclick={() => (currentPage = 1)}
+                            title="First Page"
+                        >
+                            <span class="material-symbols-outlined text-[18px]"
+                                >first_page</span
+                            >
+                        </button>
+                        <button
+                            class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            disabled={currentPage === 1}
+                            onclick={() => currentPage--}
+                            title="Previous Page"
+                        >
+                            <span class="material-symbols-outlined text-[18px]"
+                                >chevron_left</span
+                            >
+                        </button>
+
+                        <div
+                            class="flex items-center px-3 text-xs font-medium text-slate-700 dark:text-slate-300"
+                        >
+                            Page {currentPage} of {totalPages}
+                        </div>
+
+                        <button
+                            class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            disabled={currentPage === totalPages}
+                            onclick={() => currentPage++}
+                            title="Next Page"
+                        >
+                            <span class="material-symbols-outlined text-[18px]"
+                                >chevron_right</span
+                            >
+                        </button>
+                        <button
+                            class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            disabled={currentPage === totalPages}
+                            onclick={() => (currentPage = totalPages)}
+                            title="Last Page"
+                        >
+                            <span class="material-symbols-outlined text-[18px]"
+                                >last_page</span
+                            >
+                        </button>
+                    </div>
+                </div>
+            </div>
+        {/if}
     </div>
 </div>
 

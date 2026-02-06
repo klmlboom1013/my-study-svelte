@@ -9,6 +9,7 @@ let debounceTimer: ReturnType<typeof setTimeout>;
 
 import { executionService } from "$lib/features/execution/services/executionService"; // Import added
 import { collectionExecutionService } from "$lib/features/execution/services/collectionExecutionService";
+import { testResultService } from "$lib/features/execution/services/testResultService";
 
 export const syncService = {
     init: () => {
@@ -34,6 +35,11 @@ export const syncService = {
 
         // Listen for Collection Execution History Changes
         collectionExecutionService.onChange(() => {
+            syncService.scheduleSave();
+        });
+
+        // Listen for Test Suite Results Changes
+        testResultService.onChange(() => {
             syncService.scheduleSave();
         });
     },
@@ -64,6 +70,11 @@ export const syncService = {
                 if (data.collectionExecutionHistory) {
                     collectionExecutionService.importHistory(data.collectionExecutionHistory);
                     console.log("Synced Collection Execution History from Drive");
+                }
+
+                if (data.testSuiteResults) {
+                    testResultService.importResults(data.testSuiteResults);
+                    console.log("Synced Test Suite Results from Drive");
                 }
             }
 
@@ -104,6 +115,7 @@ export const syncService = {
                 endpoints,
                 executionHistory,
                 collectionExecutionHistory: collectionExecutionService.getAllHistory(),
+                testSuiteResults: testResultService.getAllResults(),
                 updatedAt: Date.now()
             };
 

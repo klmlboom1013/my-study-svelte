@@ -187,15 +187,12 @@
                 <p
                     class="text-slate-500 dark:text-slate-400 text-base font-normal"
                 >
-                    Select an API category below to start testing endpoints or
-                    view recent activity.
+                    Testing endpoints or view recent activity.
                 </p>
             </div>
         </div>
 
-        <!-- Mobile API Categories (Visible only on mobile) -->
         <div class="flex flex-col gap-2 md:hidden">
-            <!-- Mobile Search Bar -->
             <label class="flex flex-col w-full h-10 mb-2">
                 <div
                     class="flex w-full flex-1 items-stretch rounded-lg h-full border border-slate-200 dark:border-slate-700 focus-within:border-primary/50 transition-colors bg-white dark:bg-slate-800"
@@ -215,40 +212,6 @@
                     />
                 </div>
             </label>
-
-            <h3 class="text-slate-900 dark:text-white text-xl font-bold mb-2">
-                API Categories
-            </h3>
-            <div
-                class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 flex flex-col gap-3"
-            >
-                <div class="flex flex-col gap-1">
-                    {#each filteredCategories as category}
-                        <button
-                            onclick={() =>
-                                goto(`/endpoint?category=${category.id}`)}
-                            class="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700/50 text-left group transition-colors"
-                        >
-                            <div
-                                class="size-6 rounded-md bg-primary/10 flex items-center justify-center text-primary shrink-0 transition-colors"
-                                style={category.color
-                                    ? `background-color: ${category.color}15; color: ${category.color}`
-                                    : ""}
-                            >
-                                <span
-                                    class="material-symbols-outlined text-[16px]"
-                                    >{category.icon || "category"}</span
-                                >
-                            </div>
-                            <span
-                                class="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors"
-                            >
-                                {category.name}
-                            </span>
-                        </button>
-                    {/each}
-                </div>
-            </div>
         </div>
 
         <!-- Statistics Cards -->
@@ -360,181 +323,282 @@
                         Recent Activity
                     </h3>
                 </div>
-                <div
-                    class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden"
-                >
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr
-                                    class="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50"
-                                >
-                                    <th
-                                        class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                                        >Time</th
-                                    >
-                                    <th
-                                        class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                                        >Application</th
-                                    >
-                                    <th
-                                        class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                                        >Endpoint Name</th
-                                    >
-                                    <th
-                                        class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-20"
-                                        >Method</th
-                                    >
-                                    <th
-                                        class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                                        >Status</th
-                                    >
-                                    <th
-                                        class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                                        >Result</th
-                                    >
-                                    <th
-                                        class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                                        >Latency</th
-                                    >
-                                </tr>
-                            </thead>
-                            <tbody
-                                class="divide-y divide-slate-200 dark:divide-slate-700 text-sm"
-                            >
-                                {#each recentLogs as log}
+                {#if recentLogs.length > 0}
+                    <div class="flex flex-col gap-3">
+                        <!-- Desktop Table View -->
+                        <div
+                            class="hidden md:block overflow-hidden bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md"
+                        >
+                            <table class="w-full text-left border-collapse">
+                                <thead>
                                     <tr
-                                        class="group hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
+                                        class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800"
                                     >
-                                        <td
-                                            class="p-4 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400"
+                                        <th
+                                            class="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                                            >App / Method</th
                                         >
-                                            {formatRelativeTime(log.timestamp)}
-                                        </td>
-                                        <td class="p-4">
-                                            <div class="flex flex-col gap-0.5">
-                                                {#if log.application}
-                                                    <span
-                                                        class="px-2 py-0.5 w-fit rounded text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
-                                                    >
-                                                        {log.application}
-                                                    </span>
-                                                    {#if log.service || log.site}
+                                        <th
+                                            class="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                                            >Endpoint / URL</th
+                                        >
+                                        <th
+                                            class="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                                            >Result</th
+                                        >
+                                        <th
+                                            class="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                                            >Latency</th
+                                        >
+                                        <th
+                                            class="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right"
+                                            >Time</th
+                                        >
+                                    </tr>
+                                </thead>
+                                <tbody
+                                    class="divide-y divide-slate-100 dark:divide-slate-800"
+                                >
+                                    {#each recentLogs as log}
+                                        <tr
+                                            class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group cursor-pointer"
+                                            onclick={() =>
+                                                goto(
+                                                    `/recent-activity?id=${log.id}`,
+                                                )}
+                                        >
+                                            <td class="px-4 py-4">
+                                                <div
+                                                    class="flex flex-col gap-1.5 items-start"
+                                                >
+                                                    {#if log.application}
                                                         <span
-                                                            class="text-[10px] text-slate-500 dark:text-slate-400 font-mono"
+                                                            class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 uppercase"
                                                         >
-                                                            {log.service ||
-                                                                ""}{log.service &&
-                                                            log.site
-                                                                ? "/"
-                                                                : ""}{log.site ||
-                                                                ""}
+                                                            {log.application}
                                                         </span>
                                                     {/if}
-                                                {:else}
+                                                    <div
+                                                        class="px-1.5 py-0.5 rounded text-[10px] font-black border {log.method ===
+                                                        'GET'
+                                                            ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                                                            : log.method ===
+                                                                'POST'
+                                                              ? 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                                                              : log.method ===
+                                                                      'PUT' ||
+                                                                  log.method ===
+                                                                      'PATCH'
+                                                                ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+                                                                : log.method ===
+                                                                    'DELETE'
+                                                                  ? 'bg-red-500/10 text-red-500 border-red-500/20'
+                                                                  : 'bg-slate-500/10 text-slate-500 border-slate-500/20'}"
+                                                    >
+                                                        {log.method}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-4 min-w-0">
+                                                <div
+                                                    class="flex flex-col gap-0.5 min-w-0"
+                                                >
                                                     <span
-                                                        class="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[120px]"
+                                                        class="text-sm font-bold text-slate-800 dark:text-slate-100 truncate max-w-[280px]"
+                                                        title={log.endpointName}
+                                                    >
+                                                        {log.endpointName}
+                                                    </span>
+                                                    <span
+                                                        class="text-[10px] text-slate-400 dark:text-slate-500 font-mono truncate max-w-[280px]"
                                                         title={log.url}
                                                     >
                                                         {log.url}
                                                     </span>
-                                                {/if}
-                                            </div>
-                                        </td>
-                                        <td class="p-4">
-                                            <div class="flex flex-col">
-                                                <span
-                                                    class="text-slate-900 dark:text-white font-medium truncate max-w-[200px]"
-                                                    title={log.endpointName}
-                                                    >{log.endpointName}</span
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                <div
+                                                    class="flex flex-col gap-1.5"
                                                 >
-                                                <span
-                                                    class="text-slate-500 dark:text-slate-400 text-[10px] font-mono truncate max-w-[200px]"
-                                                    title={log.url}
-                                                    >{log.url}</span
+                                                    <span
+                                                        class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase w-fit {isSuccessfulLog(
+                                                            log,
+                                                        )
+                                                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
+                                                            : 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'}"
+                                                    >
+                                                        {getDisplayResult(log)}
+                                                    </span>
+                                                    <span
+                                                        class="px-2 py-0.5 rounded text-[10px] font-black uppercase w-fit {getStatusColor(
+                                                            log,
+                                                        )}"
+                                                    >
+                                                        {log.statusCode ||
+                                                            log.status}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                <div
+                                                    class="flex items-center gap-1.5"
                                                 >
-                                            </div>
-                                        </td>
-                                        <td class="p-4">
-                                            <span
-                                                class="px-2 py-1 rounded text-[10px] font-bold border {log.method ===
-                                                'GET'
-                                                    ? 'bg-green-500/10 text-green-500 border-green-500/20'
-                                                    : log.method === 'POST'
-                                                      ? 'bg-blue-500/10 text-blue-500 border-blue-500/20'
-                                                      : log.method === 'PUT' ||
-                                                          log.method === 'PATCH'
-                                                        ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
-                                                        : log.method ===
-                                                            'DELETE'
-                                                          ? 'bg-red-500/10 text-red-500 border-red-500/20'
-                                                          : ''}"
-                                                >{log.method}</span
+                                                    <span
+                                                        class="text-[11px] font-bold text-slate-600 dark:text-slate-400"
+                                                    >
+                                                        {log.latency || 0}ms
+                                                    </span>
+                                                    {#if (log.latency || 0) > 500}
+                                                        <span
+                                                            class="size-1.5 rounded-full bg-amber-500 animate-pulse"
+                                                            title="Slow response"
+                                                        ></span>
+                                                    {/if}
+                                                </div>
+                                            </td>
+                                            <td
+                                                class="px-4 py-4 text-[11px] text-slate-500 dark:text-slate-400 font-medium text-right"
                                             >
-                                        </td>
-                                        <td class="p-4">
+                                                {formatRelativeTime(
+                                                    log.timestamp,
+                                                )}
+                                            </td>
+                                        </tr>
+                                    {/each}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Mobile Card View -->
+                        <div class="flex flex-col gap-3 md:hidden">
+                            {#each recentLogs as log}
+                                <div
+                                    class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md group flex items-center justify-between gap-4"
+                                >
+                                    <div
+                                        class="flex items-center gap-4 flex-1 min-w-0"
+                                    >
+                                        <!-- Method Indicator -->
+                                        <div
+                                            class="size-10 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 border {log.method ===
+                                            'GET'
+                                                ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                                                : log.method === 'POST'
+                                                  ? 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                                                  : log.method === 'PUT' ||
+                                                      log.method === 'PATCH'
+                                                    ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+                                                    : log.method === 'DELETE'
+                                                      ? 'bg-red-500/10 text-red-500 border-red-500/20'
+                                                      : 'bg-slate-500/10 text-slate-500 border-slate-500/20'}"
+                                        >
+                                            {log.method}
+                                        </div>
+
+                                        <!-- Info -->
+                                        <div
+                                            class="flex flex-col gap-1 min-w-0"
+                                        >
+                                            <div
+                                                class="flex items-center gap-2"
+                                            >
+                                                {#if log.application}
+                                                    <span
+                                                        class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 uppercase"
+                                                    >
+                                                        {log.application}
+                                                    </span>
+                                                {/if}
+                                                <span
+                                                    class="text-xs text-slate-400 dark:text-slate-500 font-medium"
+                                                >
+                                                    {formatRelativeTime(
+                                                        log.timestamp,
+                                                    )}
+                                                </span>
+                                            </div>
+                                            <h4
+                                                class="text-sm font-bold text-slate-800 dark:text-slate-100 truncate"
+                                                title={log.endpointName}
+                                            >
+                                                {log.endpointName}
+                                            </h4>
+                                            <p
+                                                class="text-[10px] text-slate-400 dark:text-slate-500 font-mono truncate"
+                                                title={log.url}
+                                            >
+                                                {log.url}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Result & Latency -->
+                                    <div
+                                        class="flex flex-col items-end gap-2 shrink-0"
+                                    >
+                                        <div class="flex items-center gap-2">
                                             <span
-                                                class="px-2 py-1 rounded text-[11px] font-bold uppercase {getStatusColor(
+                                                class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase {isSuccessfulLog(
+                                                    log,
+                                                )
+                                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
+                                                    : 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'}"
+                                            >
+                                                {getDisplayResult(log)}
+                                            </span>
+                                            <span
+                                                class="px-2 py-0.5 rounded text-[10px] font-black uppercase {getStatusColor(
                                                     log,
                                                 )}"
                                             >
                                                 {log.statusCode || log.status}
                                             </span>
-                                        </td>
-                                        <td class="p-4">
+                                        </div>
+                                        <div class="flex items-center gap-1.5">
                                             <span
-                                                class="px-2 py-1 text-[10px] font-bold rounded-full uppercase {isSuccessfulLog(
-                                                    log,
-                                                )
-                                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
-                                                    : 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'}"
-                                                title={JSON.stringify(
-                                                    log.responseData,
-                                                )}
+                                                class="text-[11px] font-bold text-slate-600 dark:text-slate-400"
                                             >
-                                                {getDisplayResult(log)}
+                                                {log.latency || 0}ms
                                             </span>
-                                        </td>
-                                        <td class="p-4 whitespace-nowrap">
-                                            <div
-                                                class="flex items-center gap-1.5"
-                                            >
+                                            {#if (log.latency || 0) > 500}
                                                 <span
-                                                    class="text-xs font-medium text-slate-600 dark:text-slate-300"
-                                                >
-                                                    {log.latency || 0}ms
-                                                </span>
-                                                {#if (log.latency || 0) > 500}
-                                                    <span
-                                                        class="w-1.5 h-1.5 rounded-full bg-amber-500"
-                                                        title="Slow response"
-                                                    ></span>
-                                                {/if}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                {:else}
-                                    <tr>
-                                        <td
-                                            colspan="7"
-                                            class="p-8 text-center text-slate-400 dark:text-slate-500"
-                                        >
-                                            No recent activity found.
-                                        </td>
-                                    </tr>
-                                {/each}
-                            </tbody>
-                        </table>
+                                                    class="size-1.5 rounded-full bg-amber-500 animate-pulse"
+                                                    title="Slow response"
+                                                ></span>
+                                            {/if}
+                                        </div>
+                                    </div>
+                                </div>
+                            {/each}
+                        </div>
                     </div>
+                {:else}
                     <div
-                        class="p-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex justify-center"
+                        class="bg-white dark:bg-slate-900 p-12 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center"
                     >
-                        <button
-                            onclick={() => goto("/recent-activity")}
-                            class="text-sm text-primary font-medium hover:text-slate-900 dark:hover:text-white transition-colors"
-                            >View full history</button
+                        <span
+                            class="material-symbols-outlined text-slate-300 dark:text-slate-700 text-4xl mb-2"
+                            >history</span
                         >
+                        <p class="text-slate-400 dark:text-slate-500 text-sm">
+                            No recent activity found.
+                        </p>
                     </div>
+                {/if}
+
+                <!-- Footer Action -->
+                <div class="flex justify-center mt-2">
+                    <button
+                        onclick={() => goto("/recent-activity")}
+                        class="text-sm text-primary font-bold hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-2 group"
+                    >
+                        View full history
+                        <span
+                            class="material-symbols-outlined text-[18px] group-hover:translate-x-0.5 transition-transform"
+                            >arrow_forward</span
+                        >
+                    </button>
                 </div>
             </div>
         {/if}
