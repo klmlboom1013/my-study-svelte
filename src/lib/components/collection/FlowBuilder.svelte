@@ -10,6 +10,7 @@
     import EndpointSidebar from "./EndpointSidebar.svelte";
     import CollectionStepEditor from "./CollectionStepEditor.svelte";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
     import type { Endpoint } from "$lib/types/endpoint";
 
     interface Props {
@@ -29,6 +30,9 @@
     let isBookmarked = $state(false);
     let color = $state("#3b82f6");
     let icon = $state("folder");
+
+    // Alert Modal State
+    let isAlertOpen = $state(false);
 
     $effect(() => {
         name = collection?.name || "";
@@ -144,7 +148,7 @@
 
     async function handleSave() {
         if (!name) {
-            alert("Please enter a collection name.");
+            isAlertOpen = true;
             return;
         }
 
@@ -384,6 +388,13 @@
         </main>
     </div>
 </div>
+
+<AlertModal
+    bind:isOpen={isAlertOpen}
+    title="Validation Error"
+    message="Please enter a collection name."
+    type="alert"
+/>
 
 <style>
     /* Prevent body scroll when FlowBuilder is active */

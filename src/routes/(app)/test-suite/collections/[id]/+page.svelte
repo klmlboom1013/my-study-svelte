@@ -101,7 +101,7 @@
     }
 
     let isPresetDropdownOpen = $state(false);
-    let presetContainerRef: HTMLDivElement;
+    let presetContainerRef = $state<HTMLDivElement>();
 
     function togglePresetDropdown() {
         isPresetDropdownOpen = !isPresetDropdownOpen;

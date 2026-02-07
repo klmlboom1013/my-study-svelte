@@ -23,6 +23,7 @@
     import FullLoading from "$lib/components/ui/FullLoading.svelte";
     import { executionService } from "$lib/features/execution/services/executionService";
     import { collectionExecutionService } from "$lib/features/execution/services/collectionExecutionService";
+    import { syncService } from "$lib/features/drive/services/syncService";
 
     let { children } = $props();
 
@@ -87,74 +88,8 @@
                                 isFullLoading = true;
                                 loadingMessage =
                                     "Restoring all data from Google Drive...";
-                                const accessToken = state.accessToken as string;
 
-                                // 1. Restore Profile
-                                const profile =
-                                    await driveService.loadProfile(accessToken);
-                                if (profile) {
-                                    profile.restoreDateTime =
-                                        new Date().toISOString();
-                                    profileStore.updateProfile(profile);
-                                }
-
-                                // 2. Restore Settings
-                                const settings =
-                                    await driveService.loadSettings(
-                                        accessToken,
-                                    );
-                                if (settings) {
-                                    settingsStore.load(settings);
-                                }
-
-                                // 3. Restore Endpoints
-                                const endpoints =
-                                    await driveService.loadEndpoints(
-                                        accessToken,
-                                    );
-                                if (endpoints) {
-                                    endpointService.importEndpoints(endpoints);
-                                }
-
-                                // 4. Restore Execution History (Presets)
-                                const history =
-                                    await driveService.loadExecutionHistory(
-                                        accessToken,
-                                    );
-                                if (history) {
-                                    executionService.importHistory(history);
-                                }
-
-                                // 5. Restore Execution Logs
-                                const logs =
-                                    await driveService.loadExecutionLogs(
-                                        accessToken,
-                                    );
-                                if (logs) {
-                                    executionService.importExecutionLogs(logs);
-                                }
-
-                                // 6. Restore Collection Execution History (Presets)
-                                const collectionHistory =
-                                    await driveService.loadCollectionExecutionHistory(
-                                        accessToken,
-                                    );
-                                if (collectionHistory) {
-                                    collectionExecutionService.importHistory(
-                                        collectionHistory,
-                                    );
-                                }
-
-                                // 7. [NEW] Scavenge individual collection presets for migration
-                                const individualHistory =
-                                    await driveService.scavengeIndividualCollectionPresets(
-                                        accessToken,
-                                    );
-                                if (Object.keys(individualHistory).length > 0) {
-                                    collectionExecutionService.importHistory(
-                                        individualHistory,
-                                    );
-                                }
+                                await syncService.forceRestore();
 
                                 console.log("Full data restored from Drive");
                                 showAlert(
@@ -203,8 +138,11 @@
                 } catch (e: any) {
                     console.error("Auto-Restore flow failed", e);
                     if (e.message && e.message.includes("401")) {
-                        disconnectGoogle();
-                        checkAndPromptGoogleConnect();
+                        console.log(
+                            "Token expired, triggering auto-refresh...",
+                        );
+                        disconnectGoogle(); // Clear the expired token
+                        handleGoogleConnect(); // Prompt for re-auth
                     }
                 }
             }
@@ -263,6 +201,18 @@
             unsubscribe();
             profileUnsub();
         };
+    });
+
+    // Global Alert Listener for stores
+    import { appStateStore } from "$lib/stores/appStateStore";
+    $effect(() => {
+        if ($appStateStore.globalAlert) {
+            const { title, message, type, onConfirm } =
+                $appStateStore.globalAlert;
+            showAlert(title, message, type || "alert", onConfirm);
+            // Clear the alert in the store so it doesn't re-trigger
+            appStateStore.update((s) => ({ ...s, globalAlert: null }));
+        }
     });
 
     function checkAndPromptGoogleConnect() {

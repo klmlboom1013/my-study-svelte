@@ -293,7 +293,8 @@ export const driveService = {
                         mergedHistory[data.collectionId] = {
                             collectionId: data.collectionId,
                             presets: data.presets,
-                            lastUsed: data.lastUsed || []
+                            lastUsed: data.lastUsed || [],
+                            selectedDashboardPresetId: data.selectedDashboardPresetId
                         };
                     }
                 } catch (err) {

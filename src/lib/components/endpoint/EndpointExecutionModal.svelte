@@ -38,9 +38,7 @@
         Check,
         ArrowUp,
         RotateCcw,
-        CloudDownload,
         X,
-        CloudUpload,
         Bookmark,
         Trash2,
     } from "lucide-svelte";
@@ -87,8 +85,6 @@
     let showSyncAlert = $state(false);
     let syncAlertMessage = $state("");
     let syncAlertTitle = $state("");
-    let isBackingUp = $state(false);
-    let isRestoring = $state(false);
 
     let isButtonInView = $state(true);
 
@@ -722,42 +718,6 @@
         );
     }
 
-    // Sync Handlers
-    async function handleSyncAction(action: "backup" | "restore") {
-        if (!$authStore.accessToken) {
-            try {
-                await loginWithGoogle();
-                if (!$authStore.accessToken) return;
-            } catch (e) {
-                console.error("Login failed", e);
-                return;
-            }
-        }
-        try {
-            if (action === "backup") {
-                isBackingUp = true;
-                await syncService.saveToDrive();
-                syncAlertTitle = "Backup Successful";
-                syncAlertMessage = "Backup completed!";
-            } else {
-                isRestoring = true;
-                await syncService.loadFromDrive($authStore.accessToken);
-                syncAlertTitle = "Restore Successful";
-                syncAlertMessage =
-                    "Restore completed! (Re-open modal to see updates)";
-            }
-        } catch (e: any) {
-            if (e.message?.includes("401")) disconnectGoogle();
-            syncAlertTitle = "Action Failed";
-            syncAlertMessage = "Error: " + (e.message || e);
-        } finally {
-            isBackingUp = isRestoring = false;
-            showSyncAlert = true;
-        }
-    }
-
-    // Observer for Header visibility removed
-
     // FAB State
     let isFabMenuOpen = $state(false);
     let isPresetMenuOpen = $state(false);
@@ -796,28 +756,6 @@
                     title="Scroll to Top"
                 >
                     <ArrowUp size={16} />
-                </button>
-                <button
-                    onclick={() => {
-                        handleSyncAction("restore");
-                        isFabMenuOpen = false;
-                    }}
-                    transition:slide={{ axis: "y", duration: 200 }}
-                    class="h-9 w-9 rounded-full shadow-lg bg-indigo-50 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center hover:bg-indigo-100 dark:hover:bg-slate-700 border border-indigo-200 dark:border-slate-700"
-                    title="Restore from Drive"
-                >
-                    <CloudDownload size={16} />
-                </button>
-                <button
-                    onclick={() => {
-                        handleSyncAction("backup");
-                        isFabMenuOpen = false;
-                    }}
-                    transition:slide={{ axis: "y", duration: 200 }}
-                    class="h-9 w-9 rounded-full shadow-lg bg-emerald-50 dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-slate-700 border border-emerald-200 dark:border-slate-700"
-                    title="Backup to Drive"
-                >
-                    <CloudUpload size={16} />
                 </button>
                 <button
                     onclick={() => {
@@ -973,12 +911,8 @@
             {presets}
             {isExecuting}
             {executionStage}
-            {isBackingUp}
-            {isRestoring}
             isMobile={window.innerWidth < 768}
             bind:isButtonInView
-            onBackup={() => handleSyncAction("backup")}
-            onRestore={() => handleSyncAction("restore")}
             onLoadPreset={(p: ExecutionPreset) => {
                 const base = initializeValues(endpoint.requestData);
                 requestValues = { ...base, ...p.values };

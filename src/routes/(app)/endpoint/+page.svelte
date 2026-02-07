@@ -4,7 +4,6 @@
     import { page } from "$app/stores";
     import { endpointService } from "$lib/features/endpoints/services/endpointService";
     import type { Endpoint } from "$lib/types/endpoint";
-    import { driveService } from "$lib/features/drive/services/driveService";
     import {
         authStore,
         loginWithGoogle,
@@ -253,172 +252,6 @@
             },
         );
     }
-
-    let syncState = $state<"idle" | "backup" | "restore">("idle");
-
-    async function handleDriveBackup() {
-        if (syncState !== "idle") return;
-
-        let token = $authStore.accessToken;
-
-        // If not logged in or no token, try login first
-        if (!token) {
-            try {
-                const result = await loginWithGoogle();
-                token = result.token;
-            } catch (error) {
-                showAlert("Sync Error", "Google Login failed.");
-                return;
-            }
-        }
-
-        if (!token) return;
-
-        try {
-            syncState = "backup";
-            // 1. Backup Endpoints
-            const dataToSave = endpointService.getEndpoints();
-            await driveService.saveEndpoints(token, dataToSave);
-
-            // 2. Backup Execution History (Presets)
-            const historyToSave = executionService.getAllHistory();
-            await driveService.saveExecutionHistory(token, historyToSave);
-
-            showAlert(
-                "Success",
-                "Backup successful! (Endpoints and Presets saved)",
-            );
-        } catch (error: any) {
-            console.error(error);
-            if (
-                error.message.includes("[401]") ||
-                error.message.includes("401")
-            ) {
-                showAlert(
-                    "Authentication Expired",
-                    "Google Drive session has expired. Would you like to reconnect and retry?",
-                    "confirm",
-                    async () => {
-                        try {
-                            const result = await loginWithGoogle();
-                            if (result.token) {
-                                syncState = "backup";
-                                const dataToSave =
-                                    endpointService.getEndpoints();
-                                await driveService.saveEndpoints(
-                                    result.token,
-                                    dataToSave,
-                                );
-                                showAlert("Success", "Backup successful!");
-                            }
-                        } catch (retryError) {
-                            console.error("Retry failed:", retryError);
-                            showAlert(
-                                "Error",
-                                "Retry failed. Please try again later.",
-                            );
-                        } finally {
-                            syncState = "idle";
-                        }
-                    },
-                );
-                return;
-            }
-            showAlert("Error", `Backup failed: ${error.message}`);
-        } finally {
-            syncState = "idle";
-        }
-    }
-
-    async function handleDriveRestore() {
-        if (syncState !== "idle") return;
-
-        showAlert(
-            "Restore Endpoints",
-            "This will overwrite your current local endpoints. Continue?",
-            "confirm",
-            async () => {
-                let token = $authStore.accessToken;
-                if (!token) {
-                    try {
-                        const result = await loginWithGoogle();
-                        token = result.token;
-                    } catch (error) {
-                        showAlert("Sync Error", "Google Login failed.");
-                        return;
-                    }
-                }
-                if (!token) return;
-
-                try {
-                    syncState = "restore";
-                    const data = await driveService.loadEndpoints(token);
-                    if (data) {
-                        endpointService.importEndpoints(data);
-
-                        // Also restore Execution History (Presets)
-                        const historyData =
-                            await driveService.loadExecutionHistory(token);
-                        if (historyData) {
-                            executionService.importHistory(historyData);
-                        }
-
-                        endpoints = endpointService.getEndpoints();
-                        showAlert(
-                            "Success",
-                            "Restore successful! (Endpoints and Presets restored)",
-                        );
-                    } else {
-                        showAlert("Info", "No backup found.");
-                    }
-                } catch (error: any) {
-                    console.error(error);
-                    if (
-                        error.message.includes("[401]") ||
-                        error.message.includes("401")
-                    ) {
-                        showAlert(
-                            "Authentication Expired",
-                            "Google Drive session has expired. Would you like to reconnect and retry?",
-                            "confirm",
-                            async () => {
-                                try {
-                                    const result = await loginWithGoogle();
-                                    if (result.token) {
-                                        syncState = "restore";
-                                        const data =
-                                            await driveService.loadEndpoints(
-                                                result.token,
-                                            );
-                                        if (data) {
-                                            endpointService.importEndpoints(
-                                                data,
-                                            );
-                                            endpoints =
-                                                endpointService.getEndpoints();
-                                            showAlert(
-                                                "Success",
-                                                "Restore successful!",
-                                            );
-                                        }
-                                    }
-                                } catch (retryError) {
-                                    console.error("Retry failed:", retryError);
-                                    showAlert("Error", "Retry failed.");
-                                } finally {
-                                    syncState = "idle";
-                                }
-                            },
-                        );
-                        return;
-                    }
-                    showAlert("Error", `Restore failed: ${error.message}`);
-                } finally {
-                    syncState = "idle";
-                }
-            },
-        );
-    }
 </script>
 
 <AlertModal
@@ -438,49 +271,6 @@
 <div class="max-w-7xl mx-auto py-8 px-6">
     <Breadcrumbs items={breadcrumbItems} />
     <div class="mb-6">
-        {#snippet syncButtons()}
-            {#if !isReadOnly}
-                <button
-                    onclick={handleDriveBackup}
-                    disabled={syncState !== "idle" ||
-                        $appStateStore.isPageLocked}
-                    class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors"
-                >
-                    {#if syncState === "backup"}
-                        <span
-                            class="material-symbols-outlined text-[18px] animate-spin"
-                            >sync</span
-                        >
-                        <span>Wait...</span>
-                    {:else}
-                        <span class="material-symbols-outlined text-[18px]"
-                            >cloud_upload</span
-                        >
-                        <span>Backup</span>
-                    {/if}
-                </button>
-                <button
-                    onclick={handleDriveRestore}
-                    disabled={syncState !== "idle" ||
-                        $appStateStore.isPageLocked}
-                    class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors"
-                >
-                    {#if syncState === "restore"}
-                        <span
-                            class="material-symbols-outlined text-[18px] animate-spin"
-                            >sync</span
-                        >
-                        <span>Wait...</span>
-                    {:else}
-                        <span class="material-symbols-outlined text-[18px]"
-                            >cloud_download</span
-                        >
-                        <span>Restore</span>
-                    {/if}
-                </button>
-            {/if}
-        {/snippet}
-
         <div class="mb-6">
             <div class="flex items-end justify-between gap-4 mb-4 md:mb-6">
                 <div>
@@ -507,13 +297,7 @@
                             <span>New Endpoint</span>
                         </button>
                     {/if}
-                    {@render syncButtons()}
                 </div>
-            </div>
-
-            <!-- Mobile Buttons -->
-            <div class="flex md:hidden items-center gap-2">
-                {@render syncButtons()}
             </div>
         </div>
     </div>

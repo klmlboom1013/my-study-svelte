@@ -37,6 +37,7 @@ export interface CollectionExecutionHistory {
         steps: CollectionStepExecution[];
     };
     presets: CollectionExecutionPreset[];
+    selectedDashboardPresetId?: string; // Persist selected preset for dashboard
 }
 
 const STORAGE_KEY = "collection_execution_history";
@@ -116,6 +117,18 @@ export const collectionExecutionService = {
     },
 
     /**
+     * Save selected preset for dashboard
+     */
+    saveDashboardPreset: (collectionId: string, presetId: string): void => {
+        const historyMap = collectionExecutionService._getAllHistory();
+        if (!historyMap[collectionId]) {
+            historyMap[collectionId] = { collectionId, presets: [] };
+        }
+        historyMap[collectionId].selectedDashboardPresetId = presetId;
+        collectionExecutionService._saveAllHistory(historyMap);
+    },
+
+    /**
      * Clear all collection execution history
      */
     clearAll: (): void => {
@@ -131,12 +144,40 @@ export const collectionExecutionService = {
     },
 
     /**
-     * Import history from Sync
+     * Import history from Sync (Overwrites entire history)
      */
     importHistory: (historyMap: Record<string, CollectionExecutionHistory>): void => {
         if (!historyMap) return;
         collectionExecutionService._saveAllHistory(historyMap);
-        notifyListeners();
+    },
+
+    /**
+     * Merge history from Sync (Preserves existing data if not in incoming)
+     */
+    mergeHistory: (historyMap: Record<string, CollectionExecutionHistory>): void => {
+        if (!historyMap) return;
+        const current = collectionExecutionService._getAllHistory();
+        const merged = { ...current };
+
+        Object.entries(historyMap).forEach(([id, data]) => {
+            if (!merged[id]) {
+                merged[id] = data;
+            } else {
+                // Merge presets and other fields selectively
+                merged[id] = {
+                    ...merged[id],
+                    // Only update these if incoming data has them
+                    ...(data.selectedDashboardPresetId ? { selectedDashboardPresetId: data.selectedDashboardPresetId } : {}),
+                    ...(data.lastUsed ? { lastUsed: data.lastUsed } : {}),
+                    presets: [...(merged[id].presets || []), ...(data.presets || [])].reduce((acc, p) => {
+                        if (!acc.find(x => x.id === p.id)) acc.push(p);
+                        return acc;
+                    }, [] as any[])
+                };
+            }
+        });
+
+        collectionExecutionService._saveAllHistory(merged);
     },
 
     /**

@@ -1,6 +1,7 @@
 <script lang="ts">
     import logo from "$lib/assets/favicon.svg";
     import { onMount } from "svelte";
+    import { fade } from "svelte/transition";
     import { page } from "$app/stores";
     import { goto } from "$app/navigation";
     import Tooltip from "$lib/components/ui/Tooltip.svelte";
@@ -10,6 +11,7 @@
         initAuth,
         authStore,
         loginWithGoogle,
+        disconnectGoogle,
         checkDriveConnection,
     } from "$lib/features/auth/services/authService";
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
@@ -48,12 +50,24 @@
     let headerSearchTerm = $state("");
     let isMobile = $state(false);
     let showDriveAlert = $state(false);
+    let showSyncMenu = $state(false);
+    let isSyncing = $state(false);
+    let showRestoreConfirm = $state(false);
 
     function handleNewEndpoint() {
         if (checkDriveConnection()) {
             goto("/endpoint/new");
         } else {
             showDriveAlert = true;
+        }
+    }
+
+    // Close sync menu on outside click
+    function handleSyncOutsideClick(event: MouseEvent) {
+        const target = event.target as HTMLElement;
+        const container = document.getElementById("sync-menu-container");
+        if (showSyncMenu && container && !container.contains(target)) {
+            showSyncMenu = false;
         }
     }
 
@@ -194,6 +208,8 @@
         };
     });
 </script>
+
+<svelte:window onclick={handleSyncOutsideClick} />
 
 <header
     class="flex items-center justify-between whitespace-nowrap border-b border-slate-200 dark:border-border-dark px-4 py-3 bg-white/95 dark:bg-background-dark/95 backdrop-blur z-20"
@@ -356,29 +372,112 @@
                     </button>
                 </Tooltip>
 
-                <!-- Sync Status Indicator -->
-                {#if $authStore.accessToken}
-                    <div
-                        class="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800/30"
-                        title="Google Drive Sync Active"
-                    >
-                        <span class="material-symbols-outlined text-[16px]"
-                            >cloud_done</span
+                <!-- Sync Status Indicator & Manual Controls -->
+                <div
+                    class="relative inline-block text-left"
+                    id="sync-menu-container"
+                >
+                    {#if $authStore.accessToken}
+                        <button
+                            onclick={() => (showSyncMenu = !showSyncMenu)}
+                            class="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800/30 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors cursor-pointer"
+                            title="Sync Menu"
                         >
-                        <span class="text-xs font-bold">Synced</span>
-                    </div>
-                {:else}
-                    <button
-                        onclick={handleGoogleLogin}
-                        class="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-                        title="Click to Connect Google Drive"
-                    >
-                        <span class="material-symbols-outlined text-[16px]"
-                            >cloud_off</span
+                            <span
+                                class="material-symbols-outlined text-[16px] {isSyncing
+                                    ? 'animate-spin'
+                                    : ''}"
+                                >{isSyncing ? "sync" : "cloud_done"}</span
+                            >
+                            <span class="text-xs font-bold">Synced</span>
+                            <span class="material-symbols-outlined text-[14px]"
+                                >arrow_drop_down</span
+                            >
+                        </button>
+                    {:else}
+                        <button
+                            onclick={handleGoogleLogin}
+                            class="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                            title="Click to Connect Google Drive"
                         >
-                        <span class="text-xs font-bold">Not Synced</span>
-                    </button>
-                {/if}
+                            <span class="material-symbols-outlined text-[16px]"
+                                >cloud_off</span
+                            >
+                            <span class="text-xs font-bold">Not Synced</span>
+                        </button>
+                    {/if}
+
+                    {#if showSyncMenu && $authStore.accessToken}
+                        <div
+                            class="absolute right-0 mt-2 w-48 bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-xl shadow-xl py-2 z-50 origin-top-right overflow-hidden"
+                            transition:fade={{ duration: 100 }}
+                        >
+                            <div
+                                class="px-3 py-2 border-b border-slate-100 dark:border-border-dark/50 mb-1"
+                            >
+                                <p
+                                    class="text-[10px] font-bold text-slate-400 uppercase tracking-wider"
+                                >
+                                    Cloud Sync
+                                </p>
+                            </div>
+
+                            <button
+                                onclick={async () => {
+                                    showSyncMenu = false;
+                                    try {
+                                        isSyncing = true;
+                                        await syncService.forceBackup();
+                                        // Optional: toast or alert success
+                                    } finally {
+                                        isSyncing = false;
+                                    }
+                                }}
+                                disabled={isSyncing}
+                                class="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 transition-colors"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-[18px]"
+                                    >backup</span
+                                >
+                                Back up now
+                            </button>
+
+                            <button
+                                onclick={() => {
+                                    showSyncMenu = false;
+                                    showRestoreConfirm = true;
+                                }}
+                                disabled={isSyncing}
+                                class="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 transition-colors"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-[18px]"
+                                    >restore</span
+                                >
+                                Restore data
+                            </button>
+
+                            <div
+                                class="h-px bg-slate-100 dark:bg-border-dark/50 my-1"
+                            ></div>
+
+                            <button
+                                onclick={() => {
+                                    showSyncMenu = false;
+                                    disconnectGoogle();
+                                }}
+                                class="w-full text-left px-3 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center gap-2 transition-colors"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-[18px]"
+                                    >link_off</span
+                                >
+                                Disconnect
+                            </button>
+                        </div>
+                    {/if}
+                </div>
 
                 <div
                     class="w-px h-4 bg-slate-200 dark:bg-border-dark mx-1"
@@ -397,4 +496,19 @@
     message="Google Drive is not connected. Please connect your Google account to enable creating new endpoints and ensure your data is backed up."
     confirmText="Connect Now"
     onConfirm={handleGoogleLogin}
+/>
+
+<AlertModal
+    bind:isOpen={showRestoreConfirm}
+    title="Restore Data"
+    message="Restore all data from Google Drive? Local changes might be overwritten."
+    type="confirm"
+    onConfirm={async () => {
+        try {
+            isSyncing = true;
+            await syncService.forceRestore();
+        } finally {
+            isSyncing = false;
+        }
+    }}
 />

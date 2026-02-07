@@ -14,9 +14,12 @@ export interface AuthUser {
     accessToken: string | null;
 }
 
+// Initial state from sessionStorage if available
+const savedToken = typeof window !== "undefined" ? sessionStorage.getItem("googleDriveAccessToken") : null;
+
 export const authStore = writable<AuthUser>({
     firebaseUser: null,
-    accessToken: null,
+    accessToken: savedToken,
 });
 
 // Initialize Auth State Listener
@@ -45,6 +48,10 @@ export const loginWithGoogle = async () => {
 
 
 
+        if (token) {
+            sessionStorage.setItem("googleDriveAccessToken", token);
+        }
+
         authStore.update((curr) => ({
             ...curr,
             firebaseUser: result.user,
@@ -61,6 +68,7 @@ export const loginWithGoogle = async () => {
 export const logout = async () => {
     try {
         await signOut(auth);
+        sessionStorage.removeItem("googleDriveAccessToken");
         authStore.set({ firebaseUser: null, accessToken: null });
     } catch (error) {
         console.error("Logout failed:", error);
@@ -68,6 +76,7 @@ export const logout = async () => {
 };
 
 export const disconnectGoogle = () => {
+    sessionStorage.removeItem("googleDriveAccessToken");
     authStore.update((curr) => ({
         ...curr,
         accessToken: null,

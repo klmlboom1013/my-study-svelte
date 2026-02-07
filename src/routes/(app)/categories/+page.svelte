@@ -4,7 +4,6 @@
     import { goto } from "$app/navigation";
     import { page } from "$app/stores";
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
-    import { driveService } from "$lib/features/drive/services/driveService";
     import {
         authStore,
         loginWithGoogle,
@@ -56,148 +55,6 @@
         onAlertConfirm = onConfirm;
         onAlertCancel = onCancel;
         isAlertOpen = true;
-    }
-
-    let syncState = $state<"idle" | "backup" | "restore">("idle");
-
-    async function handleDriveBackup() {
-        if (syncState !== "idle") return;
-
-        let token = $authStore.accessToken;
-
-        if (!token) {
-            try {
-                const result = await loginWithGoogle();
-                token = result.token;
-            } catch (error) {
-                showAlert("Sync Error", "Google Login failed.");
-                return;
-            }
-        }
-
-        if (!token) return;
-
-        try {
-            syncState = "backup";
-            const dataToSave = get(settingsStore);
-            await driveService.saveSettings(token, dataToSave);
-            showAlert(
-                "Success",
-                "Backup successful! (Saved to Google Drive App Data)",
-            );
-        } catch (error: any) {
-            console.error(error);
-            if (
-                error.message.includes("[401]") ||
-                error.message.includes("401")
-            ) {
-                showAlert(
-                    "Authentication Expired",
-                    "Google Drive session has expired. Would you like to reconnect and retry?",
-                    "confirm",
-                    async () => {
-                        try {
-                            const result = await loginWithGoogle();
-                            if (result.token) {
-                                syncState = "backup";
-                                const dataToSave = get(settingsStore);
-                                await driveService.saveSettings(
-                                    result.token,
-                                    dataToSave,
-                                );
-                                showAlert("Success", "Backup successful!");
-                            }
-                        } catch (retryError) {
-                            console.error("Retry failed:", retryError);
-                            showAlert(
-                                "Error",
-                                "Retry failed. Please try again later.",
-                            );
-                        } finally {
-                            syncState = "idle";
-                        }
-                    },
-                );
-                return;
-            }
-            showAlert("Error", `Backup failed: ${error.message}`);
-        } finally {
-            syncState = "idle";
-        }
-    }
-
-    async function handleDriveRestore() {
-        if (syncState !== "idle") return;
-
-        showAlert(
-            "Restore Settings",
-            "This will overwrite your local settings. Continue?",
-            "confirm",
-            async () => {
-                let token = $authStore.accessToken;
-                if (!token) {
-                    try {
-                        const result = await loginWithGoogle();
-                        token = result.token;
-                    } catch (error) {
-                        showAlert("Sync Error", "Google Login failed.");
-                        return;
-                    }
-                }
-                if (!token) return;
-
-                try {
-                    syncState = "restore";
-                    const data = await driveService.loadSettings(token);
-                    if (data) {
-                        settingsStore.load(data);
-                        showAlert("Success", "Restore successful!");
-                    } else {
-                        showAlert("Info", "No backup found.");
-                    }
-                } catch (error: any) {
-                    console.error(error);
-                    if (
-                        error.message.includes("[401]") ||
-                        error.message.includes("401")
-                    ) {
-                        showAlert(
-                            "Authentication Expired",
-                            "Google Drive session has expired. Would you like to reconnect and retry?",
-                            "confirm",
-                            async () => {
-                                try {
-                                    const result = await loginWithGoogle();
-                                    if (result.token) {
-                                        syncState = "restore";
-                                        const data =
-                                            await driveService.loadSettings(
-                                                result.token,
-                                            );
-                                        if (data) {
-                                            settingsStore.load(data);
-                                            showAlert(
-                                                "Success",
-                                                "Restore successful!",
-                                            );
-                                        }
-                                    }
-                                } catch (retryError) {
-                                    console.error("Retry failed:", retryError);
-                                    showAlert("Error", "Retry failed.");
-                                } finally {
-                                    syncState = "idle";
-                                }
-                            },
-                        );
-                        return;
-                    }
-                    showAlert("Error", `Restore failed: ${error.message}`);
-                } finally {
-                    syncState = "idle";
-                }
-            },
-        );
     }
 
     // Filtering logic similar to settings page
@@ -254,42 +111,6 @@
                     </button>
                 {/if}
             {/if}
-            <button
-                onclick={handleDriveBackup}
-                disabled={syncState !== "idle" || $appStateStore.isPageLocked}
-                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors"
-            >
-                {#if syncState === "backup"}
-                    <span
-                        class="material-symbols-outlined text-[18px] animate-spin"
-                        >sync</span
-                    >
-                    <span>Wait...</span>
-                {:else}
-                    <span class="material-symbols-outlined text-[18px]"
-                        >cloud_upload</span
-                    >
-                    <span>Backup</span>
-                {/if}
-            </button>
-            <button
-                onclick={handleDriveRestore}
-                disabled={syncState !== "idle" || $appStateStore.isPageLocked}
-                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors"
-            >
-                {#if syncState === "restore"}
-                    <span
-                        class="material-symbols-outlined text-[18px] animate-spin"
-                        >sync</span
-                    >
-                    <span>Wait...</span>
-                {:else}
-                    <span class="material-symbols-outlined text-[18px]"
-                        >cloud_download</span
-                    >
-                    <span>Restore</span>
-                {/if}
-            </button>
         {/snippet}
 
         <div class="flex items-end justify-between gap-4 mb-4 md:mb-6">

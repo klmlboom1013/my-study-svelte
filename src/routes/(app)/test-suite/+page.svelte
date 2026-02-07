@@ -26,11 +26,6 @@
         Filter,
         Loader2,
     } from "lucide-svelte";
-    import { driveService } from "$lib/features/drive/services/driveService";
-    import {
-        authStore,
-        loginWithGoogle,
-    } from "$lib/features/auth/services/authService";
     import { page } from "$app/stores";
     import { goto } from "$app/navigation";
     import ResultDetailModal from "$lib/components/test-suite/ResultDetailModal.svelte";
@@ -67,11 +62,9 @@
     let currentRunningCollectionId = $state<string | null>(null);
     let selectedResult = $state<CollectionTestResult | null>(null);
     let showResultModal = $state(false);
-    let selectedPresets = $state<Record<string, string>>({});
-    let isBackupLoading = $state(false);
-    let isRestoreLoading = $state(false);
     let openDropdownId = $state<string | null>(null);
     let unsubscribe: (() => void) | null = null;
+    let collectionHistoryMap = $state<Record<string, any>>({}); // Local cache for reactivity
 
     // Stats
     let totalRuns = $derived(results.length);
@@ -158,10 +151,29 @@
         unsubscribe = testResultService.onChange(() => {
             results = testResultService.getAllResults();
         });
+
+        const refreshHistory = () => {
+            const map: Record<string, any> = {};
+            $settingsStore.apiCollections?.forEach((c) => {
+                map[c.id] = collectionExecutionService.getHistory(c.id);
+            });
+            collectionHistoryMap = map;
+        };
+
+        refreshHistory();
+        const unSubHistory =
+            collectionExecutionService.onChange(refreshHistory);
+        const unSubSettings = settingsStore.subscribe(refreshHistory);
+
+        return () => {
+            if (unsubscribe) unsubscribe();
+            unSubHistory();
+            unSubSettings();
+        };
     });
 
     onDestroy(() => {
-        if (unsubscribe) unsubscribe();
+        // Handled by onMount return
     });
 
     function formatTime(timestamp: number) {
@@ -188,90 +200,6 @@
             },
         );
     }
-    async function handleBackup() {
-        let token = $authStore.accessToken;
-        if (!token) {
-            try {
-                const result = await loginWithGoogle();
-                token = result.token;
-            } catch (error) {
-                showAlert("Sync Error", "Google Login failed.");
-                return;
-            }
-        }
-        if (!token) return;
-
-        isBackupLoading = true;
-        try {
-            const presets = collectionExecutionService.getAllHistory();
-            const results = testResultService.getAllResults();
-
-            await driveService.saveCollectionExecutionHistory(token, presets);
-            await driveService.saveTestSuiteResults(token, results);
-
-            showAlert(
-                "Backup Successful",
-                "Test suite presets and history have been saved to Google Drive.",
-                "alert",
-            );
-        } catch (error: any) {
-            showAlert(
-                "Backup Error",
-                error.message || "Unknown error",
-                "alert",
-            );
-        } finally {
-            isBackupLoading = false;
-        }
-    }
-
-    async function handleRestore() {
-        let token = $authStore.accessToken;
-        if (!token) {
-            try {
-                const result = await loginWithGoogle();
-                token = result.token;
-            } catch (error) {
-                showAlert("Sync Error", "Google Login failed.");
-                return;
-            }
-        }
-        if (!token) return;
-
-        showAlert(
-            "Restore Data",
-            "Restore presets and history from Google Drive? This will overwrite your local data.",
-            "confirm",
-            async () => {
-                isRestoreLoading = true;
-                try {
-                    const presets =
-                        await driveService.loadCollectionExecutionHistory(
-                            token,
-                        );
-                    const history =
-                        await driveService.loadTestSuiteResults(token);
-
-                    if (presets)
-                        collectionExecutionService.importHistory(presets);
-                    if (history) testResultService.importResults(history);
-
-                    // Use URL parameter for success message after navigation
-                    const newUrl = new URL(window.location.href);
-                    newUrl.searchParams.set("restore", "success");
-                    window.location.href = newUrl.toString();
-                } catch (error: any) {
-                    showAlert(
-                        "Restore Error",
-                        error.message || "Unknown error",
-                        "alert",
-                    );
-                } finally {
-                    isRestoreLoading = false;
-                }
-            },
-        );
-    }
 
     function toggleDropdown(id: string, event: MouseEvent) {
         event.stopPropagation();
@@ -283,8 +211,9 @@
     }
 
     function selectPreset(collectionId: string, presetId: string) {
-        selectedPresets[collectionId] = presetId;
+        collectionExecutionService.saveDashboardPreset(collectionId, presetId);
         openDropdownId = null;
+        // The collectionExecutionService.onChange listener in onMount will refresh collectionHistoryMap
     }
 
     function runCollection(
@@ -353,7 +282,10 @@
                             c.name === s.name,
                     );
                     if (!collection) return null;
-                    const presetId = selectedPresets[collection.id] || "";
+                    const history =
+                        collectionHistoryMap[collection.id] ||
+                        collectionExecutionService.getHistory(collection.id);
+                    const presetId = history.selectedDashboardPresetId || "";
                     return `${collection.id}${presetId ? ":" + presetId : ""}`;
                 })
                 .filter(Boolean);
@@ -375,15 +307,9 @@
         }
     }
 
-    // Auto-select first preset for each collection if not selected
-    $effect(() => {
-        const summaries = collectionSummaries();
-        summaries.forEach((s) => {
-            if (s.presets && s.presets.length > 0 && !selectedPresets[s.id]) {
-                selectedPresets[s.id] = s.presets[0].id;
-            }
-        });
-    });
+    // [REMOVED] auto-select $effect to prevent race conditions during sync.
+    // Instead, the UI just shows the first preset if none is selected, or we can add a one-time init if needed.
+    // But for sync restoration, let's keep it clean.
 
     // Handle sequential execution queue from URL
     $effect(() => {
@@ -445,46 +371,6 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2 mt-4 md:mt-0">
-            <button
-                onclick={handleBackup}
-                disabled={isBackupLoading}
-                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors"
-                title="Backup to Google Drive"
-            >
-                {#if isBackupLoading}
-                    <span
-                        class="material-symbols-outlined text-[18px] animate-spin"
-                        >sync</span
-                    >
-                    <span>Wait...</span>
-                {:else}
-                    <span class="material-symbols-outlined text-[18px]"
-                        >cloud_upload</span
-                    >
-                    <span>Backup</span>
-                {/if}
-            </button>
-
-            <button
-                onclick={handleRestore}
-                disabled={isRestoreLoading}
-                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors"
-                title="Restore from Google Drive"
-            >
-                {#if isRestoreLoading}
-                    <span
-                        class="material-symbols-outlined text-[18px] animate-spin"
-                        >sync</span
-                    >
-                    <span>Wait...</span>
-                {:else}
-                    <span class="material-symbols-outlined text-[18px]"
-                        >cloud_download</span
-                    >
-                    <span>Restore</span>
-                {/if}
-            </button>
-
             <button
                 onclick={handleClearHistory}
                 class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-rose-600 bg-white border border-rose-200 rounded-lg hover:bg-rose-50 dark:bg-slate-800 dark:text-rose-400 dark:border-rose-500/20 dark:hover:bg-rose-500/10 shadow-sm transition-colors"
@@ -839,70 +725,91 @@
                                         >
                                     </div>
                                     <div class="relative">
-                                        <button
-                                            type="button"
-                                            onclick={(e) =>
-                                                toggleDropdown(summary.id, e)}
-                                            class="w-full flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 text-[11px] font-bold text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer hover:border-indigo-500/50"
-                                        >
-                                            <span class="truncate pr-2">
-                                                {summary.presets.find(
-                                                    (p) =>
-                                                        p.id ===
-                                                        selectedPresets[
-                                                            summary.id
-                                                        ],
-                                                )?.name || "Select Preset"}
-                                            </span>
-                                            <ChevronDown
-                                                size={14}
-                                                class="text-slate-400 transition-transform duration-200 {openDropdownId ===
-                                                summary.id
-                                                    ? 'rotate-180'
-                                                    : ''}"
-                                            />
-                                        </button>
+                                        {#if $settingsStore.apiCollections?.find((c) => c.id === summary.id)}
+                                            {@const collection =
+                                                $settingsStore.apiCollections.find(
+                                                    (c) => c.id === summary.id,
+                                                )!}
+                                            {#if collection.steps && collection.steps.length > 0}
+                                                {@const currentHistory =
+                                                    collectionHistoryMap[
+                                                        collection.id
+                                                    ] ||
+                                                    collectionExecutionService.getHistory(
+                                                        collection.id,
+                                                    )}
+                                                {@const selectedPresetId =
+                                                    currentHistory?.selectedDashboardPresetId}
+                                                {@const availablePresets =
+                                                    currentHistory?.presets ||
+                                                    []}
+                                                {@const selectedPreset =
+                                                    availablePresets.find(
+                                                        (p: any) =>
+                                                            p.id ===
+                                                            selectedPresetId,
+                                                    ) || availablePresets[0]}
 
-                                        {#if openDropdownId === summary.id}
-                                            <div
-                                                class="absolute z-50 left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl overflow-hidden min-w-[120px]"
-                                                transition:fade={{
-                                                    duration: 100,
-                                                }}
-                                            >
-                                                <div
-                                                    class="max-h-40 overflow-y-auto py-1"
+                                                <button
+                                                    onclick={(e) =>
+                                                        toggleDropdown(
+                                                            collection.id,
+                                                            e,
+                                                        )}
+                                                    class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all border border-slate-200 dark:border-slate-700"
                                                 >
-                                                    {#each summary.presets as preset}
-                                                        <button
-                                                            type="button"
-                                                            onclick={(e) => {
-                                                                e.stopPropagation();
-                                                                selectPreset(
-                                                                    summary.id,
-                                                                    preset.id,
-                                                                );
-                                                            }}
-                                                            class="w-full flex items-center justify-between px-3 py-2 text-[11px] font-semibold text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50 {selectedPresets[
-                                                                summary.id
-                                                            ] === preset.id
-                                                                ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-500/10'
-                                                                : 'text-slate-600 dark:text-slate-300'}"
+                                                    <span class="opacity-60"
+                                                        >Preset:</span
+                                                    >
+                                                    <span
+                                                        class="truncate max-w-[120px]"
+                                                        >{selectedPreset?.name ||
+                                                            "Select Preset"}</span
+                                                    >
+                                                    <ChevronDown
+                                                        class="size-3 text-slate-400"
+                                                    />
+                                                </button>
+
+                                                {#if openDropdownId === collection.id}
+                                                    <div
+                                                        class="absolute bottom-full left-0 mb-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-2 z-50 overflow-hidden"
+                                                        transition:scale={{
+                                                            duration: 150,
+                                                            start: 0.95,
+                                                        }}
+                                                    >
+                                                        <div
+                                                            class="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-700/50 mb-1"
                                                         >
-                                                            <span
-                                                                class="truncate"
-                                                                >{preset.name}</span
+                                                            Available Presets
+                                                        </div>
+                                                        {#each availablePresets as preset}
+                                                            <button
+                                                                onclick={() =>
+                                                                    selectPreset(
+                                                                        collection.id,
+                                                                        preset.id,
+                                                                    )}
+                                                                class="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors {selectedPresetId ===
+                                                                preset.id
+                                                                    ? 'text-primary font-bold'
+                                                                    : 'text-slate-600 dark:text-slate-300'}"
                                                             >
-                                                            {#if selectedPresets[summary.id] === preset.id}
-                                                                <Check
-                                                                    size={12}
-                                                                    class="shrink-0 ml-2"
-                                                                />
-                                                            {/if}
-                                                        </button>
-                                                    {/each}
-                                                </div>
-                                            </div>
+                                                                <span
+                                                                    class="truncate"
+                                                                    >{preset.name}</span
+                                                                >
+                                                                {#if selectedPresetId === preset.id || (!selectedPresetId && availablePresets[0]?.id === preset.id)}
+                                                                    <Check
+                                                                        class="size-3"
+                                                                    />
+                                                                {/if}
+                                                            </button>
+                                                        {/each}
+                                                    </div>
+                                                {/if}
+                                            {/if}
                                         {/if}
                                     </div>
                                 </div>
@@ -912,15 +819,22 @@
                             class="p-4 bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between"
                         >
                             <button
-                                onclick={() =>
+                                onclick={() => {
+                                    const history =
+                                        collectionHistoryMap[summary.id] ||
+                                        collectionExecutionService.getHistory(
+                                            summary.id,
+                                        );
                                     runCollection(
                                         summary.id,
                                         true,
-                                        selectedPresets[summary.id],
-                                    )}
+                                        history.selectedDashboardPresetId,
+                                    );
+                                }}
                                 disabled={summary.presets &&
                                     summary.presets.length > 0 &&
-                                    !selectedPresets[summary.id]}
+                                    !collectionHistoryMap[summary.id]
+                                        ?.selectedDashboardPresetId}
                                 class="text-xs font-bold text-indigo-500 hover:text-indigo-600 flex items-center gap-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:grayscale"
                             >
                                 Execute Again
@@ -948,27 +862,19 @@
     show={showResultModal}
     result={selectedResult}
     onClose={() => (showResultModal = false)}
-    reRunDisabled={selectedResult
-        ? (() => {
-              const summaries = collectionSummaries();
-              const summary = summaries.find(
-                  (s: any) => s.id === selectedResult!.collectionId,
-              );
-              return !!(
-                  summary &&
-                  summary.presets &&
-                  summary.presets.length > 0 &&
-                  !selectedPresets[selectedResult!.collectionId]
-              );
-          })()
-        : false}
+    reRunDisabled={false}
     onReRun={() => {
         if (selectedResult) {
             showResultModal = false;
+            const history =
+                collectionHistoryMap[selectedResult.collectionId] ||
+                collectionExecutionService.getHistory(
+                    selectedResult.collectionId,
+                );
             runCollection(
                 selectedResult.collectionId,
                 true,
-                selectedPresets[selectedResult.collectionId],
+                history.selectedDashboardPresetId,
             );
         }
     }}

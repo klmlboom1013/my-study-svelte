@@ -152,67 +152,6 @@
         });
     }
 
-    let syncState = $state<"idle" | "backup" | "restore">("idle");
-
-    async function executeWithRetry(
-        operationName: string,
-        action: (token: string) => Promise<void>,
-        targetState: "backup" | "restore",
-    ) {
-        if (syncState !== "idle") return;
-        syncState = targetState;
-
-        let token = $authStore.accessToken;
-
-        try {
-            // First attempt
-            if (!token) {
-                // If no token immediately, try login first
-                const result = await loginWithGoogle();
-                token = result.token;
-            }
-
-            if (!token) throw new Error("Failed to retrieve access token.");
-
-            // Perform action
-            await action(token);
-        } catch (error: any) {
-            // Check for 401 Unauthorized or specific Drive API error indicating invalid credentials
-            const isAuthError =
-                error.message.includes("401") ||
-                error.message.includes("Invalid Credentials") ||
-                error.message.includes("unauthorized");
-
-            if (isAuthError) {
-                try {
-                    // Retry: Force login to get fresh token
-                    const result = await loginWithGoogle();
-                    token = result.token;
-
-                    if (!token)
-                        throw new Error(
-                            "Failed to retrieve access token on retry.",
-                        );
-
-                    // Retry action
-                    await action(token);
-                } catch (retryError: any) {
-                    console.error("Retry failed:", retryError);
-                    showAlert(
-                        `${operationName} Failed`,
-                        `Authentication failed. Please try logging in again.\nError: ${retryError.message}`,
-                    );
-                }
-            } else {
-                // Not an auth error, just fail
-                console.error(error);
-                showAlert(`${operationName} Failed`, `Error: ${error.message}`);
-            }
-        } finally {
-            syncState = "idle";
-        }
-    }
-
     function observerAction(
         node: HTMLElement,
         action: (node: HTMLElement) => any,
@@ -2111,90 +2050,6 @@
             }
         });
     }
-
-    async function handleBackupToDrive() {
-        if (!collection) return;
-        await executeWithRetry(
-            "Backup",
-            async (token) => {
-                const filename = `collection_presets_${collection.id}.json`;
-                const presetData = {
-                    collectionId: collection.id,
-                    presets: collectionPresets,
-                    savedAt: new Date().toISOString(),
-                };
-
-                const files = await driveService.listFiles(token, filename);
-                if (files.length > 0) {
-                    await driveService.updateFile(
-                        token,
-                        files[0].id,
-                        presetData,
-                    );
-                } else {
-                    await driveService.createFile(token, filename, presetData);
-                }
-                showAlert("Success", "Backup successful!");
-            },
-            "backup",
-        );
-    }
-
-    async function handleRestoreFromDrive() {
-        if (!collection) return;
-
-        const confirmed = await showConfirmPromise(
-            "Confirm Restore",
-            "This will merge presets from Google Drive into your local collection.\nExisting presets with the same name will be overwritten.\n\nAre you sure you want to continue?",
-        );
-
-        if (!confirmed) return;
-
-        await executeWithRetry(
-            "Restore",
-            async (token) => {
-                const filename = `collection_presets_${collection.id}.json`;
-                const files = await driveService.listFiles(token, filename);
-
-                if (files.length === 0) {
-                    throw new Error(
-                        "No backup file found for this collection.",
-                    );
-                }
-
-                const data = await driveService.downloadFile(
-                    token,
-                    files[0].id,
-                );
-                if (data && Array.isArray(data.presets)) {
-                    data.presets.forEach((p: any) => {
-                        const existing = collectionPresets.find(
-                            (ep) => ep.name === p.name,
-                        );
-                        if (existing) {
-                            collectionExecutionService.deletePreset(
-                                collection!.id,
-                                existing.id,
-                            );
-                        }
-                        collectionExecutionService.savePreset(
-                            collection!.id,
-                            p.name,
-                            p.steps,
-                        );
-                    });
-
-                    collectionPresets = collectionExecutionService.getHistory(
-                        collection.id,
-                    ).presets;
-                    showAlert("Success", "Restore successful!");
-                } else {
-                    throw new Error("Invalid backup file format.");
-                }
-            },
-            "restore",
-        );
-    }
 </script>
 
 <div class="max-w-7xl mx-auto py-8 px-4 pb-32">
@@ -2230,40 +2085,6 @@
                 </div>
 
                 <div class="flex flex-wrap items-center justify-end gap-3 mt-8">
-                    <!-- Backup & Restore Group -->
-                    <div
-                        class="grid grid-cols-2 md:flex items-center gap-2 w-full md:w-auto order-1"
-                    >
-                        <button
-                            onclick={handleBackupToDrive}
-                            disabled={syncState !== "idle" ||
-                                $appStateStore.isPageLocked}
-                            class="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed w-full md:w-auto"
-                        >
-                            {#if syncState === "backup"}
-                                <Loader2 size={16} class="animate-spin" />
-                                <span>Wait...</span>
-                            {:else}
-                                <CloudUpload size={16} />
-                                <span>Backup</span>
-                            {/if}
-                        </button>
-                        <button
-                            onclick={handleRestoreFromDrive}
-                            disabled={syncState !== "idle" ||
-                                $appStateStore.isPageLocked}
-                            class="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed w-full md:w-auto"
-                        >
-                            {#if syncState === "restore"}
-                                <Loader2 size={16} class="animate-spin" />
-                                <span>Wait...</span>
-                            {:else}
-                                <CloudDownload size={16} />
-                                <span>Restore</span>
-                            {/if}
-                        </button>
-                    </div>
-
                     <!-- Presets Group -->
                     <div class="relative w-full md:w-auto order-2">
                         <button
@@ -2371,7 +2192,6 @@
                 </div>
             </div>
         </div>
-
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
             <!-- Sidebar: Stepper -->
             <div class="lg:col-span-1 space-y-4">

@@ -1,6 +1,8 @@
 import { authStore, disconnectGoogle } from "$lib/features/auth/services/authService";
 import { driveService } from "./driveService";
 import { endpointService } from "$lib/features/endpoints/services/endpointService";
+import { settingsStore } from "$lib/stores/settingsStore";
+import { profileStore } from "$lib/stores/profileStore";
 import { get } from "svelte/store";
 
 let isSyncing = false;
@@ -42,6 +44,16 @@ export const syncService = {
         testResultService.onChange(() => {
             syncService.scheduleSave();
         });
+
+        // Listen for Settings changes
+        settingsStore.subscribe(() => {
+            syncService.scheduleSave();
+        });
+
+        // Listen for Profile changes
+        profileStore.subscribe(() => {
+            syncService.scheduleSave();
+        });
     },
 
     loadFromDrive: async (accessToken: string) => {
@@ -55,6 +67,18 @@ export const syncService = {
                 driveFileId = configFile.id;
                 const data = await driveService.downloadFile(accessToken, configFile.id);
 
+                // 1. Load basic configuration first
+                if (data.settings) {
+                    settingsStore.load(data.settings);
+                    console.log("Synced Settings from Drive");
+                }
+
+                if (data.profile) {
+                    profileStore.updateProfile(data.profile);
+                    console.log("Synced Profile from Drive");
+                }
+
+                // 2. Load data that depends on configuration
                 if (data.endpoints) {
                     // Merge logic: For now, overwrite local with cloud or merge intelligently
                     // Simple strategy: Cloud wins on initial load
@@ -76,13 +100,18 @@ export const syncService = {
                     testResultService.importResults(data.testSuiteResults);
                     console.log("Synced Test Suite Results from Drive");
                 }
+
+                if (data.executionLogs) {
+                    executionService.importExecutionLogs(data.executionLogs);
+                    console.log("Synced Execution Logs from Drive");
+                }
             }
 
             // [NEW] Scavenge individual presets that might not be in config.json yet
             const individualHistory = await driveService.scavengeIndividualCollectionPresets(accessToken);
             if (Object.keys(individualHistory).length > 0) {
                 console.log(`Merging ${Object.keys(individualHistory).length} scavenged collection histories.`);
-                collectionExecutionService.importHistory(individualHistory);
+                collectionExecutionService.mergeHistory(individualHistory);
             }
         } catch (e: any) {
             console.error("Sync Load Error:", e);
@@ -110,12 +139,17 @@ export const syncService = {
         try {
             const endpoints = endpointService.getEndpoints();
             const executionHistory = executionService.getAllHistory();
+            const settings = get(settingsStore);
+            const profile = get(profileStore);
 
             const content = {
                 endpoints,
                 executionHistory,
                 collectionExecutionHistory: collectionExecutionService.getAllHistory(),
-                testSuiteResults: testResultService.getAllResults(),
+                testSuiteResults: testResultService.getAllResults(), // Key corrected to testSuiteResults
+                executionLogs: executionService.getExecutionLogs(), // Fetch local logs for backup
+                settings,
+                profile,
                 updatedAt: Date.now()
             };
 
@@ -135,5 +169,15 @@ export const syncService = {
         } finally {
             isSyncing = false;
         }
+    },
+
+    forceBackup: async () => {
+        return await syncService.saveToDrive();
+    },
+
+    forceRestore: async () => {
+        const user = get(authStore);
+        if (!user.accessToken) throw new Error("Google Drive not connected");
+        return await syncService.loadFromDrive(user.accessToken);
     }
 };

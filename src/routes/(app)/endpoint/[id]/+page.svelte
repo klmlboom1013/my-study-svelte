@@ -73,7 +73,7 @@
             endpoint = endpointService.getEndpoint(id) || null;
 
             if (!endpoint) {
-                alert("Endpoint not found");
+                showAlert("Error", "Endpoint not found");
                 goto("/endpoint");
             }
             // Reset modal state on navigation

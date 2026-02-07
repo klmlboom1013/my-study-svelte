@@ -42,6 +42,20 @@
         { name: "Settings", icon: "settings", path: "/settings" },
     ];
 
+    import {
+        authStore,
+        loginWithGoogle,
+    } from "$lib/features/auth/services/authService";
+    import { syncService } from "$lib/features/drive/services/syncService";
+    import { fade } from "svelte/transition";
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
+
+    let isSyncing = $state(false);
+
+    // Alert Modal State
+    let isConfirmOpen = $state(false);
+    let pendingAction: (() => Promise<void>) | null = null;
+
     // Dynamic API Categories filtering based on selected app
     let filteredCategories = $derived.by(() => {
         const allCategories = $settingsStore.apiCategories || [];
@@ -392,4 +406,96 @@
             {/if}
         {/if}
     </div>
+
+    <!-- Mobile Sync Section -->
+    <div
+        class="mt-auto pt-4 border-t border-slate-100 dark:border-border-dark/50"
+    >
+        <p
+            class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3 px-2"
+        >
+            Cloud Sync
+        </p>
+
+        {#if $authStore.accessToken}
+            <div class="flex flex-col gap-2">
+                <div class="flex items-center gap-2 px-2 py-1 mb-1">
+                    <span
+                        class="material-symbols-outlined text-[18px] text-blue-500 {isSyncing
+                            ? 'animate-spin'
+                            : ''}"
+                    >
+                        {isSyncing ? "sync" : "cloud_done"}
+                    </span>
+                    <span
+                        class="text-xs font-medium text-slate-700 dark:text-slate-200"
+                        >Synced to Drive</span
+                    >
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <button
+                        onclick={async () => {
+                            try {
+                                isSyncing = true;
+                                await syncService.forceBackup();
+                            } finally {
+                                isSyncing = false;
+                            }
+                        }}
+                        disabled={isSyncing}
+                        class="flex items-center justify-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-medium text-slate-700 dark:text-slate-300 transition-colors border border-slate-200 dark:border-slate-700"
+                    >
+                        <span class="material-symbols-outlined text-[16px]"
+                            >backup</span
+                        >
+                        Backup
+                    </button>
+                    <button
+                        onclick={() => {
+                            pendingAction = async () => {
+                                try {
+                                    isSyncing = true;
+                                    await syncService.forceRestore();
+                                } finally {
+                                    isSyncing = false;
+                                }
+                            };
+                            isConfirmOpen = true;
+                        }}
+                        disabled={isSyncing}
+                        class="flex items-center justify-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-medium text-slate-700 dark:text-slate-300 transition-colors border border-slate-200 dark:border-slate-700"
+                    >
+                        <span class="material-symbols-outlined text-[16px]"
+                            >restore</span
+                        >
+                        Restore
+                    </button>
+                </div>
+            </div>
+        {:else}
+            <button
+                onclick={loginWithGoogle}
+                class="w-full flex items-center justify-center gap-2 p-3 rounded-lg bg-primary/5 hover:bg-primary/10 text-primary transition-colors border border-primary/20 text-xs font-bold"
+            >
+                <span class="material-symbols-outlined text-[18px]"
+                    >cloud_off</span
+                >
+                Connect Google Drive
+            </button>
+        {/if}
+    </div>
 </div>
+
+<AlertModal
+    bind:isOpen={isConfirmOpen}
+    title="Restore Data"
+    message="Restore all data? Local changes might be lost."
+    type="confirm"
+    onConfirm={() => {
+        if (pendingAction) pendingAction();
+    }}
+/>
+
+<style>
+</style>

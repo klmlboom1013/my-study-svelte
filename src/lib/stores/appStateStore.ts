@@ -4,6 +4,7 @@ import { browser } from "$app/environment";
 const initialState = {
     selectedApp: "All",
     isPageLocked: true, // Default to locked
+    globalAlert: null as { title: string; message: string; type?: "alert" | "confirm"; onConfirm?: () => void } | null,
 };
 
 // Initialize from localStorage if in browser

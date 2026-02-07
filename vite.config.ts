@@ -10,5 +10,15 @@ export default defineConfig({
 		headers: {
 			'Cross-Origin-Opener-Policy': 'same-origin-allow-popups'
 		}
+	},
+	optimizeDeps: {
+		include: [
+			'firebase/app',
+			'firebase/auth',
+			'lucide-svelte',
+			'@google/generative-ai',
+			'buffer',
+			'jose'
+		]
 	}
 });

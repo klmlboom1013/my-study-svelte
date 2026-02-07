@@ -71,99 +71,6 @@
         goto(`/collections/${id}`);
     }
 
-    let syncState = $state<"idle" | "backup" | "restore">("idle");
-
-    async function handleDriveBackup() {
-        if (syncState !== "idle") return;
-        let token = $authStore.accessToken;
-        if (!token) {
-            try {
-                const result = await loginWithGoogle();
-                token = result.token;
-            } catch (error) {
-                showAlert("Sync Error", "Google Login failed.");
-                return;
-            }
-        }
-        if (!token) return;
-
-        try {
-            syncState = "backup";
-            const dataToSave = get(settingsStore);
-            await driveService.saveSettings(token, dataToSave);
-
-            // Backup Collection Execution History (Presets)
-            const collectionHistory =
-                collectionExecutionService.getAllHistory();
-            await driveService.saveCollectionExecutionHistory(
-                token,
-                collectionHistory,
-            );
-
-            showAlert(
-                "Success",
-                "Backup successful! (Settings and Collection Presets saved)",
-            );
-        } catch (error: any) {
-            console.error(error);
-            showAlert("Error", `Backup failed: ${error.message}`);
-        } finally {
-            syncState = "idle";
-        }
-    }
-
-    async function handleDriveRestore() {
-        if (syncState !== "idle") return;
-        showAlert(
-            "Restore Settings",
-            "This will overwrite your local settings. Continue?",
-            "confirm",
-            async () => {
-                let token = $authStore.accessToken;
-                if (!token) {
-                    try {
-                        const result = await loginWithGoogle();
-                        token = result.token;
-                    } catch (error) {
-                        showAlert("Sync Error", "Google Login failed.");
-                        return;
-                    }
-                }
-                if (!token) return;
-                try {
-                    syncState = "restore";
-                    const data = await driveService.loadSettings(token);
-                    if (data) {
-                        settingsStore.load(data);
-
-                        // Restore Collection Execution History (Presets)
-                        const collectionHistory =
-                            await driveService.loadCollectionExecutionHistory(
-                                token,
-                            );
-                        if (collectionHistory) {
-                            collectionExecutionService.importHistory(
-                                collectionHistory,
-                            );
-                        }
-
-                        showAlert(
-                            "Success",
-                            "Restore successful! (Settings and Collection Presets restored)",
-                        );
-                    } else {
-                        showAlert("Info", "No backup found.");
-                    }
-                } catch (error: any) {
-                    console.error(error);
-                    showAlert("Error", `Restore failed: ${error.message}`);
-                } finally {
-                    syncState = "idle";
-                }
-            },
-        );
-    }
-
     function handleDelete(id: string) {
         showAlert(
             "Delete Collection",
@@ -211,57 +118,15 @@
     />
 
     <div class="mb-6">
-        {#snippet buttons(mobile = false)}
-            {#if !mobile}
-                {#if !$appStateStore.isPageLocked}
-                    <button
-                        onclick={handleNewCollection}
-                        class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all shrink-0"
-                    >
-                        <span class="material-symbols-outlined text-[18px]"
-                            >add</span
-                        >
-                        <span>New Collection</span>
-                    </button>
-                {/if}
-            {/if}
+        {#if !$appStateStore.isPageLocked}
             <button
-                onclick={handleDriveBackup}
-                disabled={syncState !== "idle" || $appStateStore.isPageLocked}
-                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors"
+                onclick={handleNewCollection}
+                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all shrink-0"
             >
-                {#if syncState === "backup"}
-                    <span
-                        class="material-symbols-outlined text-[18px] animate-spin"
-                        >sync</span
-                    >
-                    <span>Wait...</span>
-                {:else}
-                    <span class="material-symbols-outlined text-[18px]"
-                        >cloud_upload</span
-                    >
-                    <span>Backup</span>
-                {/if}
+                <span class="material-symbols-outlined text-[18px]">add</span>
+                <span>New Collection</span>
             </button>
-            <button
-                onclick={handleDriveRestore}
-                disabled={syncState !== "idle" || $appStateStore.isPageLocked}
-                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors"
-            >
-                {#if syncState === "restore"}
-                    <span
-                        class="material-symbols-outlined text-[18px] animate-spin"
-                        >sync</span
-                    >
-                    <span>Wait...</span>
-                {:else}
-                    <span class="material-symbols-outlined text-[18px]"
-                        >cloud_download</span
-                    >
-                    <span>Restore</span>
-                {/if}
-            </button>
-        {/snippet}
+        {/if}
 
         <div class="flex items-end justify-between gap-4 mb-4 md:mb-6">
             <div>
@@ -277,16 +142,34 @@
             </div>
 
             <!-- Desktop Buttons -->
-            <div class="hidden md:flex items-center gap-2">
-                {@render buttons(false)}
+            <div class="hidden md:flex items-center gap-2 transition-all">
+                {#if !$appStateStore.isPageLocked}
+                    <button
+                        onclick={handleNewCollection}
+                        class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all shrink-0"
+                    >
+                        <span class="material-symbols-outlined text-[20px]"
+                            >add</span
+                        >
+                        <span>New Collection</span>
+                    </button>
+                {/if}
             </div>
         </div>
 
         <!-- Mobile Buttons -->
         <div class="flex md:hidden items-center gap-2 mb-4">
-            <div class="flex items-center gap-2">
-                {@render buttons(true)}
-            </div>
+            {#if !$appStateStore.isPageLocked}
+                <button
+                    onclick={handleNewCollection}
+                    class="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all"
+                >
+                    <span class="material-symbols-outlined text-[20px]"
+                        >add</span
+                    >
+                    <span>New Collection</span>
+                </button>
+            {/if}
         </div>
     </div>
 

@@ -25,12 +25,8 @@
         presets,
         isExecuting,
         executionStage,
-        isBackingUp = false,
-        isRestoring = false,
         isMobile,
         isButtonInView = $bindable(true),
-        onBackup,
-        onRestore,
         onLoadPreset,
         onDeletePreset,
         onSavePreset,
@@ -110,39 +106,6 @@
             <div class="flex items-center gap-2 shrink-0">
                 <!-- Desktop Actions -->
                 <div class="hidden md:flex items-center gap-2">
-                    <div class="flex items-center gap-2">
-                        <button
-                            onclick={onBackup}
-                            disabled={isBackingUp || isRestoring}
-                            class="flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
-                            title={$authStore.accessToken
-                                ? "Backup to Drive"
-                                : "Connect Google Drive to Backup"}
-                        >
-                            {#if isBackingUp}
-                                <Loader2 size={16} class="animate-spin" />
-                            {:else}
-                                <CloudUpload size={16} />
-                            {/if}
-                            <span class="hidden lg:inline">Backup</span>
-                        </button>
-                        <button
-                            onclick={onRestore}
-                            disabled={isBackingUp || isRestoring}
-                            class="flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
-                            title={$authStore.accessToken
-                                ? "Restore from Drive"
-                                : "Connect Google Drive to Restore"}
-                        >
-                            {#if isRestoring}
-                                <Loader2 size={16} class="animate-spin" />
-                            {:else}
-                                <CloudDownload size={16} />
-                            {/if}
-                            <span class="hidden lg:inline">Restore</span>
-                        </button>
-                    </div>
-
                     <div class="relative">
                         <button
                             onclick={togglePresets}
@@ -263,31 +226,6 @@
 
                 <!-- Mobile Action Buttons -->
                 <div class="md:hidden mt-0 flex items-center gap-2">
-                    {#if $authStore.accessToken}
-                        <button
-                            onclick={onBackup}
-                            disabled={isBackingUp || isRestoring}
-                            class="flex items-center justify-center p-2.5 text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg disabled:opacity-50"
-                        >
-                            {#if isBackingUp}
-                                <Loader2 size={20} class="animate-spin" />
-                            {:else}
-                                <CloudUpload size={20} />
-                            {/if}
-                        </button>
-                        <button
-                            onclick={onRestore}
-                            disabled={isBackingUp || isRestoring}
-                            class="flex items-center justify-center p-2.5 text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg disabled:opacity-50"
-                        >
-                            {#if isRestoring}
-                                <Loader2 size={20} class="animate-spin" />
-                            {:else}
-                                <CloudDownload size={20} />
-                            {/if}
-                        </button>
-                    {/if}
-
                     <div class="relative">
                         <button
                             onclick={togglePresets}

@@ -92,8 +92,6 @@
     });
 
     // Loading States
-    let isBackupLoading = $state(false);
-    let isRestoreLoading = $state(false);
 
     function showAlert(
         title: string,
@@ -190,22 +188,6 @@
             );
         } catch (e) {
             injectError = "Invalid JSON format.";
-        }
-    }
-
-    async function handleConnectGoogle() {
-        try {
-            await loginWithGoogle();
-            showAlert(
-                "Connection Successful",
-                "Google Account connected. Please try again.",
-            );
-        } catch (e) {
-            console.error(e);
-            showAlert(
-                "Connection Failed",
-                "Failed to connect to Google Account.",
-            );
         }
     }
 
@@ -360,86 +342,6 @@
             value: "",
         };
         selectedService = [];
-    }
-
-    async function backupSettings() {
-        const token = $authStore.accessToken;
-        if (!token) {
-            showAlert(
-                "Connection Required",
-                "Google Account connection is required for backup.\nDo you want to connect now?",
-                "confirm",
-                handleConnectGoogle,
-            );
-            return;
-        }
-
-        isBackupLoading = true;
-        try {
-            await driveService.saveSettings(token, $settingsStore);
-            showAlert(
-                "Success",
-                "Settings backed up to Google Drive successfully.",
-            );
-        } catch (e: any) {
-            console.error("Backup Error:", e);
-            if (e.message && e.message.includes("401")) {
-                showAlert(
-                    "Token Expired",
-                    "Google Drive access token is expired.\nDo you want to reconnect?",
-                    "confirm",
-                    handleConnectGoogle,
-                );
-            } else {
-                showAlert(
-                    "Backup Failed",
-                    `Failed to backup settings.\nReason: ${e.message || "Unknown error"}`,
-                );
-            }
-        } finally {
-            isBackupLoading = false;
-        }
-    }
-
-    async function restoreSettings() {
-        const token = $authStore.accessToken;
-        if (!token) {
-            showAlert(
-                "Connection Required",
-                "Google Account connection is required for restore.\nDo you want to connect now?",
-                "confirm",
-                handleConnectGoogle,
-            );
-            return;
-        }
-
-        isRestoreLoading = true;
-        try {
-            const data = await driveService.loadSettings(token);
-            if (data) {
-                settingsStore.set(data);
-                showAlert("Success", "Settings restored from Google Drive.");
-            } else {
-                showAlert("Info", "No settings found in Drive.");
-            }
-        } catch (e: any) {
-            console.error("Restore Error:", e);
-            if (e.message && e.message.includes("401")) {
-                showAlert(
-                    "Token Expired",
-                    "Google Drive access token is expired.\nDo you want to reconnect?",
-                    "confirm",
-                    handleConnectGoogle,
-                );
-            } else {
-                showAlert(
-                    "Restore Failed",
-                    `Failed to restore settings.\nReason: ${e.message || "Unknown error"}`,
-                );
-            }
-        } finally {
-            isRestoreLoading = false;
-        }
     }
 
     function addOptionToCurrent() {
@@ -1052,48 +954,7 @@
                 Manage global configurations for endpoints and user interface.
             </p>
         </div>
-        <div class="flex gap-2">
-            <button
-                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors"
-                onclick={backupSettings}
-                disabled={isBackupLoading ||
-                    isRestoreLoading ||
-                    $appStateStore.isPageLocked}
-            >
-                {#if isBackupLoading}
-                    <span
-                        class="material-symbols-outlined text-[18px] animate-spin"
-                        >sync</span
-                    >
-                    Wait...
-                {:else}
-                    <span class="material-symbols-outlined text-[18px]"
-                        >cloud_upload</span
-                    >
-                    Backup
-                {/if}
-            </button>
-            <button
-                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors"
-                onclick={restoreSettings}
-                disabled={isBackupLoading ||
-                    isRestoreLoading ||
-                    $appStateStore.isPageLocked}
-            >
-                {#if isRestoreLoading}
-                    <span
-                        class="material-symbols-outlined text-[18px] animate-spin"
-                        >sync</span
-                    >
-                    Wait...
-                {:else}
-                    <span class="material-symbols-outlined text-[18px]"
-                        >cloud_download</span
-                    >
-                    Restore
-                {/if}
-            </button>
-        </div>
+        <div class="flex gap-2"></div>
     </div>
 
     <div class="flex flex-col md:flex-row gap-8">

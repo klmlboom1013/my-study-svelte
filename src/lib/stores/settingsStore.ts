@@ -1,5 +1,6 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
+import { appStateStore } from "./appStateStore";
 
 export interface GlobalParameter {
     id: string;
@@ -660,7 +661,13 @@ function createSettingsStore() {
             const currentCount = categories.filter(c => c.isBookmarked).length;
 
             if (currentCount >= limit) {
-                alert(`Bookmark limit reached (${limit}). Please manage your limits in Settings.`);
+                appStateStore.update(state => ({
+                    ...state,
+                    globalAlert: {
+                        title: "Bookmark Limit",
+                        message: `Bookmark limit reached (${limit}). Please manage your limits in Settings.`
+                    }
+                }));
                 return s;
             }
 
@@ -687,7 +694,13 @@ function createSettingsStore() {
             const limit = bookmarkSetting ? bookmarkSetting.listLimit : 5;
 
             if (starred.length >= limit) {
-                alert(`Bookmark limit reached (${limit}). Please manage your limits in Settings.`);
+                appStateStore.update(state => ({
+                    ...state,
+                    globalAlert: {
+                        title: "Bookmark Limit",
+                        message: `Bookmark limit reached (${limit}). Please manage your limits in Settings.`
+                    }
+                }));
                 return s;
             }
 

@@ -61,7 +61,6 @@
     });
 
     // Sync State
-    let syncState = $state<"idle" | "backup" | "restore">("idle");
     let isAlertOpen = $state(false);
     let alertTitle = $state("");
     let alertMessage = $state("");
@@ -149,71 +148,6 @@
                 executionService.clearExecutionLogs();
                 logs = [];
                 showAlert("Success", "Execution history cleared.");
-            },
-        );
-    }
-
-    async function handleDriveBackup() {
-        if (syncState !== "idle") return;
-        let token = $authStore.accessToken;
-        if (!token) {
-            try {
-                const result = await loginWithGoogle();
-                token = result.token;
-            } catch (error) {
-                showAlert("Sync Error", "Google Login failed.");
-                return;
-            }
-        }
-        if (!token) return;
-
-        try {
-            syncState = "backup";
-            const dataToSave = executionService.getExecutionLogs();
-            await driveService.saveExecutionLogs(token, dataToSave);
-            showAlert("Success", "Backup successful!");
-        } catch (error: any) {
-            console.error(error);
-            showAlert("Error", `Backup failed: ${error.message}`);
-        } finally {
-            syncState = "idle";
-        }
-    }
-
-    async function handleDriveRestore() {
-        if (syncState !== "idle") return;
-        showAlert(
-            "Restore History",
-            "This will overwrite your local execution history. Continue?",
-            "confirm",
-            async () => {
-                let token = $authStore.accessToken;
-                if (!token) {
-                    try {
-                        const result = await loginWithGoogle();
-                        token = result.token;
-                    } catch (error) {
-                        showAlert("Sync Error", "Google Login failed.");
-                        return;
-                    }
-                }
-                if (!token) return;
-                try {
-                    syncState = "restore";
-                    const data = await driveService.loadExecutionLogs(token);
-                    if (data) {
-                        executionService.importExecutionLogs(data);
-                        logs = executionService.getExecutionLogs();
-                        showAlert("Success", "Restore successful!");
-                    } else {
-                        showAlert("Info", "No backup found.");
-                    }
-                } catch (error: any) {
-                    console.error(error);
-                    showAlert("Error", `Restore failed: ${error.message}`);
-                } finally {
-                    syncState = "idle";
-                }
             },
         );
     }
@@ -321,13 +255,6 @@
     onCancel={onAlertCancel}
 />
 
-<FullLoading
-    isOpen={syncState !== "idle"}
-    message={syncState === "backup"
-        ? "Backing up your history to Google Drive..."
-        : "Restoring your history from Google Drive..."}
-/>
-
 <div class="max-w-7xl mx-auto py-8 px-6">
     <Breadcrumbs
         items={[{ label: "Home", href: "/" }, { label: "Recent Activity" }]}
@@ -348,55 +275,15 @@
                 </p>
             </div>
 
-            <div class="flex flex-wrap items-center gap-2 mt-4 md:mt-0">
-                <button
-                    onclick={handleDriveBackup}
-                    disabled={syncState !== "idle"}
-                    class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors"
+            <button
+                onclick={handleClearHistory}
+                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-rose-600 bg-white border border-rose-200 rounded-lg hover:bg-rose-50 dark:bg-slate-800 dark:text-rose-400 dark:border-rose-500/20 dark:hover:bg-rose-500/10 shadow-sm transition-colors"
+            >
+                <span class="material-symbols-outlined text-[18px]"
+                    >delete_sweep</span
                 >
-                    {#if syncState === "backup"}
-                        <span
-                            class="material-symbols-outlined text-[18px] animate-spin"
-                            >sync</span
-                        >
-                        <span>Wait...</span>
-                    {:else}
-                        <span class="material-symbols-outlined text-[18px]"
-                            >cloud_upload</span
-                        >
-                        <span>Backup</span>
-                    {/if}
-                </button>
-
-                <button
-                    onclick={handleDriveRestore}
-                    disabled={syncState !== "idle"}
-                    class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700 disabled:opacity-50 min-w-[90px] justify-center shadow-sm transition-colors"
-                >
-                    {#if syncState === "restore"}
-                        <span
-                            class="material-symbols-outlined text-[18px] animate-spin"
-                            >sync</span
-                        >
-                        <span>Wait...</span>
-                    {:else}
-                        <span class="material-symbols-outlined text-[18px]"
-                            >cloud_download</span
-                        >
-                        <span>Restore</span>
-                    {/if}
-                </button>
-
-                <button
-                    onclick={handleClearHistory}
-                    class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-rose-600 bg-white border border-rose-200 rounded-lg hover:bg-rose-50 dark:bg-slate-800 dark:text-rose-400 dark:border-rose-500/20 dark:hover:bg-rose-500/10 shadow-sm transition-colors"
-                >
-                    <span class="material-symbols-outlined text-[18px]"
-                        >delete_sweep</span
-                    >
-                    <span>Clear All History</span>
-                </button>
-            </div>
+                <span>Clear All History</span>
+            </button>
         </div>
     </div>
 

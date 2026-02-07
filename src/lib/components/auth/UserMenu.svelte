@@ -9,6 +9,8 @@
     import { goto } from "$app/navigation";
     import { setCookie } from "$lib/utils/cookie";
     import { profileStore } from "$lib/stores/profileStore";
+    import { appStateStore } from "$lib/stores/appStateStore";
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
 
     // State
     let isLoading = $state(false);
@@ -48,9 +50,8 @@
         }
     };
 
-    const handleGoogleLogout = async () => {
-        if (!confirm("Google 계정 로그아웃을 하시겠습니까?")) return;
-
+    // Renamed original handleGoogleLogout to disconnectGoogle
+    const disconnectGoogle = async () => {
         isLoading = true;
         try {
             await logoutGoogle();
@@ -59,9 +60,8 @@
         }
     };
 
-    const handleAppSignOut = async () => {
-        if (!confirm("로그아웃 하시겠습니까?")) return;
-
+    // Renamed original handleAppSignOut to logout
+    const logout = async () => {
         isLoading = true;
         try {
             // Expire access token
@@ -78,6 +78,29 @@
             isLoading = false;
         }
     };
+
+    // State for custom logout confirmation modal
+    let showLogoutConfirm = $state(false);
+    let logoutMessage = $state("");
+    let logoutAction: (() => void) | null = null;
+
+    function handleGoogleLogout() {
+        logoutMessage = "Google 계정 로그아웃을 하시겠습니까?";
+        logoutAction = () => {
+            disconnectGoogle();
+            isOpen = false;
+        };
+        showLogoutConfirm = true;
+    }
+
+    function handleInternalLogout() {
+        logoutMessage = "로그아웃 하시겠습니까?";
+        logoutAction = () => {
+            logout();
+            isOpen = false;
+        };
+        showLogoutConfirm = true;
+    }
 
     function toggle() {
         isOpen = !isOpen;
@@ -283,7 +306,7 @@
             <!-- App Sign Out -->
             <div class="p-1">
                 <button
-                    onclick={handleAppSignOut}
+                    onclick={handleInternalLogout}
                     class="w-full text-left px-3 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors flex items-center gap-2"
                 >
                     <span class="material-symbols-outlined text-[16px]"
@@ -295,3 +318,13 @@
         </div>
     {/if}
 </div>
+
+<AlertModal
+    bind:isOpen={showLogoutConfirm}
+    title="Sign Out"
+    message={logoutMessage}
+    type="confirm"
+    onConfirm={() => {
+        if (logoutAction) logoutAction();
+    }}
+/>
