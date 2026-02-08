@@ -100,8 +100,6 @@ export interface SiteContext {
 
 export interface InterfaceSettings {
     sidebar: {
-        showReport: boolean;
-        showIssue: boolean;
         showTestSuite: boolean;
         showEndpoint: boolean;
         showCollections: boolean;
@@ -219,8 +217,6 @@ const defaultSettings: SettingsStoreData = {
     },
     interface: {
         sidebar: {
-            showReport: true,
-            showIssue: true,
             showTestSuite: true,
             showEndpoint: true,
             showCollections: true,

@@ -118,16 +118,6 @@
     />
 
     <div class="mb-6">
-        {#if !$appStateStore.isPageLocked}
-            <button
-                onclick={handleNewCollection}
-                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all shrink-0"
-            >
-                <span class="material-symbols-outlined text-[18px]">add</span>
-                <span>New Collection</span>
-            </button>
-        {/if}
-
         <div class="flex items-end justify-between gap-4 mb-4 md:mb-6">
             <div>
                 <h1

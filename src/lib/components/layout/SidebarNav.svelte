@@ -31,8 +31,6 @@
 
     // Primary Navigation Data (Top Level)
     let primaryNav = [
-        { name: "Report", icon: "description", path: "/report" },
-        { name: "Issue", icon: "bug_report", path: "/issue" },
         { name: "Test Suite", icon: "science", path: "/test-suite" },
         { name: "Test Endpoint", icon: "api", path: "/endpoint" },
         { name: "API Collections", icon: "folder_open", path: "/collections" },
@@ -112,10 +110,6 @@
                 {@const showItem =
                     ignoreSettings ||
                     item.path === "/settings" ||
-                    (item.path === "/report" &&
-                        $settingsStore.interface?.sidebar?.showReport) ||
-                    (item.path === "/issue" &&
-                        $settingsStore.interface?.sidebar?.showIssue) ||
                     (item.path === "/test-suite" &&
                         $settingsStore.interface?.sidebar?.showTestSuite) ||
                     (item.path === "/endpoint" &&
