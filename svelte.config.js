@@ -19,7 +19,10 @@ const config = {
 			fallback: 'index.html', // transparently support SPA
 			precompress: false,
 			strict: true
-		})
+		}),
+		csrf: {
+			checkOrigin: false
+		}
 	}
 };
 

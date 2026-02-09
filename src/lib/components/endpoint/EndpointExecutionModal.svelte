@@ -591,6 +591,15 @@
                     const logEndpoint =
                         endpointService.getEndpoint(endpoint.id) || endpoint;
 
+                    const safeParseResponse = (text: string) => {
+                        if (!text) return null;
+                        try {
+                            return JSON.parse(text);
+                        } catch {
+                            return { rawResponse: text };
+                        }
+                    };
+
                     const logEntry = {
                         endpointId: logEndpoint.id,
                         endpointName: logEndpoint.name || logEndpoint.uri,
@@ -603,9 +612,7 @@
                         method: logEndpoint.method,
                         url: fullUrl,
                         requestData: payload,
-                        responseData: responseResult
-                            ? JSON.parse(responseResult)
-                            : null,
+                        responseData: safeParseResponse(responseResult),
                         headers: headers as Record<string, string>,
                         application: logEndpoint.application,
                         service: logEndpoint.scope?.service || "",
