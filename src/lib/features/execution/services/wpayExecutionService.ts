@@ -52,7 +52,7 @@ export const wpayExecutionService = {
      * Submit a form directly inside the popup window (Direct Injection).
      * This is more reliable for fresh windows as it avoids name resolution issues.
      */
-    submitToWindow: (win: Window, action: string, method: string, payload: Record<string, string>) => {
+    submitToWindow: (win: Window, action: string, method: string, payload: Record<string, string>): boolean => {
         try {
             const doc = win.document;
             const form = doc.createElement("form");
@@ -71,9 +71,11 @@ export const wpayExecutionService = {
             doc.body.appendChild(form);
             form.submit();
             // We cannot remove child here reliably because the page will navigate away immediately
+            return true;
         } catch (e) {
             console.error("wpayExecution: Direct submission failed", e);
             // Fallback? No, if this fails, likely permission denied or window closed.
+            return false;
         }
     }
 };

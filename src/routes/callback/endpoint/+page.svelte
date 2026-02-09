@@ -12,7 +12,7 @@
     }
 
     // Merge data from GET or POST
-    $: resultData = form?.data || data?.data || {};
+    $: resultData = (form?.data || data?.data || {}) as Record<string, string>;
     $: method = form?.method || data?.method || "UNKNOWN";
     // @ts-ignore
     $: error = form?.error || null;
@@ -25,47 +25,31 @@
 
         // 0. Listen for close signal from parent
         bc.onmessage = (event) => {
-            if (event.data?.type === "WPAY_CLOSE") {
-                console.log("Received CLOSE signal from parent. Closing...");
-                bc.close();
-                window.close();
-            } else if (event.data?.type === "WPAY_CLEAR") {
-                console.log("Received CLEAR signal. Navigating to blank...");
-                window.location.href = "about:blank";
-            } else if (event.data?.type === "WPAY_SUBMIT") {
-                console.log(
-                    "Received SUBMIT signal. Submitting form...",
-                    event.data,
-                );
-                const { url, method, payload } = event.data;
-
-                const form = document.createElement("form");
-                form.action = url;
-                form.method = method || "POST";
-                form.target = "_self"; // Submit in this window
-
-                if (payload) {
-                    Object.entries(payload).forEach(([key, value]) => {
-                        const input = document.createElement("input");
-                        input.type = "hidden";
-                        input.name = key;
-                        input.value = String(value || "");
-                        form.appendChild(input);
-                    });
-                }
-                document.body.appendChild(form);
-                form.submit();
-            }
+            // Placeholder: parent now manages window lifecycle directly
         };
 
-        // Ensure resultData is not empty or handle specific success conditions if needed
-        if (Object.keys(resultData).length > 0) {
+        // Send "READY" signal to parent multiple times to ensure it's caught
+        // (Handles cases where parent starts listening after popup starts loading)
+        for (let i = 0; i < 3; i++) {
+            setTimeout(() => {
+                if (bc) bc.postMessage({ type: "WPAY_READY" });
+            }, i * 500);
+        }
+
+        // Ensure resultData contains an actual result from WPAY (resultCode or resCode)
+        const hasActualResult = !!(resultData.resultCode || resultData.resCode);
+
+        if (hasActualResult) {
+            console.log(
+                "[Callback] Sending actual result to parent:",
+                resultData,
+            );
             bc.postMessage({
                 type: "WPAY_RESULT",
                 data: resultData,
             });
 
-            // Fallback for window.opener (if BroadcastChannel is not supported or for wider compatibility)
+            // Fallback for window.opener
             if (window.opener) {
                 window.opener.postMessage(
                     {
@@ -76,27 +60,15 @@
                 );
             }
 
-            // Detect if this is a collection run to prevent auto-closure
-            const urlParams = new URLSearchParams(window.location.search);
-            const isCollectionRun = !!(
-                window.name && window.name.startsWith("col_run_")
+            // Always close the popup after a short delay
+            setTimeout(() => {
+                bc.close();
+                window.close();
+            }, 2500);
+        } else {
+            console.log(
+                "[Callback] No result data to send yet. Waiting for signals...",
             );
-            isSession =
-                urlParams.get("isSession") === "true" ||
-                resultData.isSession === "true" ||
-                isCollectionRun;
-
-            if (!isSession) {
-                // Close the popup after a short delay to ensure message is sent
-                setTimeout(() => {
-                    bc.close();
-                    window.close();
-                }, 3000);
-            } else {
-                console.log(
-                    `Workflow session detected (Name: ${window.name}). Keeping window open for next step.`,
-                );
-            }
         }
 
         return () => {
@@ -133,19 +105,13 @@
 
         {#if Object.keys(resultData).length > 0}
             <div
-                class="py-3 px-4 rounded-lg text-xs font-medium border {isSession
-                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-100'
-                    : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100'}"
+                class="py-3 px-4 rounded-lg text-xs font-medium border bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100"
             >
                 <div class="flex items-center justify-center gap-2">
                     <span class="material-symbols-outlined text-[16px]"
-                        >{isSession ? "timer" : "check_circle"}</span
+                        >check_circle</span
                     >
-                    {#if isSession}
-                        Data processed. Keeping window open...
-                    {:else}
-                        Data received. Closing window...
-                    {/if}
+                    Data received. Closing window...
                 </div>
             </div>
         {:else if method === "UNKNOWN"}
@@ -190,11 +156,7 @@
 
         <div class="mt-8 pt-6 border-t border-slate-100 dark:border-slate-700">
             <p class="text-[10px] text-slate-400 italic">
-                {#if isSession}
-                    This window is being controlled by the collection workflow.
-                {:else}
-                    This window will close automatically.
-                {/if}
+                This window will close automatically.
             </p>
         </div>
     </div>

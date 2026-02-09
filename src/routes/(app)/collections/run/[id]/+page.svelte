@@ -86,26 +86,15 @@
     let isRunningAll = $state(false);
     let stopRequested = $state(false);
     let autoRunStarted = $state(false);
+    let manualGroupId = $state(Date.now().toString());
     let isInitialized = $state(false);
-
-    function signalClosePopup() {
-        try {
-            const bc = new BroadcastChannel("wpay_channel");
-            bc.postMessage({ type: "WPAY_CLOSE" });
-            bc.close();
-            // Direct reference close as fallback
-            if (popupWindow && !popupWindow.closed) {
-                popupWindow.close();
-            }
-        } catch (e) {
-            console.error("Failed to signal close to popup:", e);
-        }
-        popupWindow = null;
-    }
 
     function handleStop() {
         stopRequested = true;
-        signalClosePopup();
+        if (popupWindow && !popupWindow.closed) {
+            popupWindow.close();
+        }
+        popupWindow = null;
     }
 
     // History/Preset UI State
@@ -1323,160 +1312,176 @@
         index: number,
         autoRun = false,
         executionId = "manual_run",
-        popupNameOverride?: string,
     ) {
         const stepExec = stepsExecution[index];
         const endpoint = endpointService.getEndpoint(stepExec.endpointId);
         if (!endpoint) return;
 
+        const initialStatus = stepExec.status;
+
         // Check cancellation
         if (stopRequested) return;
 
-        // Apply mappings before execution ONLY if we are not already in SUCCESS (Prepared) or READY state
-        // This prevents overwriting user-selected values from list mappings
+        // 1. Preparation Phase: Apply Mappings
+        // If we are not in SUCCESS (Prepared) or READY state, we need to prepare first.
         if (stepExec.status !== "SUCCESS" && stepExec.status !== "READY") {
             applyMappings(index);
+
+            // [UX Improvement] If Manual Run (not autoRun), stop here to let user review "Ready" state.
+            // This prevents "Double Jump" (Idle -> Execute) which confused the user.
+            // User can click Execute again to proceed from READY state.
+            if (!autoRun) {
+                return;
+            }
         }
 
-        // 1. Preparation Phase (If READY)
-        if (stepExec.status === "READY") {
-            const midValue = stepExec.requestValues["mid"];
-            let securityContext: SecurityContext = {};
-            if (midValue) {
-                const midCtx =
-                    $settingsStore.endpoint_parameters.midContexts.find(
-                        (c) => c.mid === midValue,
-                    );
-                if (midCtx)
-                    securityContext = {
-                        hashKey: midCtx.hashKey,
-                        encKey: midCtx.encKey,
-                        encIV: midCtx.encIV,
-                    };
-            }
+        // [Simplified] Popup is now opened right when needed within the FORM execution block
+        // to ensure a fresh, reliable handle and avoid browser blocking after awaits.
 
-            try {
-                let processedValues = encryptData(
-                    { ...stepExec.requestValues },
-                    endpoint.requestData,
-                    securityContext,
-                );
-                const signatureField = endpoint.requestData.find(
-                    (f) => f.name === "signature",
-                );
+        // 2. Encryption & Execution Phase (Since we passed the return check, status is READY or SUCCESS)
+        // Note: stepExec.status might be READY now.
 
-                if (endpoint.requestType === "FORM") {
-                    if (stepExec.requestValues["returnUrl"]) {
-                        try {
-                            const url = new URL(
-                                stepExec.requestValues["returnUrl"],
-                                window.location.origin,
-                            );
-                            if (autoRun) {
-                                url.searchParams.set("isSession", "true");
-                            }
-                            stepExec.requestValues["returnUrl"] =
-                                url.toString();
-                        } catch (e) {
-                            // Fallback if not a valid full URL
-                            const char = stepExec.requestValues[
-                                "returnUrl"
-                            ].includes("?")
-                                ? "&"
-                                : "?";
-                            if (
-                                autoRun &&
-                                !stepExec.requestValues["returnUrl"].includes(
-                                    "isSession=true",
-                                )
-                            ) {
-                                stepExec.requestValues["returnUrl"] +=
-                                    `${char}isSession=true`;
-                            }
+        // Scope block for variables (Removed bare block)
+        const midValue = stepExec.requestValues["mid"];
+        let securityContext: SecurityContext = {};
+        if (midValue) {
+            const midCtx = $settingsStore.endpoint_parameters.midContexts.find(
+                (c) => c.mid === midValue,
+            );
+            if (midCtx)
+                securityContext = {
+                    hashKey: midCtx.hashKey,
+                    encKey: midCtx.encKey,
+                    encIV: midCtx.encIV,
+                };
+        }
+
+        try {
+            let processedValues = encryptData(
+                { ...stepExec.requestValues },
+                endpoint.requestData,
+                securityContext,
+            );
+            const signatureField = endpoint.requestData.find(
+                (f) => f.name === "signature",
+            );
+
+            if (endpoint.requestType === "FORM") {
+                if (stepExec.requestValues["returnUrl"]) {
+                    try {
+                        const url = new URL(
+                            stepExec.requestValues["returnUrl"],
+                            window.location.origin,
+                        );
+                        if (autoRun) {
+                            url.searchParams.set("isSession", "true");
+                        }
+                        stepExec.requestValues["returnUrl"] = url.toString();
+                    } catch (e) {
+                        // Fallback if not a valid full URL
+                        const char = stepExec.requestValues[
+                            "returnUrl"
+                        ].includes("?")
+                            ? "&"
+                            : "?";
+                        if (
+                            autoRun &&
+                            !stepExec.requestValues["returnUrl"].includes(
+                                "isSession=true",
+                            )
+                        ) {
+                            stepExec.requestValues["returnUrl"] +=
+                                `${char}isSession=true`;
                         }
                     }
+                }
 
-                    const encodedValues = urlEncodeData(
-                        encryptData(
-                            { ...stepExec.requestValues },
-                            endpoint.requestData,
-                            securityContext,
-                        ),
+                const encodedValues = urlEncodeData(
+                    encryptData(
+                        { ...stepExec.requestValues },
+                        endpoint.requestData,
+                        securityContext,
+                    ),
+                    endpoint.requestData,
+                );
+
+                if (endpoint.signatureMethod && signatureField) {
+                    const { signature, rawString } = await generateSignature(
+                        encodedValues,
+                        endpoint.requestData,
+                        endpoint.signatureMethod,
+                        securityContext,
+                    );
+                    stepExec.requestValues[signatureField.name] = signature;
+                    stepExec.signatureSourceString = rawString;
+                    encodedValues[signatureField.name] = signature;
+                }
+
+                stepExec.sentRequest = Object.entries(encodedValues)
+                    .map(([k, v]) => `${k}=${v}`)
+                    .join("\n");
+            } else {
+                const valForSig =
+                    endpoint.method === "POST" &&
+                    endpoint.config?.contentType ===
+                        "application/x-www-form-urlencoded"
+                        ? urlEncodeData(processedValues, endpoint.requestData)
+                        : processedValues;
+                if (endpoint.signatureMethod && signatureField) {
+                    const { signature, rawString } = await generateSignature(
+                        valForSig,
+                        endpoint.requestData,
+                        endpoint.signatureMethod,
+                        securityContext,
+                    );
+                    stepExec.requestValues[signatureField.name] = signature;
+                    stepExec.signatureSourceString = rawString;
+                    if (
+                        typeof valForSig === "object" &&
+                        !Array.isArray(valForSig)
+                    ) {
+                        (processedValues as any)[signatureField.name] =
+                            signature;
+                    }
+                }
+
+                if (
+                    endpoint.config?.contentType ===
+                    "application/x-www-form-urlencoded"
+                ) {
+                    const encoded = urlEncodeData(
+                        processedValues,
                         endpoint.requestData,
                     );
-
-                    if (endpoint.signatureMethod && signatureField) {
-                        const { signature, rawString } =
-                            await generateSignature(
-                                encodedValues,
-                                endpoint.requestData,
-                                endpoint.signatureMethod,
-                                securityContext,
-                            );
-                        stepExec.requestValues[signatureField.name] = signature;
-                        stepExec.signatureSourceString = rawString;
-                        encodedValues[signatureField.name] = signature;
-                    }
-
-                    stepExec.sentRequest = Object.entries(encodedValues)
+                    stepExec.sentRequest = Object.entries(encoded)
                         .map(([k, v]) => `${k}=${v}`)
                         .join("\n");
                 } else {
-                    const valForSig =
-                        endpoint.method === "POST" &&
-                        endpoint.config?.contentType ===
-                            "application/x-www-form-urlencoded"
-                            ? urlEncodeData(
-                                  processedValues,
-                                  endpoint.requestData,
-                              )
-                            : processedValues;
-                    if (endpoint.signatureMethod && signatureField) {
-                        const { signature, rawString } =
-                            await generateSignature(
-                                valForSig,
-                                endpoint.requestData,
-                                endpoint.signatureMethod,
-                                securityContext,
-                            );
-                        stepExec.requestValues[signatureField.name] = signature;
-                        stepExec.signatureSourceString = rawString;
-                        if (
-                            typeof valForSig === "object" &&
-                            !Array.isArray(valForSig)
-                        ) {
-                            (processedValues as any)[signatureField.name] =
-                                signature;
-                        }
-                    }
-
-                    if (
-                        endpoint.config?.contentType ===
-                        "application/x-www-form-urlencoded"
-                    ) {
-                        const encoded = urlEncodeData(
-                            processedValues,
-                            endpoint.requestData,
-                        );
-                        stepExec.sentRequest = Object.entries(encoded)
-                            .map(([k, v]) => `${k}=${v}`)
-                            .join("\n");
-                    } else {
-                        stepExec.sentRequest = JSON.stringify(
-                            processedValues,
-                            null,
-                            2,
-                        );
-                    }
+                    stepExec.sentRequest = JSON.stringify(
+                        processedValues,
+                        null,
+                        2,
+                    );
                 }
-                stepExec.status = "SUCCESS"; // Change status to SUCCESS to show Execute button
-                await scrollToBottom();
-                if (!autoRun) return;
-            } catch (e) {
-                stepExec.status = "ERROR";
-                stepExec.error = "Preparation error: " + (e as Error).message;
-                return;
             }
+            stepExec.status = "SUCCESS"; // Change status to SUCCESS to show Execute button
+            await scrollToBottom();
+
+            // [FIX] Only proceed to execution if the user clicked while *already* in SUCCESS (Green button) state.
+            // If the user clicked while in READY (Blue button), we stop here after preparation to show the "Execute" button.
+            if (!autoRun && initialStatus !== "SUCCESS") return;
+        } catch (e) {
+            stepExec.status = "ERROR";
+            stepExec.error = "Preparation error: " + (e as Error).message;
+            // [FIX] Close the pre-opened popup if preparation fails
+            if (
+                preOpenedPopup &&
+                !preOpenedPopup.closed &&
+                !popupNameOverride
+            ) {
+                preOpenedPopup.close();
+            }
+            return;
         }
 
         // 2. Execution Phase
@@ -1502,52 +1507,14 @@
             let fullUrl = `${domain}${endpoint.scope.site ? "/" + endpoint.scope.site : ""}${endpoint.uri}`;
 
             if (endpoint.requestType === "FORM") {
-                // Determine popup name: override (Run All) or new unique (Manual)
-                const popupName =
-                    popupNameOverride ||
-                    `col_run_${executionId}_step_${index}_${Date.now()}`;
-
-                // Handle Popup:
-                // If manual run, open new.
-                // If auto run (override provided), we assume global popup matches this name or we just use the name for targeting.
-                // CRITICAL: For auto-run, we depend on the handleRunAll to have opened the popup.
-                if (!popupNameOverride) {
-                    // Manual run: Open fresh popup
-                    popupWindow = wpayExecutionService.openPopup(
-                        451,
-                        908,
-                        popupName,
-                    );
-
-                    if (!popupWindow) {
-                        stepExec.status = "ERROR";
-                        stepExec.error = "Popup blocked by browser.";
-                        isExecuting = false;
-                        showAlert(
-                            "Popup Blocked",
-                            "The browser blocked the popup. Please click manually.",
-                        );
-                        return;
-                    }
-                } else {
-                    // Auto run: Reuse existing global popup
-                    if (!popupWindow || popupWindow.closed) {
-                        console.warn(
-                            `Step ${index}: Global popup is closed or missing. Attempting to reopen...`,
-                        );
-                        popupWindow = wpayExecutionService.openPopup(
-                            451,
-                            908,
-                            popupName,
-                        );
-                    }
-                }
+                const popupName = `wpay_popup_${Date.now()}`;
+                popupWindow = wpayExecutionService.openPopup(
+                    451,
+                    908,
+                    popupName,
+                );
 
                 if (!popupWindow) {
-                    // Final check: If still no window, we are blocked.
-                    console.error(
-                        "Popup Blocked: No window reference available.",
-                    );
                     stepExec.status = "ERROR";
                     stepExec.error = "Popup blocked by browser.";
                     isExecuting = false;
@@ -1556,20 +1523,6 @@
                         "Browser blocked popup. Please allow popups.",
                     );
                     return;
-                }
-
-                // CRITICAL: Explicitly set the window name if we have access
-                // This fixes "About:Blank" issues by reclaiming the window reference
-                if (popupWindow && !popupWindow.closed) {
-                    try {
-                        // Accessing .name on cross-origin might fail, wrap in try-catch
-                        popupWindow.name = popupName;
-                    } catch (e) {
-                        console.warn(
-                            "Could not set popup window name (Cross-Origin?):",
-                            e,
-                        );
-                    }
                 }
 
                 // Prepare payload
@@ -1591,39 +1544,33 @@
                 }
 
                 stepExec.requestUrl = fullUrl;
-
                 stepExec.sentRequest = Object.entries(payload)
                     .map(([k, v]) => `${k}=${v}`)
                     .join("\n");
 
                 await scrollToBottom();
 
-                // Wait for broadcast
+                // Wait for broadcast RESULT
                 const resultPromise = new Promise((resolve, reject) => {
                     const bc = new BroadcastChannel("wpay_channel");
                     const handler = (event: MessageEvent) => {
+                        console.log("[Parent] BC Message:", event.data?.type);
                         if (event.data?.type === "WPAY_RESULT") {
                             bc.close();
-                            window.removeEventListener("message", handler);
                             resolve(event.data.data);
                         } else if (event.data?.type === "WPAY_CLOSE") {
                             bc.close();
-                            window.removeEventListener("message", handler);
                             reject(new Error("EXECUTION_STOPPED"));
                         }
                     };
                     bc.onmessage = handler;
-                    window.addEventListener("message", handler);
                 });
 
-                // Small delay to let popup attach listener
-                await new Promise((r) => setTimeout(r, 500));
-
                 const startTime = performance.now();
-                // Submit Form
+                // Submit form directly to the new popup
                 wpayExecutionService.submitForm(
                     fullUrl,
-                    endpoint.method || "POST",
+                    "POST",
                     popupName,
                     payload,
                 );
@@ -1645,7 +1592,7 @@
                         url: stepExec.requestUrl,
                         requestData: payload,
                         responseData: result,
-                        statusCode: 200, // Explicit success for WPAY form submission
+                        statusCode: 200,
                         application: endpoint.application,
                         service: endpoint.scope?.service || "",
                         site: endpoint.scope?.site || "",
@@ -1657,19 +1604,14 @@
                         index,
                         result,
                         latency,
-                        200, // Form submission success assumes 200
+                        200,
                     );
                     await checkNextStepCondition(index);
                 } finally {
-                    // ALWAYS close the popup after step execution (success or error)
-                    // ONLY close the popup if this is a MANUAL run
-                    // For Run All, we keep it open for the next step
-                    if (!popupNameOverride) {
-                        if (popupWindow && !popupWindow.closed) {
-                            popupWindow.close();
-                        }
-                        signalClosePopup();
+                    if (popupWindow && !popupWindow.closed) {
+                        popupWindow.close();
                     }
+                    popupWindow = null;
                 }
 
                 await scrollToBottom();
@@ -1874,42 +1816,13 @@
         try {
             for (let i = startIdx; i < stepsExecution.length; i++) {
                 if (stopRequested) break;
-
                 activeStepIndex = i;
 
-                if (i === startIdx) {
-                    // Use a generic name for the reusable popup
-                    const globalPopupName = `col_run_${executionId}`;
-                    popupWindow = wpayExecutionService.openPopup(
-                        451,
-                        908,
-                        globalPopupName,
-                    );
-                    if (!popupWindow) {
-                        showAlert(
-                            "Popup Blocked",
-                            "The browser blocked the initial popup. Please allow popups for this site.",
-                        );
-                        isRunningAll = false;
-                        return;
-                    }
-                }
-
-                const currentPopupName = `col_run_${executionId}`; // Consistent name for reuse
-
-                // Small delay to let popup window stabilize/clear between steps
-                if (i > startIdx) {
-                    await new Promise((r) => setTimeout(r, 1000)); // Increased delay slightly
-                }
-
-                if (stopRequested) break;
-
-                // Execute step (pass popupName to reuse)
-                await executeStep(i, true, executionId, currentPopupName);
+                // Execute step
+                await executeStep(i, true, executionId);
 
                 // If an error occurred or stop was requested during execution
                 if (stopRequested || stepsExecution[i].status === "ERROR") {
-                    signalClosePopup(); // Close popup on error or stop
                     break;
                 }
             }
@@ -1924,17 +1837,18 @@
         } finally {
             isRunningAll = false;
             stopRequested = false;
-            setTimeout(() => {
-                if (popupWindow && !popupWindow.closed) {
-                    popupWindow.close();
-                }
-                signalClosePopup();
-            }, 1000);
+            if (popupWindow && !popupWindow.closed) {
+                popupWindow.close();
+            }
+            popupWindow = null;
         }
     }
 
     function handleReset() {
-        signalClosePopup();
+        if (popupWindow && !popupWindow.closed) {
+            popupWindow.close();
+        }
+        popupWindow = null;
         stepsExecution = stepsExecution.map((s) => ({
             ...s,
             status: "READY",
