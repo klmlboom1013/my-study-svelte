@@ -707,6 +707,66 @@ function createSettingsStore() {
                     starredEndpointIds: [...starred, id]
                 }
             };
+        }),
+
+        /**
+         * Import seed data into the store.
+         * @param data The seed data to import.
+         * @param overwrite If true, existing data will be replaced. If false, data will be merged (based on ID).
+         */
+        importSeedData: (data: Partial<SettingsStoreData>, overwrite: boolean = false) => update(s => {
+            if (overwrite) {
+                return {
+                    ...s,
+                    ...data,
+                    endpoint_parameters: {
+                        ...s.endpoint_parameters,
+                        ...(data.endpoint_parameters || {})
+                    },
+                    interface: {
+                        ...s.interface,
+                        ...(data.interface || {})
+                    },
+                    recentActivity: {
+                        ...s.recentActivity,
+                        ...(data.recentActivity || {})
+                    }
+                };
+            }
+
+            // Merge Logic
+            const mergeById = <T extends { id: string }>(existing: T[], incoming: T[] = []): T[] => {
+                const map = new Map(existing.map(item => [item.id, item]));
+                incoming.forEach(item => {
+                    map.set(item.id, item); // Overwrite if same ID
+                });
+                return Array.from(map.values());
+            };
+
+            return {
+                ...s,
+                endpoint_parameters: {
+                    globalParameters: mergeById(s.endpoint_parameters.globalParameters, data.endpoint_parameters?.globalParameters),
+                    parameterOptions: mergeById(s.endpoint_parameters.parameterOptions, data.endpoint_parameters?.parameterOptions),
+                    midContexts: mergeById(s.endpoint_parameters.midContexts, data.endpoint_parameters?.midContexts),
+                },
+                apiCategories: mergeById(s.apiCategories, data.apiCategories),
+                apiCollections: mergeById(s.apiCollections, data.apiCollections),
+                applications: mergeById(s.applications, data.applications),
+                // Interface and RecentActivity are usually merged at the object level or replaced
+                interface: {
+                    ...s.interface,
+                    ...(data.interface || {}),
+                    sidebar: { ...s.interface.sidebar, ...(data.interface?.sidebar || {}) },
+                    dashboard: { ...s.interface.dashboard, ...(data.interface?.dashboard || {}) },
+                    bookmarks: mergeById(s.interface.bookmarks || [], data.interface?.bookmarks || []),
+                    starredEndpointIds: Array.from(new Set([...(s.interface.starredEndpointIds || []), ...(data.interface?.starredEndpointIds || [])]))
+                },
+                recentActivity: {
+                    ...s.recentActivity,
+                    ...(data.recentActivity || {})
+                }
+            };
         })
     };
 }

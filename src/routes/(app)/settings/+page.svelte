@@ -27,6 +27,44 @@
     import { executionService } from "$lib/features/execution/services/executionService";
     import { collectionExecutionService } from "$lib/features/execution/services/collectionExecutionService";
     import { testResultService } from "$lib/features/execution/services/testResultService";
+    import { seedData } from "$lib/data/seeds";
+
+    // --- Seed Data Import ---
+    let isImportOverwrite = $state(false);
+
+    async function handleImportSeedData(mode: "settings" | "data" | "all") {
+        showAlert(
+            "Import Seed Data",
+            `Are you sure you want to import ${mode === "settings" ? "Settings" : mode === "data" ? "Endpoints/Categories/Collections" : "All Sample Data"} ${isImportOverwrite ? "(Overwrite Mode)" : "(Merge Mode)"}?`,
+            "confirm",
+            () => {
+                if (mode === "settings" || mode === "all") {
+                    settingsStore.importSeedData(
+                        seedData.settings as any,
+                        isImportOverwrite,
+                    );
+                }
+                if (mode === "data" || mode === "all") {
+                    // Import Endpoints
+                    endpointService.importEndpoints(
+                        seedData.endpoints as any,
+                        isImportOverwrite,
+                    );
+                    // Import Categories & Collections (via SettingsStore)
+                    settingsStore.importSeedData(
+                        {
+                            apiCategories: seedData.apiCategories as any,
+                            apiCollections: seedData.apiCollections as any,
+                        },
+                        isImportOverwrite,
+                    );
+                }
+
+                showAlert("Success", "Seed data imported successfully.");
+                refreshLocalStorageItems();
+            },
+        );
+    }
 
     let activeCategory = $state("interface"); // 'endpoint', 'interface', 'application'
     let activeSubTab = $state("global"); // for endpoint: 'global', 'options', 'mid'
@@ -760,6 +798,7 @@
         { id: "endpoint", label: "Endpoint Parameters", icon: "tune" },
         { id: "recent_activity", label: "Recent Activity", icon: "history" },
         { id: "localstorage", label: "LocalStorage", icon: "database" },
+        { id: "seed_data", label: "Seed Data", icon: "auto_fix" },
     ];
 
     const APP_SUGGESTIONS = [
@@ -3806,6 +3845,186 @@
                         </div>
                     </Modal>
                 {/if}
+            {:else if activeCategory === "seed_data"}
+                <div class="p-8 max-w-5xl">
+                    <h2
+                        class="text-xl font-bold text-slate-900 dark:text-white mb-6"
+                    >
+                        Seed Data Management
+                    </h2>
+                    <p
+                        class="text-sm text-slate-500 dark:text-slate-400 mb-6 -mt-4"
+                    >
+                        Import default sample data for a quick start.
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Import Options Card -->
+                        <div
+                            class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm"
+                        >
+                            <div class="flex items-center gap-3 mb-6">
+                                <div
+                                    class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary"
+                                >
+                                    <span class="material-symbols-outlined"
+                                        >settings_backup_restore</span
+                                    >
+                                </div>
+                                <h3
+                                    class="text-lg font-bold text-slate-900 dark:text-white"
+                                >
+                                    Import Sample Data
+                                </h3>
+                            </div>
+
+                            <div class="space-y-4 mb-8">
+                                <label
+                                    class="flex items-start gap-3 p-3 rounded-lg border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        class="mt-1 rounded text-primary focus:ring-primary"
+                                        bind:checked={isImportOverwrite}
+                                    />
+                                    <div>
+                                        <span
+                                            class="block text-sm font-semibold text-slate-900 dark:text-white"
+                                            >Overwrite existing data</span
+                                        >
+                                        <span
+                                            class="block text-xs text-slate-500 mt-1"
+                                            >If enabled, existing items with the
+                                            same ID will be replaced by sample
+                                            data. If disabled, they will be
+                                            merged.</span
+                                        >
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="flex flex-col gap-3">
+                                <button
+                                    onclick={() =>
+                                        handleImportSeedData("settings")}
+                                    class="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-200 dark:border-slate-700 rounded-xl transition-all group"
+                                >
+                                    <div
+                                        class="flex flex-col items-start translate-x-0 group-hover:translate-x-1 transition-transform"
+                                    >
+                                        <span
+                                            class="text-sm font-bold text-slate-900 dark:text-white"
+                                            >Import Settings Only</span
+                                        >
+                                        <span class="text-xs text-slate-500"
+                                            >Global Parameters, MID Contexts,
+                                            Apps...</span
+                                        >
+                                    </div>
+                                    <span
+                                        class="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors"
+                                        >settings</span
+                                    >
+                                </button>
+
+                                <button
+                                    onclick={() => handleImportSeedData("data")}
+                                    class="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-200 dark:border-slate-700 rounded-xl transition-all group"
+                                >
+                                    <div
+                                        class="flex flex-col items-start translate-x-0 group-hover:translate-x-1 transition-transform"
+                                    >
+                                        <span
+                                            class="text-sm font-bold text-slate-900 dark:text-white"
+                                            >Import Core Data Only</span
+                                        >
+                                        <span class="text-xs text-slate-500"
+                                            >Endpoints, Categories, Collections</span
+                                        >
+                                    </div>
+                                    <span
+                                        class="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors"
+                                        >database</span
+                                    >
+                                </button>
+
+                                <button
+                                    onclick={() => handleImportSeedData("all")}
+                                    class="w-full flex items-center justify-between px-4 py-4 bg-primary text-white hover:bg-primary-hover rounded-xl shadow-lg shadow-primary/20 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+                                >
+                                    <div class="flex flex-col items-start">
+                                        <span class="text-sm font-bold"
+                                            >Import Complete Sample Pack</span
+                                        >
+                                        <span class="text-xs text-white/70"
+                                            >Settings + Core Data (Recommended)</span
+                                        >
+                                    </div>
+                                    <span class="material-symbols-outlined"
+                                        >rocket_launch</span
+                                    >
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Info Card -->
+                        <div
+                            class="bg-blue-50/50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-900/30 p-6 flex flex-col"
+                        >
+                            <h3
+                                class="text-md font-bold text-blue-900 dark:text-blue-300 mb-4 flex items-center gap-2"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-[20px]"
+                                    >info</span
+                                >
+                                What is Seed Data?
+                            </h3>
+                            <ul
+                                class="space-y-3 text-sm text-blue-800/80 dark:text-blue-400/80"
+                            >
+                                <li class="flex gap-2">
+                                    <span class="text-blue-500">•</span>
+                                    <span
+                                        >Pre-configured **Global Parameters**
+                                        for WPAY service.</span
+                                    >
+                                </li>
+                                <li class="flex gap-2">
+                                    <span class="text-blue-500">•</span>
+                                    <span
+                                        >Sample **Endpoints** with
+                                        request/response schemas.</span
+                                    >
+                                </li>
+                                <li class="flex gap-2">
+                                    <span class="text-blue-500">•</span>
+                                    <span
+                                        >Logical **API Collections**
+                                        demonstrating standard flows.</span
+                                    >
+                                </li>
+                                <li class="flex gap-2">
+                                    <span class="text-blue-500">•</span>
+                                    <span
+                                        >Automated mapping of **Categories** and
+                                        icons.</span
+                                    >
+                                </li>
+                            </ul>
+
+                            <div class="mt-auto pt-6">
+                                <p
+                                    class="text-xs text-blue-700/60 dark:text-blue-500/60 italic font-medium"
+                                >
+                                    * This action is performed locally. If Cloud
+                                    Sync is enabled, the imported data will be
+                                    synced automatically.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             {/if}
         </main>
     </div>

@@ -1,0 +1,202 @@
+[
+    {
+        "id": "5b89cdab-0531-437e-91be-fb4033eb9790",
+        "name": "Card Registration Flow",
+        "description": "신용카드 등록 wpayToken 발급",
+        "application": "WPAY",
+        "service": [],
+        "steps": [
+            {
+                "id": "8a762ced-c31b-43bc-a9f5-2c30eb9a4c8c",
+                "endpointId": "5bed4782-7e18-46e9-85c8-a733ca60d792",
+                "name": "서비스 가입 정보 조회",
+                "presetId": "9d86ef44-5e9c-4fb8-be44-b0e32bc527b1",
+                "nextStepConditions": [
+                    {
+                        "enabled": true,
+                        "field": "resultCode",
+                        "values": [
+                            "0000"
+                        ],
+                        "operator": "equals"
+                    },
+                    {
+                        "enabled": true,
+                        "field": "wpayUserKey",
+                        "values": [],
+                        "operator": "isNotEmpty"
+                    },
+                    {
+                        "enabled": true,
+                        "field": "userId",
+                        "values": [],
+                        "operator": "isNotEmpty"
+                    },
+                    {
+                        "enabled": true,
+                        "field": "status",
+                        "values": [
+                            "00"
+                        ],
+                        "operator": "equals"
+                    }
+                ]
+            },
+            {
+                "id": "a0593cbe-498c-4931-b689-7fd2a96992fd",
+                "endpointId": "ec804433-992e-45ad-a43f-6b8c67443509",
+                "name": "결제 PIN 번호 인증",
+                "requestMappings": [
+                    {
+                        "fieldPath": "mid",
+                        "source": "mid",
+                        "value": "2c529cac-ea98-44ac-9bc5-7b66bc918108:mid"
+                    },
+                    {
+                        "fieldPath": "wpayUserKey",
+                        "source": "variable",
+                        "value": "8a762ced-c31b-43bc-a9f5-2c30eb9a4c8c.wpayUserKey"
+                    },
+                    {
+                        "fieldPath": "ci",
+                        "source": "variable",
+                        "value": "8a762ced-c31b-43bc-a9f5-2c30eb9a4c8c.ci"
+                    },
+                    {
+                        "fieldPath": "returnUrl",
+                        "source": "global",
+                        "value": "returnUrl"
+                    },
+                    {
+                        "fieldPath": "resetCssUrl",
+                        "source": "global",
+                        "value": "resetCssUrl"
+                    },
+                    {
+                        "fieldPath": "resetTextUrl",
+                        "source": "global",
+                        "value": "resetTextUrl"
+                    },
+                    {
+                        "fieldPath": "customTitle",
+                        "source": "global",
+                        "value": "customTitle"
+                    }
+                ],
+                "nextStepConditions": [
+                    {
+                        "enabled": true,
+                        "field": "resultCode",
+                        "values": [
+                            "0000"
+                        ],
+                        "operator": "equals"
+                    },
+                    {
+                        "enabled": true,
+                        "field": "mid",
+                        "values": [],
+                        "operator": "isNotEmpty"
+                    },
+                    {
+                        "enabled": true,
+                        "field": "wpayUserKey",
+                        "values": [],
+                        "operator": "isNotEmpty"
+                    },
+                    {
+                        "enabled": true,
+                        "field": "wtid",
+                        "values": [],
+                        "operator": "isNotEmpty"
+                    },
+                    {
+                        "enabled": true,
+                        "field": "signature",
+                        "values": [],
+                        "operator": "validSignature"
+                    }
+                ]
+            },
+            {
+                "id": "840c45fa-df20-44a5-95e8-2cca3738bf06",
+                "endpointId": "25bcf4d6-f7b8-4c38-a068-38c4ad115b18",
+                "name": "결제수단 등록 (신용카드)",
+                "requestMappings": [
+                    {
+                        "fieldPath": "wpayUserKey",
+                        "source": "variable",
+                        "value": "a0593cbe-498c-4931-b689-7fd2a96992fd.wpayUserKey"
+                    },
+                    {
+                        "fieldPath": "ci",
+                        "source": "variable",
+                        "value": "8a762ced-c31b-43bc-a9f5-2c30eb9a4c8c.ci"
+                    },
+                    {
+                        "fieldPath": "resetCssUrl",
+                        "source": "manual",
+                        "value": ""
+                    },
+                    {
+                        "fieldPath": "mid",
+                        "source": "variable",
+                        "value": "a0593cbe-498c-4931-b689-7fd2a96992fd.mid"
+                    }
+                ],
+                "nextStepConditions": [
+                    {
+                        "enabled": true,
+                        "field": "resultCode",
+                        "values": [
+                            "0000",
+                            "7028"
+                        ],
+                        "operator": "equals"
+                    },
+                    {
+                        "enabled": true,
+                        "field": "mid",
+                        "values": [],
+                        "operator": "isNotEmpty"
+                    },
+                    {
+                        "enabled": true,
+                        "field": "wtid",
+                        "values": [],
+                        "operator": "isNotEmpty"
+                    },
+                    {
+                        "enabled": true,
+                        "field": "wpayUserKey",
+                        "values": [],
+                        "operator": "isNotEmpty"
+                    },
+                    {
+                        "enabled": true,
+                        "field": "wpayToken",
+                        "values": [],
+                        "operator": "isNotEmpty"
+                    },
+                    {
+                        "enabled": true,
+                        "field": "payMethod",
+                        "values": [
+                            "01"
+                        ],
+                        "operator": "equals"
+                    },
+                    {
+                        "enabled": true,
+                        "field": "signature",
+                        "values": [],
+                        "operator": "validSignature"
+                    }
+                ]
+            }
+        ],
+        "isBookmarked": true,
+        "color": "#3b82f6",
+        "icon": "folder"
+    }
+]

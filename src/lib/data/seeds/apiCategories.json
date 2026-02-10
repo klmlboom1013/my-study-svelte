@@ -1,0 +1,80 @@
+[
+    {
+        "id": "12a3328f-9ee0-40e9-a58f-4db9b15672dc",
+        "application": "WPAY",
+        "service": [
+            "sbuckwpay",
+            "wpaycst",
+            "wpaypro",
+            "wpaystd2",
+            "wpaystd"
+        ],
+        "name": "Membership",
+        "description": "회원 관리",
+        "icon": "group",
+        "color": "#904df5",
+        "isBookmarked": true
+    },
+    {
+        "application": "WPAY",
+        "service": [
+            "wpaystd",
+            "wpaystd2",
+            "wpaypro",
+            "wpaycst",
+            "sbuckwpay"
+        ],
+        "name": "Pay Token",
+        "description": "결제 토큰 관리",
+        "icon": "credit_card",
+        "color": "#D946EF",
+        "id": "8939079d-cc78-413e-a341-8b7e97cb1b37",
+        "isBookmarked": true
+    },
+    {
+        "application": "WPAY",
+        "service": [
+            "wpaystd",
+            "wpaystd2",
+            "wpaypro",
+            "wpaycst",
+            "wpayplus",
+            "sbuckwpay"
+        ],
+        "name": "Payments",
+        "description": "",
+        "icon": "payments",
+        "color": "#10B981",
+        "id": "d56056a5-2e9f-4edd-9b75-6c286f684478",
+        "isBookmarked": true
+    },
+    {
+        "application": "WPAY",
+        "service": [
+            "wpaystd",
+            "wpaystd2",
+            "wpaypro",
+            "wpaycst",
+            "sbuckwpay"
+        ],
+        "name": "System",
+        "description": "시스템 정보",
+        "icon": "database",
+        "color": "#ead676",
+        "id": "41314e6f-c466-4b80-bfdc-d39129b454cf",
+        "isBookmarked": false
+    },
+    {
+        "application": "WPAY",
+        "service": [
+            "wpaystd2",
+            "wpaystd"
+        ],
+        "name": "Standards",
+        "description": "표준 화면",
+        "icon": "api",
+        "color": "#F43F5E",
+        "id": "c40067d2-5cc4-4498-a616-1e31dbfb9459",
+        "isBookmarked": false
+    }
+]

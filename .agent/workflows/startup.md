@@ -6,8 +6,6 @@ description: IDE Startup Checklist Automation
 
 This workflow executes the startup routine defined in the project's checklist.
 
-작업 진행 중 내 승인(accept)가 필요한 것 중 개인정보 또는 보안관련 사항이 아니면 알아서 판단하고 진행해줘
-
 1. **언어 설정.**
 
 - agent대화는 한국어를 기본 언어로 세팅 한다.

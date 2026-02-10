@@ -1,0 +1,415 @@
+[
+    {
+        "id": "fe79095b-15f8-4cb2-9a2a-58fe3e31461e",
+        "application": "WPAY",
+        "name": "서비스 가입",
+        "description": "wpayUserKey 생성",
+        "method": "POST",
+        "uri": "/std/u/v1/memreg",
+        "requestType": "FORM",
+        "scope": {
+            "service": "wpaystd2",
+            "site": "stdwpay"
+        },
+        "config": {
+            "contentType": "application/x-www-form-urlencoded",
+            "customHeaders": []
+        },
+        "signatureMethod": "HMAC_SHA256_KV",
+        "requestData": [
+            {
+                "name": "mid",
+                "type": "string",
+                "required": true,
+                "encrypt": false,
+                "encoded": false,
+                "description": "가맹점 ID",
+                "length": 10,
+                "signingOrder": 1
+            },
+            {
+                "name": "userId",
+                "type": "string",
+                "required": true,
+                "encrypt": true,
+                "encoded": false,
+                "description": "가맹점 사용자 ID",
+                "length": 20,
+                "signingOrder": 2
+            },
+            {
+                "name": "ci",
+                "type": "string",
+                "required": false,
+                "encrypt": false,
+                "encoded": false,
+                "description": "본인인증기관 사용자 고유 식별 값",
+                "length": 100,
+                "signingOrder": 3
+            },
+            {
+                "name": "userNm",
+                "type": "string",
+                "required": false,
+                "encrypt": false,
+                "encoded": true,
+                "description": "고객 이름",
+                "length": 100,
+                "signingOrder": 4
+            },
+            {
+                "name": "hNum",
+                "type": "string",
+                "required": false,
+                "encrypt": true,
+                "encoded": false,
+                "description": "고객 휴대폰번호 [\"-\" 제외]",
+                "length": 100,
+                "signingOrder": 5
+            },
+            {
+                "name": "hCorp",
+                "type": "string",
+                "required": false,
+                "encrypt": false,
+                "encoded": false,
+                "description": "통신사 [SKT, KFT, LGT, SKR, LGR, KFR)",
+                "length": 3,
+                "signingOrder": 6
+            },
+            {
+                "name": "birthDay",
+                "type": "string",
+                "required": false,
+                "encrypt": true,
+                "encoded": false,
+                "description": "생년월일 8자리",
+                "length": 100,
+                "signingOrder": 7
+            },
+            {
+                "name": "socialNo2",
+                "type": "string",
+                "required": false,
+                "encrypt": false,
+                "encoded": false,
+                "description": "주민번호 뒤 첫자리",
+                "length": 1,
+                "signingOrder": 8
+            },
+            {
+                "name": "frnrYn",
+                "type": "string",
+                "required": false,
+                "encrypt": false,
+                "encoded": false,
+                "description": "외국인여부 [Y:외국인, N:내국인]",
+                "length": 1,
+                "signingOrder": 9
+            },
+            {
+                "name": "returnUrl",
+                "type": "string",
+                "required": true,
+                "encrypt": false,
+                "encoded": true,
+                "description": "결과 전달 받을 Callback URL",
+                "length": 256,
+                "signingOrder": 10
+            },
+            {
+                "name": "signature",
+                "type": "string",
+                "required": true,
+                "encrypt": false,
+                "encoded": false,
+                "description": "데이터 위변조 검증값",
+                "length": 100
+            },
+            {
+                "name": "agreePayNm",
+                "type": "string",
+                "required": true,
+                "encrypt": false,
+                "encoded": true,
+                "description": "가맹점 PAY 이용약관 동의 제목 노출되는 PAY명",
+                "length": 256
+            },
+            {
+                "name": "agreeUrl",
+                "type": "string",
+                "required": true,
+                "encrypt": false,
+                "encoded": true,
+                "description": "가맹점 이용약관 URL",
+                "length": 256
+            },
+            {
+                "name": "optReadOnly",
+                "type": "string",
+                "required": false,
+                "encrypt": false,
+                "encoded": false,
+                "description": "회원가입 본인인증 화면 ReadOnly 속성부여 [userNm, birthDay, hNum]",
+                "length": 100
+            },
+            {
+                "name": "resetCssUrl",
+                "type": "string",
+                "required": false,
+                "encrypt": false,
+                "encoded": true,
+                "description": "custom css 작성한 URL",
+                "length": 160
+            },
+            {
+                "name": "resetTextUrl",
+                "type": "string",
+                "required": false,
+                "encrypt": false,
+                "encoded": true,
+                "description": "custom text css 작성한 URL",
+                "length": 160
+            },
+            {
+                "name": "customTitle",
+                "type": "string",
+                "required": false,
+                "encrypt": false,
+                "encoded": true,
+                "description": "브라우저 상단 바 타이틀",
+                "length": 256
+            },
+            {
+                "name": "customShortcutUrl",
+                "type": "string",
+                "required": false,
+                "encrypt": false,
+                "encoded": true,
+                "description": "브라우저 상단 바 favicon 이미지 URL",
+                "length": 256
+            }
+        ],
+        "responseData": [
+            {
+                "name": "resultCode",
+                "type": "string",
+                "encrypt": false,
+                "decoded": false,
+                "description": "결과코드",
+                "length": 6,
+                "signingOrder": 1
+            },
+            {
+                "name": "resultMsg",
+                "type": "string",
+                "encrypt": false,
+                "decoded": true,
+                "description": "결과메시지",
+                "length": 150,
+                "signingOrder": 2
+            },
+            {
+                "name": "mid",
+                "type": "string",
+                "encrypt": false,
+                "decoded": false,
+                "description": "가맹점 ID",
+                "length": 10,
+                "signingOrder": 3
+            },
+            {
+                "name": "wtid",
+                "type": "string",
+                "encrypt": false,
+                "decoded": false,
+                "description": "WPAY 트랜잭션 ID",
+                "length": 40,
+                "signingOrder": 4
+            },
+            {
+                "name": "userId",
+                "type": "string",
+                "encrypt": true,
+                "decoded": false,
+                "description": "가맹점 사용자 ID",
+                "length": 20,
+                "signingOrder": 5
+            },
+            {
+                "name": "wpayUserKey",
+                "type": "string",
+                "encrypt": true,
+                "decoded": false,
+                "description": "WPAY 사용자 KEY [CI 1:1 매칭]",
+                "length": 100,
+                "signingOrder": 6
+            },
+            {
+                "name": "ci",
+                "type": "string",
+                "encrypt": false,
+                "decoded": false,
+                "description": "본인인증 기관 사용자 고유 식별 값",
+                "length": 100,
+                "signingOrder": 7
+            },
+            {
+                "name": "signature",
+                "type": "string",
+                "encrypt": false,
+                "decoded": false,
+                "description": "데이터 위변조 검증값",
+                "length": 100
+            }
+        ],
+        "createdAt": 1767411086270,
+        "updatedAt": 1768900088774,
+        "categoryId": "12a3328f-9ee0-40e9-a58f-4db9b15672dc"
+    },
+    {
+        "id": "721a714e-6008-4f2a-bb17-e7136924a7c1",
+        "application": "WPAY",
+        "name": "서비스 해지",
+        "description": "WPAY 서비스를 해지를 위해 wpayUserKey와 등록된 wpayToken을 모두 사용 만료 처리 한다.",
+        "method": "POST",
+        "uri": "/std/rest/v1/memunreg",
+        "requestType": "REST",
+        "scope": {
+            "service": "wpaystd2",
+            "site": "stdwpay"
+        },
+        "config": {
+            "contentType": "application/x-www-form-urlencoded",
+            "customHeaders": []
+        },
+        "signatureMethod": "HMAC_SHA256_KV",
+        "requestData": [
+            {
+                "name": "mid",
+                "type": "string",
+                "required": true,
+                "encrypt": false,
+                "encoded": false,
+                "description": "가맹점 ID",
+                "length": 10,
+                "signingOrder": 1
+            },
+            {
+                "name": "userId",
+                "type": "string",
+                "required": false,
+                "encrypt": true,
+                "encoded": false,
+                "description": "가맹점 사용자 ID",
+                "length": 20,
+                "signingOrder": 2
+            },
+            {
+                "name": "wpayUserKey",
+                "type": "string",
+                "required": true,
+                "encrypt": true,
+                "encoded": false,
+                "description": "WPAY 사용자 KEY [CI 1:1 매칭]",
+                "length": 100,
+                "signingOrder": 3
+            },
+            {
+                "name": "ci",
+                "type": "string",
+                "required": false,
+                "encrypt": false,
+                "encoded": false,
+                "description": "본인인증기관 사용자 구분 값",
+                "length": 100,
+                "signingOrder": 4
+            },
+            {
+                "name": "signature",
+                "type": "string",
+                "required": true,
+                "encrypt": false,
+                "encoded": false,
+                "description": "데이터 위변조 검증 값",
+                "length": 100
+            }
+        ],
+        "responseData": [
+            {
+                "name": "resultCode",
+                "type": "string",
+                "encrypt": false,
+                "decoded": false,
+                "description": "결과코드",
+                "length": 6,
+                "signingOrder": 1
+            },
+            {
+                "name": "resultMsg",
+                "type": "string",
+                "encrypt": false,
+                "decoded": true,
+                "description": "결과메시지",
+                "length": 150,
+                "signingOrder": 2
+            },
+            {
+                "name": "mid",
+                "type": "string",
+                "encrypt": false,
+                "decoded": false,
+                "description": "가맹점 ID",
+                "length": 10,
+                "signingOrder": 3
+            },
+            {
+                "name": "wtid",
+                "type": "string",
+                "encrypt": false,
+                "decoded": false,
+                "description": "WPAY 트랜잭션 ID",
+                "length": 40,
+                "signingOrder": 4
+            },
+            {
+                "name": "userId",
+                "type": "string",
+                "encrypt": true,
+                "decoded": false,
+                "description": "가맹점 사용자 ID",
+                "length": 20,
+                "signingOrder": 5
+            },
+            {
+                "name": "wpayUserKey",
+                "type": "string",
+                "encrypt": true,
+                "decoded": false,
+                "description": "WPAY 사용자 KEY [CI 1:1 매칭]",
+                "length": 100,
+                "signingOrder": 6
+            },
+            {
+                "name": "ci",
+                "type": "string",
+                "encrypt": false,
+                "decoded": false,
+                "description": "본인인증 기관 사용자 고유 식별 값",
+                "length": 100,
+                "signingOrder": 7
+            },
+            {
+                "name": "signature",
+                "type": "string",
+                "encrypt": true,
+                "decoded": false,
+                "description": "데이터 위변조 검증값",
+                "length": 100
+            }
+        ],
+        "createdAt": 1767792820248,
+        "updatedAt": 1768900104794,
+        "categoryId": "12a3328f-9ee0-40e9-a58f-4db9b15672dc"
+    }
+]

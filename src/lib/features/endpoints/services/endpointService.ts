@@ -110,9 +110,19 @@ export const endpointService = {
         endpointService.listeners.forEach((l) => l());
     },
 
-    importEndpoints: (endpoints: Endpoint[]) => {
+    importEndpoints: (endpoints: Endpoint[], overwrite: boolean = false) => {
         if (!browser) return;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(endpoints));
+
+        let finalEndpoints = endpoints;
+        if (!overwrite) {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            const existing: Endpoint[] = stored ? JSON.parse(stored) : [];
+            const map = new Map(existing.map(e => [e.id, e]));
+            endpoints.forEach(e => map.set(e.id, e));
+            finalEndpoints = Array.from(map.values());
+        }
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(finalEndpoints));
         endpointService.notifyChange();
     }
 };
