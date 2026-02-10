@@ -1473,14 +1473,6 @@
         } catch (e) {
             stepExec.status = "ERROR";
             stepExec.error = "Preparation error: " + (e as Error).message;
-            // [FIX] Close the pre-opened popup if preparation fails
-            if (
-                preOpenedPopup &&
-                !preOpenedPopup.closed &&
-                !popupNameOverride
-            ) {
-                preOpenedPopup.close();
-            }
             return;
         }
 

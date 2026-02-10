@@ -8,6 +8,9 @@ node_modules
 /.svelte-kit
 /build
 
+# Firebase Functions build output
+/functions/ssr/
+
 # OS
 .DS_Store
 Thumbs.db

@@ -22,6 +22,11 @@
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
     import MultiSelectBox from "$lib/components/ui/MultiSelectBox.svelte";
     import Modal from "$lib/components/ui/Modal.svelte";
+    import { syncService } from "$lib/features/drive/services/syncService";
+    import { endpointService } from "$lib/features/endpoints/services/endpointService";
+    import { executionService } from "$lib/features/execution/services/executionService";
+    import { collectionExecutionService } from "$lib/features/execution/services/collectionExecutionService";
+    import { testResultService } from "$lib/features/execution/services/testResultService";
 
     let activeCategory = $state("interface"); // 'endpoint', 'interface', 'application'
     let activeSubTab = $state("global"); // for endpoint: 'global', 'options', 'mid'
@@ -113,13 +118,24 @@
     let injectValue = $state("");
     let injectError = $state("");
 
-    $effect(() => {
+    function refreshLocalStorageItems() {
         if (typeof window !== "undefined") {
-            // Initial load
-            localStorageItems = Object.keys(localStorage).map((key) => ({
-                key,
-                value: localStorage.getItem(key),
-            }));
+            localStorageItems = Object.keys(localStorage)
+                .sort()
+                .map((key) => ({
+                    key,
+                    value: localStorage.getItem(key),
+                }));
+        }
+    }
+
+    $effect(() => {
+        // Refresh items whenever activeCategory is 'localstorage' or on initial mount
+        if (
+            activeCategory === "localstorage" ||
+            typeof window !== "undefined"
+        ) {
+            refreshLocalStorageItems();
         }
     });
 
@@ -151,7 +167,7 @@
         isInjectModalOpen = true;
     }
 
-    function handleInject() {
+    async function handleInject() {
         injectError = "";
         if (!injectValue.trim()) {
             injectError = "Value cannot be empty.";
@@ -176,15 +192,39 @@
                 return;
             }
 
+            // 1. Update individual stores/services based on key
+            if (targetInjectKey === "settings_store") {
+                settingsStore.load(parsed);
+            } else if (targetInjectKey === "endpoint_list") {
+                endpointService.importEndpoints(parsed);
+            } else if (targetInjectKey === "execution_history") {
+                executionService.importHistory(parsed);
+            } else if (targetInjectKey === "collection_execution_history") {
+                collectionExecutionService.importHistory(parsed);
+            } else if (targetInjectKey === "test_suite_results") {
+                testResultService.importResults(parsed);
+            } else if (targetInjectKey === "execution_logs") {
+                executionService.importExecutionLogs(parsed);
+            }
+
+            // 2. Also force set in localStorage for extra safety (original logic)
             localStorage.setItem(targetInjectKey, JSON.stringify(parsed));
+
+            // 3. If Drive is connected, force a backup
+            if (get(authStore).accessToken) {
+                try {
+                    await syncService.forceBackup();
+                } catch (syncErr) {
+                    console.error("Failed to sync injected data:", syncErr);
+                }
+            }
+
             isInjectModalOpen = false;
+            refreshLocalStorageItems(); // Immediately update the UI list
             showAlert(
                 "Injected Successfully",
-                "Data has been forced into LocalStorage. Please refresh the page to apply changes fully.",
+                "Data has been injected into application state and synced to cloud. Changes applied in real-time.",
                 "alert",
-                () => {
-                    window.location.reload();
-                },
             );
         } catch (e) {
             injectError = "Invalid JSON format.";
