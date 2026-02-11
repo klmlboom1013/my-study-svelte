@@ -1,6 +1,6 @@
 <script lang="ts">
     import logo from "$lib/assets/favicon.svg";
-    import { onMount } from "svelte";
+    import { onMount, untrack } from "svelte";
     import { fade } from "svelte/transition";
     import { page } from "$app/stores";
     import { goto } from "$app/navigation";
@@ -59,7 +59,9 @@
     $effect(() => {
         // Track path changes to know if we can go back
         const path = $page.url.pathname;
-        historyCount++;
+        untrack(() => {
+            historyCount++;
+        });
     });
 
     function handleNewEndpoint() {
