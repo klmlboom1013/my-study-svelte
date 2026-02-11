@@ -304,7 +304,7 @@
     <div class="flex flex-1 overflow-hidden relative">
         <!-- Persistent Sidebar (Desktop Only) -->
         <aside
-            class="hidden md:flex w-64 bg-white dark:bg-background-dark border-r border-slate-200 dark:border-border-dark flex-col shrink-0"
+            class="hidden lg:flex w-64 bg-white dark:bg-background-dark border-r border-slate-200 dark:border-border-dark flex-col shrink-0"
         >
             <div class="flex-1 overflow-y-auto">
                 <SidebarNav
@@ -316,7 +316,7 @@
         </aside>
 
         <!-- Main Content Area -->
-        <main class="flex-1 overflow-y-auto w-full p-4 md:p-8">
+        <main class="flex-1 overflow-y-auto w-full p-4 lg:p-8">
             <div class="max-w-7xl mx-auto w-full">
                 {@render children()}
             </div>

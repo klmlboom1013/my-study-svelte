@@ -179,7 +179,12 @@
 
         // Real-time mobile detection
         const handleResize = () => {
-            isMobile = window.innerWidth < 768;
+            const isMobileDevice =
+                /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+                    navigator.userAgent,
+                );
+            isMobile = window.innerWidth < 1024 || isMobileDevice;
+
             if (isMobile && !$appStateStore.isPageLocked) {
                 appStateStore.update((s) => ({ ...s, isPageLocked: true }));
             }
@@ -242,7 +247,7 @@
                 <!-- svelte-ignore a11y_click_events_have_key_events -->
                 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
                 <h2
-                    class="text-lg font-bold leading-tight hidden md:block text-slate-900 dark:text-white cursor-pointer"
+                    class="text-lg font-bold leading-tight hidden lg:block text-slate-900 dark:text-white cursor-pointer"
                     onclick={() => goto("/")}
                 >
                     API Tester Hub
@@ -255,7 +260,7 @@
     <div class="flex items-center gap-3 justify-end flex-1">
         {#if showSearch}
             <!-- Application Dropdown -->
-            <div class="block md:block w-32 md:w-40">
+            <div class="block lg:block w-32 lg:w-40">
                 <SelectBox
                     id="header-app-select"
                     placeholder="Application"
@@ -265,7 +270,7 @@
             </div>
 
             <!-- Search Bar -->
-            <label class="hidden md:flex flex-col w-full max-w-sm h-9">
+            <label class="hidden lg:flex flex-col w-full max-w-sm h-9">
                 <div
                     class="flex w-full flex-1 items-stretch rounded-lg h-full border border-slate-200 dark:border-border-dark focus-within:border-primary/50 transition-colors bg-slate-50 dark:bg-card-dark"
                 >
@@ -308,7 +313,7 @@
                 ></div>
 
                 <!-- Create Test Button (+) -->
-                <div class="hidden md:block">
+                <div class="hidden lg:block">
                     <Tooltip text="new Endpoint" delay={100}>
                         <button
                             onclick={handleNewEndpoint}
