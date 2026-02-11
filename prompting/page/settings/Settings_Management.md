@@ -25,6 +25,7 @@
 | | Dashboard Widgets | 대시보드 화면에 표시할 위젯 선택 |
 | **Application** | Application Settings | 애플리케이션 등록, 수정 및 환경별(DEV, STG, GLB 등) 도메인/서비스 구성 |
 | | Site Context | 특정 서비스(Service)에 속한 사이트(Site) 목록 매핑 관리 |
+| **Seed Data** | Seed Data Management | 프로젝트 초기 구동을 위한 샘플 데이터(Settings, Endpoints, Collections 등) 임포트 |
 
 ---
 
@@ -70,6 +71,13 @@ API 요청 생성 시 기본값으로 주입되거나, 사용자가 선택할 �
 
 특정 **Service** 하위에 존재하는 논리적인 단위인 **Site**를 정의하고 매핑합니다. (주로 WPAY 서비스 구조에서 활용)
 
+### 3.5. Seed Data Import (데이터 초기 세팅)
+
+> [!NOTE]
+> 자세한 내용은 **[Seed_Data_Management_Detail.md](seed_data/Seed_Data_Management_Detail.md)** 문서를 참조하십시오.
+
+신규 사용자나 환경 초기화가 필요한 경우, 미리 정의된 샘플 데이터(시드 데이터)를 로컬 저장소에 주입하는 기능입니다. 'Settings', 'Data', 'All' 세 가지 범위를 지원하며, 'Merge' 또는 'Overwrite' 모드를 선택할 수 있습니다.
+
 ---
 
 ## 4. 데이터 흐름 및 저장소 (Data Flow & Stores)
@@ -88,6 +96,8 @@ API 요청 생성 시 기본값으로 주입되거나, 사용자가 선택할 �
 87:     *`applications`: Application 및 Service 설정.
 88:* `api_categories`: API 카테고리 데이터 독립 저장.
 89:   * `api_collections`: API 컬렉션 데이터 독립 저장.
+
+* **Seed Data Source**: `src/lib/data/seeds/` 경로의 JSON 데이터.
 
 ### 4.2. Helper Stores
 

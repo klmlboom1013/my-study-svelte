@@ -35,8 +35,8 @@
         { name: "Test Endpoint", icon: "api", path: "/endpoint" },
         { name: "API Collections", icon: "folder_open", path: "/collections" },
         { name: "API Categories", icon: "category", path: "/categories" },
-        { name: "Chatbot", icon: "smart_toy", path: "/chatbot" },
         { name: "Recent Activity", icon: "history", path: "/recent-activity" },
+
         { name: "Settings", icon: "settings", path: "/settings" },
     ];
 
@@ -118,10 +118,9 @@
                         $settingsStore.interface?.sidebar?.showCollections) ||
                     (item.path === "/categories" &&
                         $settingsStore.interface?.sidebar?.showCategories) ||
-                    (item.path === "/chatbot" &&
-                        $settingsStore.interface?.sidebar?.showChatbot) ||
                     (item.path === "/recent-activity" &&
                         $settingsStore.interface?.sidebar?.showRecentActivity)}
+
                 {#if showItem}
                     <button
                         onclick={() => item.path && goto(item.path)}

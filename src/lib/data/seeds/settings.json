@@ -482,7 +482,6 @@
             "showEndpoint": true,
             "showCollections": false,
             "showCategories": false,
-            "showChatbot": false,
             "showRecentActivity": false
         },
         "dashboard": {

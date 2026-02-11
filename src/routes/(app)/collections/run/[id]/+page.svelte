@@ -81,6 +81,7 @@
     let isExecuting = $state(false);
     let selectedDomainPrefixes = $state<Record<string, string>>({});
     let popupWindow: Window | null = null; // Plain variable to avoid proxying
+    let pendingReject: ((reason?: any) => void) | null = null;
 
     // Run All Control State
     let isRunningAll = $state(false);
@@ -95,6 +96,10 @@
             popupWindow.close();
         }
         popupWindow = null;
+        if (pendingReject) {
+            pendingReject(new Error("EXECUTION_STOPPED"));
+            pendingReject = null;
+        }
     }
 
     // History/Preset UI State
@@ -1544,6 +1549,7 @@
 
                 // Wait for broadcast RESULT
                 const resultPromise = new Promise((resolve, reject) => {
+                    pendingReject = reject;
                     const bc = new BroadcastChannel("wpay_channel");
                     const handler = (event: MessageEvent) => {
                         console.log("[Parent] BC Message:", event.data?.type);
@@ -1772,6 +1778,7 @@
             }
         } finally {
             isExecuting = false;
+            pendingReject = null;
             collectionExecutionService.saveLastUsed(
                 collection!.id,
                 stepsExecution.map((s) => ({

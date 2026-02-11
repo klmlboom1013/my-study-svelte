@@ -104,8 +104,8 @@ export interface InterfaceSettings {
         showEndpoint: boolean;
         showCollections: boolean;
         showCategories: boolean;
-        showChatbot: boolean;
         showRecentActivity: boolean;
+
     };
     dashboard: {
         showStats: boolean;
@@ -221,8 +221,8 @@ const defaultSettings: SettingsStoreData = {
             showEndpoint: true,
             showCollections: true,
             showCategories: true,
-            showChatbot: true,
             showRecentActivity: true
+
         },
         dashboard: {
             showStats: true,

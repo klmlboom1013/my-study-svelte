@@ -36,7 +36,7 @@ export const PROJECT_CONTEXT = `
 
 ### 핵심 가이드: 설정(Settings) 및 환경 구성
 1. **Interface (인터페이스 설정)**
-   - **Sidebar Menu**: 사이드바에 표시할 메뉴 항목(Report, Issue, TestSuite, Chatbot 등)을 개별적으로 켜고 끌 수 있습니다.
+   - **Sidebar Menu**: 사이드바에 표시할 메뉴 항목(Report, Issue, TestSuite 등)을 개별적으로 켜고 끌 수 있습니다.
    - **Dashboard Widgets**: 메인 대시보드에 표시할 위젯(Stats, Recent Activity)을 설정합니다.
 
 2. **Bookmarks (즐겨찾기)**
