@@ -373,10 +373,14 @@ function createSettingsStore() {
                     interface: {
                         ...defaultSettings.interface,
                         ...(parsedOld.interface || {}),
-                        sidebar: {
-                            ...defaultSettings.interface.sidebar,
-                            ...(parsedOld.interface?.sidebar || {})
-                        },
+                        sidebar: (() => {
+                            const sb = {
+                                ...defaultSettings.interface.sidebar,
+                                ...(parsedOld.interface?.sidebar || {})
+                            };
+                            delete (sb as any).showChatbot;
+                            return sb;
+                        })(),
                         dashboard: {
                             ...defaultSettings.interface.dashboard,
                             ...(parsedOld.interface?.dashboard || {})
@@ -757,7 +761,11 @@ function createSettingsStore() {
                 interface: {
                     ...s.interface,
                     ...(data.interface || {}),
-                    sidebar: { ...s.interface.sidebar, ...(data.interface?.sidebar || {}) },
+                    sidebar: (() => {
+                        const sb = { ...s.interface.sidebar, ...(data.interface?.sidebar || {}) };
+                        delete (sb as any).showChatbot;
+                        return sb;
+                    })(),
                     dashboard: { ...s.interface.dashboard, ...(data.interface?.dashboard || {}) },
                     bookmarks: mergeById(s.interface.bookmarks || [], data.interface?.bookmarks || []),
                     starredEndpointIds: Array.from(new Set([...(s.interface.starredEndpointIds || []), ...(data.interface?.starredEndpointIds || [])]))

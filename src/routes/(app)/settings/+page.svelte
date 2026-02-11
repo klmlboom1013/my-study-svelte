@@ -2021,7 +2021,7 @@
                             <div
                                 class="grid grid-cols-1 divide-y divide-slate-200 dark:divide-slate-800"
                             >
-                                {#each Object.entries($settingsStore.interface.sidebar) as [key, enabled]}
+                                {#each Object.entries($settingsStore.interface.sidebar).filter(([k]) => k !== "showChatbot") as [key, enabled]}
                                     <div
                                         class="p-4 flex items-center justify-between hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors first:rounded-t-lg last:rounded-b-lg"
                                     >
