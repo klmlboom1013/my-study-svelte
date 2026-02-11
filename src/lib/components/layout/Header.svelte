@@ -54,6 +54,14 @@
     let isSyncing = $state(false);
     let showRestoreConfirm = $state(false);
 
+    // Navigation tracking
+    let historyCount = $state(0);
+    $effect(() => {
+        // Track path changes to know if we can go back
+        const path = $page.url.pathname;
+        historyCount++;
+    });
+
     function handleNewEndpoint() {
         if (checkDriveConnection()) {
             goto("/endpoint/new");
@@ -222,13 +230,26 @@
     <!-- Left Section: Hamburger > Logo > Title -->
     <div class="flex items-center gap-4">
         {#if showSidebarToggle}
-            <button
-                class="flex items-center justify-center rounded-lg size-9 hover:bg-slate-100 dark:hover:bg-border-dark text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors border border-slate-200 dark:border-border-dark"
-                onclick={onToggleMobileMenu}
-                title={isSidebarOpen ? "Close Menu" : "Open Menu"}
-            >
-                <span class="material-symbols-outlined">menu</span>
-            </button>
+            <div class="flex items-center gap-2">
+                <button
+                    class="flex items-center justify-center rounded-lg size-9 hover:bg-slate-100 dark:hover:bg-border-dark text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors border border-slate-200 dark:border-border-dark"
+                    onclick={onToggleMobileMenu}
+                    title={isSidebarOpen ? "Close Menu" : "Open Menu"}
+                >
+                    <span class="material-symbols-outlined">menu</span>
+                </button>
+
+                {#if isMobile && historyCount > 1 && $page.url.pathname !== "/"}
+                    <button
+                        class="flex items-center justify-center rounded-lg size-9 hover:bg-slate-100 dark:hover:bg-border-dark text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors border border-slate-200 dark:border-border-dark"
+                        onclick={() => window.history.back()}
+                        title="Go Back"
+                    >
+                        <span class="material-symbols-outlined">arrow_back</span
+                        >
+                    </button>
+                {/if}
+            </div>
         {/if}
 
         {#if showBrand}
