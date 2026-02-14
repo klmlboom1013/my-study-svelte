@@ -1,5 +1,6 @@
 import type { Endpoint } from "$lib/types/endpoint";
 import { browser } from "$app/environment";
+import { ensureDriveConnected } from "$lib/utils/driveGuard";
 
 const STORAGE_KEY = "endpoints";
 
@@ -9,6 +10,7 @@ export const endpointService = {
      */
     saveEndpoint: (endpoint: Endpoint): void => {
         if (!browser) return;
+        if (!ensureDriveConnected()) return;
         const stored = localStorage.getItem(STORAGE_KEY);
         // Ensure read endpoints also get migrated (though less critical here if we trust the new endpoint)
         const endpoints: Endpoint[] = stored
@@ -50,6 +52,7 @@ export const endpointService = {
      */
     deleteEndpoint: (id: string): void => {
         if (!browser) return;
+        if (!ensureDriveConnected()) return;
         const stored = localStorage.getItem(STORAGE_KEY);
         // Migration during read
         const endpoints: Endpoint[] = stored
@@ -83,6 +86,7 @@ export const endpointService = {
      */
     updateEndpoint: (updatedEndpoint: Endpoint): void => {
         if (!browser) return;
+        if (!ensureDriveConnected()) return;
         const stored = localStorage.getItem(STORAGE_KEY);
         const endpoints: Endpoint[] = stored
             ? JSON.parse(stored).map((e: any) => ({
@@ -112,6 +116,7 @@ export const endpointService = {
 
     importEndpoints: (endpoints: Endpoint[], overwrite: boolean = false) => {
         if (!browser) return;
+        if (!ensureDriveConnected()) return;
 
         let finalEndpoints = endpoints;
         if (!overwrite) {

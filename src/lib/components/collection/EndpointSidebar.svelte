@@ -6,11 +6,13 @@
 
     let searchQuery = $state("");
     let selectedService = $state("All");
+    let selectedSite = $state("All");
 
     // Reset service filter when application changes
     $effect(() => {
         const app = $appStateStore.selectedApp;
         selectedService = "All";
+        selectedSite = "All";
     });
 
     let currentApp = $derived(
@@ -20,6 +22,26 @@
     );
 
     let services = $derived(currentApp?.services || []);
+
+    let availableSites = $derived.by(() => {
+        if (
+            !selectedService ||
+            selectedService === "All" ||
+            !currentApp?.siteContexts
+        )
+            return [];
+        const context = currentApp.siteContexts.find(
+            (c) => c.service === selectedService,
+        );
+        return context?.sites || [];
+    });
+
+    // Reset site filter when service changes
+    $effect(() => {
+        if (selectedService) {
+            selectedSite = "All";
+        }
+    });
 
     let endpoints = $derived.by(() => {
         let list = endpointService.getEndpoints();
@@ -32,6 +54,12 @@
                 list = list.filter(
                     (e: Endpoint) => e.scope.service === selectedService,
                 );
+
+                if (selectedSite !== "All") {
+                    list = list.filter(
+                        (e: Endpoint) => e.scope.site === selectedSite,
+                    );
+                }
             }
         }
 
@@ -64,7 +92,7 @@
         </h2>
 
         {#if services.length > 0}
-            <div class="mb-3">
+            <div class="mb-3 space-y-3">
                 <select
                     bind:value={selectedService}
                     class="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary transition-all font-medium"
@@ -74,6 +102,18 @@
                         <option value={svc.name}>{svc.name}</option>
                     {/each}
                 </select>
+
+                {#if availableSites.length > 0}
+                    <select
+                        bind:value={selectedSite}
+                        class="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary transition-all font-medium"
+                    >
+                        <option value="All">All Sites</option>
+                        {#each availableSites as site}
+                            <option value={site}>{site}</option>
+                        {/each}
+                    </select>
+                {/if}
             </div>
         {/if}
 

@@ -11,6 +11,7 @@
     import CollectionStepEditor from "./CollectionStepEditor.svelte";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
+    import { endpointService } from "$lib/features/endpoints/services/endpointService";
     import type { Endpoint } from "$lib/types/endpoint";
 
     interface Props {
@@ -24,6 +25,7 @@
     let description = $state("");
     let application = $state("");
     let selectedService = $state("");
+    let selectedSite = $state("");
     let steps = $state<CollectionStep[]>([]);
     let draggedStepIndex = $state<number | null>(null);
     let draggableStepIndex = $state<number | null>(null);
@@ -40,6 +42,7 @@
         application =
             collection?.application || $appStateStore.selectedApp || "All";
         selectedService = collection?.service?.[0] || "";
+        selectedSite = collection?.site?.[0] || "";
         steps = collection?.steps || [];
         isBookmarked = collection?.isBookmarked || false;
         color = collection?.color || "#3b82f6";
@@ -52,14 +55,35 @@
 
     let services = $derived(currentApp?.services || []);
 
-    // Reset service if current application doesn't support it or if application changes
+    let availableSites = $derived.by(() => {
+        if (!selectedService || !currentApp?.siteContexts) return [];
+        const context = currentApp.siteContexts.find(
+            (c) => c.service === selectedService,
+        );
+        return context?.sites || [];
+    });
+
+    // Reset service/site if current application doesn't support it or if application/service changes
     $effect(() => {
         if (application) {
             if (services.length === 0) {
                 selectedService = "";
+                selectedSite = "";
             } else if (!services.find((s) => s.name === selectedService)) {
                 // Keep current if still valid, otherwise reset or keep empty
             }
+        }
+    });
+
+    $effect(() => {
+        if (selectedService) {
+            if (availableSites.length === 0) {
+                selectedSite = "";
+            } else if (!availableSites.includes(selectedSite)) {
+                // Keep current if still valid
+            }
+        } else {
+            selectedSite = "";
         }
     });
 
@@ -90,6 +114,7 @@
                     name: data.name,
                 };
                 steps = [...steps, newStep];
+                updateAutoSelections(steps);
             }
         } catch (err) {
             console.error("Failed to parse dropped data", err);
@@ -144,6 +169,68 @@
 
     function handleRemoveStep(index: number) {
         steps = steps.filter((_, i) => i !== index);
+        updateAutoSelections(steps);
+    }
+
+    function updateAutoSelections(updatedSteps: CollectionStep[]) {
+        if (updatedSteps.length === 0) return;
+
+        const serviceCounts: Record<string, number> = {};
+        const siteCounts: Record<string, number> = {};
+
+        // Get full endpoint data for all steps to count frequencies
+        const allEndpoints = endpointService.getEndpoints();
+        const currentStepsEndpoints = updatedSteps
+            .map((s) =>
+                allEndpoints.find((e: Endpoint) => e.id === s.endpointId),
+            )
+            .filter(Boolean) as Endpoint[];
+
+        if (currentStepsEndpoints.length === 0) return;
+
+        currentStepsEndpoints.forEach((ep) => {
+            if (ep?.scope.service) {
+                serviceCounts[ep.scope.service] =
+                    (serviceCounts[ep.scope.service] || 0) + 1;
+            }
+        });
+
+        // Find most frequent service
+        let mostFrequentService = "";
+        let maxServiceCount = 0;
+        for (const svc in serviceCounts) {
+            if (serviceCounts[svc] > maxServiceCount) {
+                maxServiceCount = serviceCounts[svc];
+                mostFrequentService = svc;
+            }
+        }
+
+        if (mostFrequentService) {
+            selectedService = mostFrequentService;
+
+            // Now find most frequent site within that service
+            currentStepsEndpoints
+                .filter((ep) => ep?.scope.service === mostFrequentService)
+                .forEach((ep) => {
+                    if (ep?.scope.site) {
+                        siteCounts[ep.scope.site] =
+                            (siteCounts[ep.scope.site] || 0) + 1;
+                    }
+                });
+
+            let mostFrequentSite = "";
+            let maxSiteCount = 0;
+            for (const site in siteCounts) {
+                if (siteCounts[site] > maxSiteCount) {
+                    maxSiteCount = siteCounts[site];
+                    mostFrequentSite = site;
+                }
+            }
+
+            if (mostFrequentSite) {
+                selectedSite = mostFrequentSite;
+            }
+        }
     }
 
     async function handleSave() {
@@ -158,6 +245,7 @@
             description,
             application,
             service: selectedService ? [selectedService] : [],
+            site: selectedSite ? [selectedSite] : [],
             steps,
             isBookmarked,
             color,
@@ -181,46 +269,63 @@
 <div
     class="flex flex-col h-screen overflow-hidden bg-slate-50 dark:bg-slate-900"
 >
-    <!-- Header -->
-    <header
-        class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 flex items-center justify-between shrink-0"
-    >
-        <div class="flex items-center gap-4">
-            <Breadcrumbs
-                items={[
-                    { label: "Home", href: "/" },
-                    { label: "API Collections", href: "/collections" },
-                    {
-                        label: collection
-                            ? "Edit Collection"
-                            : "New Collection",
-                    },
-                ]}
-            />
-        </div>
-        <div class="flex items-center gap-2">
-            <button
-                onclick={handleCancel}
-                class="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-            >
-                Cancel
-            </button>
-            <button
-                onclick={handleSave}
-                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-all"
-            >
-                {collection ? "Save Changes" : "Create Collection"}
-            </button>
-        </div>
-    </header>
-
     <div class="flex flex-1 overflow-hidden">
         <!-- Left Sidebar: Endpoints -->
         <EndpointSidebar />
 
         <!-- Main Workspace -->
-        <main class="flex-1 overflow-y-auto p-8">
-            <div class="max-w-4xl mx-auto">
+        <main class="flex-1 overflow-y-auto">
+            <div class="max-w-5xl mx-auto py-8 px-6">
+                <!-- Integrated Header Area -->
+                <div class="mb-10">
+                    <Breadcrumbs
+                        items={[
+                            { label: "Home", href: "/" },
+                            { label: "API Collections", href: "/collections" },
+                            {
+                                label: collection
+                                    ? "Edit Collection"
+                                    : "New Collection",
+                            },
+                        ]}
+                    />
+
+                    <div
+                        class="flex flex-col md:flex-row md:items-end justify-between gap-6 mt-6"
+                    >
+                        <div class="flex-1">
+                            <h1
+                                class="text-3xl font-bold text-slate-900 dark:text-white mb-2"
+                            >
+                                {collection
+                                    ? "Edit Collection"
+                                    : "New Collection"}
+                            </h1>
+                            <p class="text-slate-500 dark:text-slate-400">
+                                {collection
+                                    ? "Update your API collection steps and configurations."
+                                    : "Create a new sequence of API endpoints to automate your business flow."}
+                            </p>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <button
+                                onclick={handleCancel}
+                                class="px-5 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onclick={handleSave}
+                                class="px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-sm transition-all hover:-translate-y-0.5"
+                            >
+                                {collection
+                                    ? "Save Changes"
+                                    : "Create Collection"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 <!-- Collection Basic Info -->
                 <div
                     class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 mb-8 shadow-sm"
@@ -278,6 +383,25 @@
                                             <option value={svc.name}
                                                 >{svc.name}</option
                                             >
+                                        {/each}
+                                    </select>
+                                </div>
+                            {/if}
+                            {#if availableSites.length > 0}
+                                <div>
+                                    <label
+                                        for="col-site"
+                                        class="block text-xs font-bold text-slate-500 uppercase mb-1.5"
+                                        >Site</label
+                                    >
+                                    <select
+                                        id="col-site"
+                                        bind:value={selectedSite}
+                                        class="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-primary transition-all font-semibold"
+                                    >
+                                        <option value="">Select Site</option>
+                                        {#each availableSites as site}
+                                            <option value={site}>{site}</option>
                                         {/each}
                                     </select>
                                 </div>

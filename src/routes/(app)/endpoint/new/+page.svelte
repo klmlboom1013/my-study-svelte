@@ -165,15 +165,6 @@
     }
 
     function handleSave() {
-        if (!checkDriveConnection()) {
-            alertTitle = "Google Drive Connection Required";
-            alertMessage =
-                "Google Drive is not connected. Please connect your Google account to enable saving endpoints and ensure your data is backed up.";
-            alertOnConfirm = handleGoogleLogin;
-            isAlertOpen = true;
-            return;
-        }
-
         const newEndpoint: Endpoint = {
             id: crypto.randomUUID(),
             name,

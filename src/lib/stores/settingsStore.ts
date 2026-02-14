@@ -1,6 +1,7 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { appStateStore } from "./appStateStore";
+import { ensureDriveConnected } from "$lib/utils/driveGuard";
 
 export interface GlobalParameter {
     id: string;
@@ -81,6 +82,7 @@ export interface ApiCollection {
     id: string;
     application: string;
     service?: string[];
+    site?: string[];
     name: string;
     description: string;
     icon?: string;
@@ -440,6 +442,7 @@ function createSettingsStore() {
         update,
         // Global Parameters
         addGlobalParameter: (param: Omit<GlobalParameter, 'id'>) => update(s => {
+            if (!ensureDriveConnected()) return s;
             const newParam = { ...param, id: crypto.randomUUID() };
             return {
                 ...s,
@@ -449,23 +452,30 @@ function createSettingsStore() {
                 }
             };
         }),
-        updateGlobalParameter: (param: GlobalParameter) => update(s => ({
-            ...s,
-            endpoint_parameters: {
-                ...s.endpoint_parameters,
-                globalParameters: s.endpoint_parameters.globalParameters.map(p => p.id === param.id ? param : p)
-            }
-        })),
-        removeGlobalParameter: (id: string) => update(s => ({
-            ...s,
-            endpoint_parameters: {
-                ...s.endpoint_parameters,
-                globalParameters: s.endpoint_parameters.globalParameters.filter(p => p.id !== id)
-            }
-        })),
+        updateGlobalParameter: (param: GlobalParameter) => update(s => {
+            if (!ensureDriveConnected()) return s;
+            return {
+                ...s,
+                endpoint_parameters: {
+                    ...s.endpoint_parameters,
+                    globalParameters: s.endpoint_parameters.globalParameters.map(p => p.id === param.id ? param : p)
+                }
+            };
+        }),
+        removeGlobalParameter: (id: string) => update(s => {
+            if (!ensureDriveConnected()) return s;
+            return {
+                ...s,
+                endpoint_parameters: {
+                    ...s.endpoint_parameters,
+                    globalParameters: s.endpoint_parameters.globalParameters.filter(p => p.id !== id)
+                }
+            };
+        }),
 
         // Parameter Options
         addParameterOption: (opt: Omit<ParameterOption, 'id'>) => update(s => {
+            if (!ensureDriveConnected()) return s;
             const newOption = { ...opt, id: crypto.randomUUID() };
             return {
                 ...s,
@@ -475,23 +485,30 @@ function createSettingsStore() {
                 }
             };
         }),
-        updateParameterOption: (opt: Partial<ParameterOption> & { id: string }) => update(s => ({
-            ...s,
-            endpoint_parameters: {
-                ...s.endpoint_parameters,
-                parameterOptions: s.endpoint_parameters.parameterOptions.map(p => p.id === opt.id ? { ...p, ...opt } as ParameterOption : p)
-            }
-        })),
-        removeParameterOption: (id: string) => update(s => ({
-            ...s,
-            endpoint_parameters: {
-                ...s.endpoint_parameters,
-                parameterOptions: s.endpoint_parameters.parameterOptions.filter(p => p.id !== id)
-            }
-        })),
+        updateParameterOption: (opt: Partial<ParameterOption> & { id: string }) => update(s => {
+            if (!ensureDriveConnected()) return s;
+            return {
+                ...s,
+                endpoint_parameters: {
+                    ...s.endpoint_parameters,
+                    parameterOptions: s.endpoint_parameters.parameterOptions.map(p => p.id === opt.id ? { ...p, ...opt } as ParameterOption : p)
+                }
+            };
+        }),
+        removeParameterOption: (id: string) => update(s => {
+            if (!ensureDriveConnected()) return s;
+            return {
+                ...s,
+                endpoint_parameters: {
+                    ...s.endpoint_parameters,
+                    parameterOptions: s.endpoint_parameters.parameterOptions.filter(p => p.id !== id)
+                }
+            };
+        }),
 
         // MID Contexts
         addMidContext: (ctx: Omit<MidContext, 'id'>) => update(s => {
+            if (!ensureDriveConnected()) return s;
             const newContext = { ...ctx, id: crypto.randomUUID() };
             return {
                 ...s,
@@ -501,23 +518,30 @@ function createSettingsStore() {
                 }
             };
         }),
-        updateMidContext: (ctx: MidContext) => update(s => ({
-            ...s,
-            endpoint_parameters: {
-                ...s.endpoint_parameters,
-                midContexts: s.endpoint_parameters.midContexts.map(c => c.id === ctx.id ? ctx : c)
-            }
-        })),
-        removeMidContext: (id: string) => update(s => ({
-            ...s,
-            endpoint_parameters: {
-                ...s.endpoint_parameters,
-                midContexts: s.endpoint_parameters.midContexts.filter(c => c.id !== id)
-            }
-        })),
+        updateMidContext: (ctx: MidContext) => update(s => {
+            if (!ensureDriveConnected()) return s;
+            return {
+                ...s,
+                endpoint_parameters: {
+                    ...s.endpoint_parameters,
+                    midContexts: s.endpoint_parameters.midContexts.map(c => c.id === ctx.id ? ctx : c)
+                }
+            };
+        }),
+        removeMidContext: (id: string) => update(s => {
+            if (!ensureDriveConnected()) return s;
+            return {
+                ...s,
+                endpoint_parameters: {
+                    ...s.endpoint_parameters,
+                    midContexts: s.endpoint_parameters.midContexts.filter(c => c.id !== id)
+                }
+            };
+        }),
 
         // Site Contexts
         addSiteContext: (ctx: Omit<SiteContext, 'id'>) => update(s => {
+            if (!ensureDriveConnected()) return s;
             const newContext = { ...ctx, id: crypto.randomUUID() };
             return {
                 ...s,
@@ -532,70 +556,94 @@ function createSettingsStore() {
                 })
             };
         }),
-        removeSiteContext: (id: string) => update(s => ({
-            ...s,
-            applications: (s.applications || []).map(app => ({
-                ...app,
-                siteContexts: (app.siteContexts || []).filter(c => c.id !== id)
-            }))
-        })),
-        addSiteToContext: (contextId: string, siteName: string) => update(s => ({
-            ...s,
-            applications: (s.applications || []).map(app => ({
-                ...app,
-                siteContexts: (app.siteContexts || []).map(c =>
-                    c.id === contextId
-                        ? { ...c, sites: [...c.sites, siteName] }
-                        : c
-                )
-            }))
-        })),
-        removeSiteFromContext: (contextId: string, siteName: string) => update(s => ({
-            ...s,
-            applications: (s.applications || []).map(app => ({
-                ...app,
-                siteContexts: (app.siteContexts || []).map(c =>
-                    c.id === contextId
-                        ? { ...c, sites: c.sites.filter(site => site !== siteName) }
-                        : c
-                )
-            }))
-        })),
+        removeSiteContext: (id: string) => update(s => {
+            if (!ensureDriveConnected()) return s;
+            return {
+                ...s,
+                applications: (s.applications || []).map(app => ({
+                    ...app,
+                    siteContexts: (app.siteContexts || []).filter(c => c.id !== id)
+                }))
+            };
+        }),
+        addSiteToContext: (contextId: string, siteName: string) => update(s => {
+            if (!ensureDriveConnected()) return s;
+            return {
+                ...s,
+                applications: (s.applications || []).map(app => ({
+                    ...app,
+                    siteContexts: (app.siteContexts || []).map(c =>
+                        c.id === contextId
+                            ? { ...c, sites: [...c.sites, siteName] }
+                            : c
+                    )
+                }))
+            };
+        }),
+        removeSiteFromContext: (contextId: string, siteName: string) => update(s => {
+            if (!ensureDriveConnected()) return s;
+            return {
+                ...s,
+                applications: (s.applications || []).map(app => ({
+                    ...app,
+                    siteContexts: (app.siteContexts || []).map(c =>
+                        c.id === contextId
+                            ? { ...c, sites: c.sites.filter(site => site !== siteName) }
+                            : c
+                    )
+                }))
+            };
+        }),
 
         // API Categories (Back to Root)
         addApiCategory: (category: Omit<ApiCategory, 'id'>) => update(s => {
+            if (!ensureDriveConnected()) return s;
             const newCategory = { ...category, id: crypto.randomUUID() };
             return {
                 ...s,
                 apiCategories: [...(s.apiCategories || []), newCategory]
             };
         }),
-        updateApiCategory: (category: ApiCategory) => update(s => ({
-            ...s,
-            apiCategories: (s.apiCategories || []).map(c => c.id === category.id ? category : c)
-        })),
-        removeApiCategory: (id: string) => update(s => ({
-            ...s,
-            apiCategories: (s.apiCategories || []).filter(c => c.id !== id)
-        })),
+        updateApiCategory: (category: ApiCategory) => update(s => {
+            if (!ensureDriveConnected()) return s;
+            return {
+                ...s,
+                apiCategories: (s.apiCategories || []).map(c => c.id === category.id ? category : c)
+            };
+        }),
+        removeApiCategory: (id: string) => update(s => {
+            if (!ensureDriveConnected()) return s;
+            return {
+                ...s,
+                apiCategories: (s.apiCategories || []).filter(c => c.id !== id)
+            };
+        }),
 
         // API Collections
         addApiCollection: (collection: Omit<ApiCollection, 'id'>) => update(s => {
+            if (!ensureDriveConnected()) return s;
             const newCollection = { ...collection, id: crypto.randomUUID() };
             return {
                 ...s,
                 apiCollections: [...(s.apiCollections || []), newCollection]
             };
         }),
-        updateApiCollection: (collection: ApiCollection) => update(s => ({
-            ...s,
-            apiCollections: (s.apiCollections || []).map(c => c.id === collection.id ? collection : c)
-        })),
-        removeApiCollection: (id: string) => update(s => ({
-            ...s,
-            apiCollections: (s.apiCollections || []).filter(c => c.id !== id)
-        })),
+        updateApiCollection: (collection: ApiCollection) => update(s => {
+            if (!ensureDriveConnected()) return s;
+            return {
+                ...s,
+                apiCollections: (s.apiCollections || []).map(c => c.id === collection.id ? collection : c)
+            };
+        }),
+        removeApiCollection: (id: string) => update(s => {
+            if (!ensureDriveConnected()) return s;
+            return {
+                ...s,
+                apiCollections: (s.apiCollections || []).filter(c => c.id !== id)
+            };
+        }),
         toggleApiCollectionBookmark: (id: string) => update(s => {
+            if (!ensureDriveConnected()) return s;
             const collections = s.apiCollections || [];
             return {
                 ...s,
@@ -643,6 +691,7 @@ function createSettingsStore() {
 
         // Bookmark Toggle Actions
         toggleApiCategoryBookmark: (id: string) => update(s => {
+            if (!ensureDriveConnected()) return s;
             const categories = s.apiCategories || [];
             const category = categories.find(c => c.id === id);
             if (!category) return s;
@@ -678,6 +727,7 @@ function createSettingsStore() {
         }),
 
         toggleEndpointBookmark: (id: string) => update(s => {
+            if (!ensureDriveConnected()) return s;
             const starred = s.interface.starredEndpointIds || [];
             if (starred.includes(id)) {
                 return {

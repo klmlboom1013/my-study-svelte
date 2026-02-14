@@ -7,6 +7,7 @@
     import {
         authStore,
         loginWithGoogle,
+        checkDriveConnection,
     } from "$lib/features/auth/services/authService";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import Modal from "$lib/components/ui/Modal.svelte";
@@ -28,6 +29,10 @@
             // but usually SvelteKit filters keep it. Let's just open it.
         }
     });
+
+    function openCreateModal() {
+        isCreateModalOpen = true;
+    }
 
     function openEditModal(category: any) {
         selectedCategory = category;
@@ -101,7 +106,7 @@
             {#if !mobile}
                 {#if !$appStateStore.isPageLocked}
                     <button
-                        onclick={() => (isCreateModalOpen = true)}
+                        onclick={openCreateModal}
                         class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all shrink-0"
                     >
                         <span class="material-symbols-outlined text-[18px]"
@@ -159,7 +164,7 @@
                 Get started by creating your first API category.
             </p>
             <button
-                onclick={() => (isCreateModalOpen = true)}
+                onclick={openCreateModal}
                 class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all"
             >
                 <span class="material-symbols-outlined text-[18px]">add</span>

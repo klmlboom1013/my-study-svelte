@@ -296,7 +296,7 @@
     <Header
         showSidebarToggle={true}
         showBrand={true}
-        showSearch={true}
+        showSearch={!["/collections", "/endpoint"].includes($page.url.pathname)}
         onToggleMobileMenu={() => (isDrawerOpen = !isDrawerOpen)}
         isSidebarOpen={isDrawerOpen}
     />

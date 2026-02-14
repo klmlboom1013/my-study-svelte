@@ -40,6 +40,12 @@ export interface ProfileData {
                 pFc?: string;
             };
         }[];
+        siteContexts?: {
+            id: string;
+            application: string;
+            service: string;
+            sites: string[];
+        }[];
     }[];
     [key: string]: any; // Allow legacy properties during migration
 }

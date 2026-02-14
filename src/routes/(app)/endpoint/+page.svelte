@@ -12,6 +12,7 @@
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
     import EndpointExecutionModal from "$lib/components/endpoint/EndpointExecutionModal.svelte";
+    import SelectBox from "$lib/components/ui/SelectBox.svelte";
     import { get } from "svelte/store";
 
     import { settingsStore } from "$lib/stores/settingsStore";
@@ -20,7 +21,74 @@
 
     let endpoints = $state<Endpoint[]>([]);
     let searchTerm = $state("");
-    let filterApp = $state("");
+
+    let breadcrumbItems = $derived.by(() => {
+        const categoryId = $page.url.searchParams.get("category");
+        if (categoryId) {
+            const category = $settingsStore.apiCategories.find(
+                (c) => c.id === categoryId,
+            );
+            if (category) {
+                return [
+                    { label: "Home", href: "/" },
+                    { label: "API Categories", href: "/categories" },
+                    { label: `Test Endpoint (${category.name})` },
+                ];
+            }
+        }
+
+        const collectionId = $page.url.searchParams.get("collection");
+        if (collectionId) {
+            const collection = $settingsStore.apiCollections.find(
+                (c) => c.id === collectionId,
+            );
+            if (collection) {
+                return [
+                    { label: "Home", href: "/" },
+                    { label: "API Collections", href: "/collections" },
+                    { label: `Test Endpoint (${collection.name})` },
+                ];
+            }
+        }
+        return [{ label: "Home", href: "/" }, { label: "Test Endpoint" }];
+    });
+
+    onMount(() => {
+        endpoints = endpointService.getEndpoints();
+
+        // Initialize search term from URL query parameter
+        const queryTerm = $page.url.searchParams.get("q");
+        if (queryTerm) {
+            searchTerm = queryTerm;
+        }
+
+        isReadOnly = $page.url.searchParams.get("readonly") === "true";
+    });
+
+    // React to URL changes
+    $effect(() => {
+        const queryTerm = $page.url.searchParams.get("q");
+        const appParam = $page.url.searchParams.get("app");
+        const readonlyParam = $page.url.searchParams.get("readonly");
+
+        untrack(() => {
+            if (queryTerm !== null && queryTerm !== searchTerm) {
+                searchTerm = queryTerm;
+            } else if (queryTerm === null && searchTerm !== "") {
+                searchTerm = "";
+            }
+
+            if (appParam !== null && appParam !== $appStateStore.selectedApp) {
+                handleAppChange(appParam);
+            }
+
+            if (readonlyParam === "true" && !isReadOnly) {
+                isReadOnly = true;
+            } else if (readonlyParam !== "true" && isReadOnly) {
+                isReadOnly = false;
+            }
+        });
+    });
 
     // Alert Modal State
     let isAlertOpen = $state(false);
@@ -86,83 +154,78 @@
 
     let isReadOnly = $state(false);
 
-    let breadcrumbItems = $derived.by(() => {
-        const categoryId = $page.url.searchParams.get("category");
-        if (categoryId) {
-            const category = $settingsStore.apiCategories.find(
-                (c) => c.id === categoryId,
-            );
-            if (category) {
-                return [
-                    { label: "Home", href: "/" },
-                    { label: "API Categories", href: "/categories" },
-                    { label: `Test Endpoint (${category.name})` },
-                ];
-            }
-        }
+    // Filter states (synced with appStateStore for global persistence)
+    let selectedApp = $derived($appStateStore.selectedApp);
+    let selectedService = $state("All");
+    let selectedSite = $state("All");
 
-        const collectionId = $page.url.searchParams.get("collection");
-        if (collectionId) {
-            const collection = $settingsStore.apiCollections.find(
-                (c) => c.id === collectionId,
-            );
-            if (collection) {
-                return [
-                    { label: "Home", href: "/" },
-                    { label: "API Collections", href: "/collections" },
-                    { label: `Test Endpoint (${collection.name})` },
-                ];
-            }
-        }
-        return [{ label: "Home", href: "/" }, { label: "Test Endpoint" }];
-    });
-
-    onMount(() => {
-        endpoints = endpointService.getEndpoints();
-
-        // Initialize search term and app filter from URL query parameter
-        const queryTerm = $page.url.searchParams.get("q");
-        if (queryTerm) {
-            searchTerm = queryTerm;
-        }
-
-        const appParam = $page.url.searchParams.get("app");
-        if (appParam) {
-            filterApp = appParam;
-        }
-
-        isReadOnly = $page.url.searchParams.get("readonly") === "true";
-    });
-
-    // React to URL changes if the user searches again while on this page
+    // Sync local filters when appStateStore changes
     $effect(() => {
-        const queryTerm = $page.url.searchParams.get("q");
-        const appParam = $page.url.searchParams.get("app");
-        const readonlyParam = $page.url.searchParams.get("readonly");
+        // We only want to pull Service/Site if they are still valid for the current app
+        // But for simplicity, we directly sync.
+        selectedService = $appStateStore.selectedService || "All";
+        selectedSite = $appStateStore.selectedSite || "All";
+    });
 
-        untrack(() => {
-            if (queryTerm !== null && queryTerm !== searchTerm) {
-                searchTerm = queryTerm;
-            } else if (queryTerm === null && searchTerm !== "") {
-                searchTerm = "";
-            }
+    function handleAppChange(val: string) {
+        appStateStore.update((s) => ({
+            ...s,
+            selectedApp: val,
+            selectedService: "All",
+            selectedSite: "All",
+        }));
+    }
 
-            if (appParam !== null && appParam !== filterApp) {
-                filterApp = appParam;
-            } else if (
-                appParam === null &&
-                filterApp !== "" &&
-                filterApp !== "All"
-            ) {
-                filterApp = "All";
-            }
+    function handleServiceChange(val: string) {
+        appStateStore.update((s) => ({
+            ...s,
+            selectedService: val,
+            selectedSite: "All",
+        }));
+    }
 
-            if (readonlyParam === "true" && !isReadOnly) {
-                isReadOnly = true;
-            } else if (readonlyParam !== "true" && isReadOnly) {
-                isReadOnly = false;
-            }
-        });
+    function handleSiteChange(val: string) {
+        appStateStore.update((s) => ({
+            ...s,
+            selectedSite: val,
+        }));
+    }
+
+    // Derived data for filters (Source of truth: settingsStore.applications)
+    let applications = $derived.by(() => {
+        const apps =
+            $settingsStore.applications?.map((app) => app.appName) || [];
+        return ["All", ...Array.from(new Set(apps)).filter(Boolean)];
+    });
+
+    let currentAppData = $derived(
+        $settingsStore.applications?.find((app) => app.appName === selectedApp),
+    );
+
+    let services = $derived.by(() => {
+        if (!currentAppData?.services) return ["All"];
+        return ["All", ...currentAppData.services.map((s) => s.name)];
+    });
+
+    let sites = $derived.by(() => {
+        if (
+            !selectedService ||
+            selectedService === "All" ||
+            !currentAppData?.siteContexts
+        )
+            return ["All"];
+
+        // Match by service name or ID
+        const serviceObj = currentAppData.services?.find(
+            (s) => s.name === selectedService,
+        );
+        const context = currentAppData.siteContexts.find(
+            (c) =>
+                c.service === selectedService ||
+                (serviceObj && c.service === serviceObj.id),
+        );
+
+        return context ? ["All", ...context.sites] : ["All"];
     });
 
     let filteredEndpoints = $derived(
@@ -174,9 +237,18 @@
                 endpoint.method.toLowerCase().includes(term);
 
             const matchesApp =
-                !filterApp ||
-                filterApp === "All" ||
-                endpoint.application === filterApp;
+                !selectedApp ||
+                selectedApp === "All" ||
+                endpoint.application === selectedApp;
+
+            const qSvc = selectedService;
+            const qSite = selectedSite;
+
+            const matchesService =
+                !qSvc || qSvc === "All" || endpoint.scope?.service === qSvc;
+
+            const matchesSite =
+                !qSite || qSite === "All" || endpoint.scope?.site === qSite;
 
             // Check for category filter from URL
             const categoryId = $page.url.searchParams.get("category");
@@ -192,45 +264,13 @@
             return (
                 matchesSearch &&
                 matchesApp &&
+                matchesService &&
+                matchesSite &&
                 matchesCategory &&
                 matchesCollection
             );
         }),
     );
-
-    let groupedEndpoints = $derived.by(() => {
-        // Case-insensitive check for wpay
-        if (filterApp.toLowerCase() !== "wpay") return null;
-
-        const groups: Record<string, Endpoint[]> = {};
-        filteredEndpoints.forEach((endpoint) => {
-            const service = endpoint.scope?.service || "Other";
-            if (!groups[service]) {
-                groups[service] = [];
-            }
-            groups[service].push(endpoint);
-        });
-
-        // Optional: specific order or alphabetical sort for keys
-        return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
-    });
-
-    // Collapse/Expand State
-    let collapsedServices = $state(new Set<string>());
-
-    function toggleGroup(service: string) {
-        // Create a new Set to trigger reactivity (Svelte 5 best practice for Sets/Maps in state if not using deep reactivity for them specifically,
-        // though $state with Set usually requires reassignment or using specific methods if wrapped.
-        // Reassignment is safest for simple Set usage in derived/effects if needed, but here it's direct rendering.)
-        // Actually, for $state proxies, Set methods mutate nicely. But to be safe and explicit:
-        const newSet = new Set(collapsedServices);
-        if (newSet.has(service)) {
-            newSet.delete(service);
-        } else {
-            newSet.add(service);
-        }
-        collapsedServices = newSet;
-    }
 
     function handleDelete(id: string) {
         if (!checkDriveConnection()) {
@@ -299,29 +339,66 @@
                     {/if}
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Search Input (Dashboard Style - Mobile Only: Hidden on md+ screens) -->
-    <div class="mb-6 md:hidden">
-        <label class="flex flex-col w-full h-11">
+            <!-- Integrated Filter Area -->
             <div
-                class="flex w-full flex-1 items-stretch rounded-lg h-full border border-slate-200 dark:border-slate-700 focus-within:border-primary/50 transition-colors bg-white dark:bg-slate-800"
+                class="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4 border border-slate-200 dark:border-slate-800"
             >
-                <div
-                    class="text-slate-400 dark:text-[#92adc9] flex items-center justify-center pl-3"
-                >
-                    <span class="material-symbols-outlined text-[20px]"
-                        >search</span
-                    >
+                <div class="flex flex-wrap items-center gap-4">
+                    <!-- App Selection -->
+                    <div class="w-full sm:w-44">
+                        <SelectBox
+                            id="endpoint-app-select"
+                            placeholder="All Applications"
+                            options={applications}
+                            value={selectedApp}
+                            onchange={handleAppChange}
+                        />
+                    </div>
+
+                    <!-- Search Box -->
+                    <div class="flex-1 min-w-[200px]">
+                        <div class="relative group">
+                            <span
+                                class="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-[20px] text-slate-400 group-focus-within:text-primary transition-colors"
+                            >
+                                search
+                            </span>
+                            <input
+                                type="text"
+                                bind:value={searchTerm}
+                                placeholder="Search endpoints..."
+                                class="w-full h-10 pl-11 pr-4 bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all dark:text-white"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- Service Dropdown (Conditional) -->
+                    {#if services.length > 1}
+                        <div class="w-full sm:w-44">
+                            <SelectBox
+                                placeholder="All Services"
+                                options={services}
+                                value={selectedService}
+                                onchange={handleServiceChange}
+                            />
+                        </div>
+                    {/if}
+
+                    <!-- Site Dropdown (Conditional) -->
+                    {#if sites.length > 1}
+                        <div class="w-full sm:w-44">
+                            <SelectBox
+                                placeholder="All Sites"
+                                options={sites}
+                                value={selectedSite}
+                                onchange={handleSiteChange}
+                            />
+                        </div>
+                    {/if}
                 </div>
-                <input
-                    class="flex w-full min-w-0 flex-1 resize-none overflow-hidden bg-transparent rounded-r-lg text-slate-900 dark:text-white focus:outline-0 placeholder:text-slate-400 dark:placeholder:text-[#5a718a] placeholder:text-xs px-2 text-sm"
-                    placeholder="Search endpoints by name."
-                    bind:value={searchTerm}
-                />
             </div>
-        </label>
+        </div>
     </div>
 
     {#if filteredEndpoints.length === 0}
@@ -364,184 +441,6 @@
                 </button>
             {/if}
         </div>
-    {:else if groupedEndpoints}
-        <div class="space-y-12">
-            {#each groupedEndpoints as [service, groupEndpoints]}
-                <section>
-                    <button
-                        onclick={() => toggleGroup(service)}
-                        class="w-full flex items-center gap-3 mb-4 group focus:outline-none"
-                    >
-                        <div
-                            class="h-px bg-slate-200 dark:bg-border-dark flex-1 transition-colors group-hover:bg-slate-300 dark:group-hover:bg-slate-600"
-                        ></div>
-                        <h2
-                            class="text-lg font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide flex items-center gap-2"
-                        >
-                            {service}
-                            <span
-                                class="material-symbols-outlined text-[20px] text-slate-400 transition-transform duration-200 {collapsedServices.has(
-                                    service,
-                                )
-                                    ? '-rotate-90'
-                                    : 'rotate-0'}"
-                            >
-                                expand_more
-                            </span>
-                        </h2>
-                        <span
-                            class="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-background-dark text-xs font-semibold text-slate-500"
-                        >
-                            {groupEndpoints.length}
-                        </span>
-                        <div
-                            class="h-px bg-slate-200 dark:bg-border-dark flex-1 transition-colors group-hover:bg-slate-300 dark:group-hover:bg-slate-600"
-                        ></div>
-                    </button>
-
-                    {#if !collapsedServices.has(service)}
-                        <div
-                            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                        >
-                            {#each groupEndpoints as endpoint}
-                                <div
-                                    class="group bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-border-dark p-5 hover:shadow-md transition-shadow relative"
-                                >
-                                    <div
-                                        class="flex items-start justify-between mb-3"
-                                    >
-                                        <div class="flex items-center gap-2">
-                                            <span
-                                                class="px-2 py-1 rounded text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                                            >
-                                                {endpoint.application}
-                                            </span>
-                                            <span
-                                                class="px-2 py-1 rounded text-xs font-bold bg-slate-100 dark:bg-background-dark text-slate-700 dark:text-slate-300"
-                                            >
-                                                {endpoint.method}
-                                            </span>
-                                            <span
-                                                class="text-xs text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-border-dark px-2 py-0.5 rounded-full"
-                                            >
-                                                {endpoint.requestType}
-                                            </span>
-                                        </div>
-                                        <div
-                                            class="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex gap-1"
-                                        >
-                                            <button
-                                                onclick={(e) => {
-                                                    e.stopPropagation();
-                                                    openExecutionModal(
-                                                        endpoint,
-                                                    );
-                                                }}
-                                                class="p-1 text-slate-400 hover:text-green-500 transition-colors"
-                                                title="Execute API"
-                                            >
-                                                <span
-                                                    class="material-symbols-outlined text-[18px]"
-                                                    >play_arrow</span
-                                                >
-                                            </button>
-                                            {#if !isReadOnly && !$appStateStore.isPageLocked}
-                                                <button
-                                                    onclick={() =>
-                                                        handleDelete(
-                                                            endpoint.id,
-                                                        )}
-                                                    class="p-1 text-slate-400 hover:text-red-500 transition-colors"
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-[18px]"
-                                                        >delete</span
-                                                    >
-                                                </button>
-                                            {/if}
-                                        </div>
-                                    </div>
-
-                                    <a
-                                        href={`/endpoint/${endpoint.id}`}
-                                        class="block focus:outline-none"
-                                    >
-                                        <h3
-                                            class="text-lg font-semibold text-slate-900 dark:text-white mb-1 group-hover:text-primary transition-colors truncate"
-                                        >
-                                            {endpoint.name}
-                                        </h3>
-                                    </a>
-
-                                    <div
-                                        class="font-mono text-xs text-slate-500 dark:text-slate-400 mb-4 truncate bg-slate-50 dark:bg-background-dark px-2 py-1 rounded"
-                                    >
-                                        {endpoint.uri}
-                                    </div>
-
-                                    <div
-                                        class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-border-dark/50"
-                                    >
-                                        <div
-                                            class="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400"
-                                        >
-                                            <div class="flex flex-col">
-                                                <span
-                                                    class="text-[10px] uppercase tracking-wider text-slate-400"
-                                                    >Service</span
-                                                >
-                                                <span
-                                                    class="font-medium text-slate-700 dark:text-slate-300"
-                                                    >{endpoint.scope
-                                                        ?.service}</span
-                                                >
-                                            </div>
-                                            <div class="flex flex-col">
-                                                <span
-                                                    class="text-[10px] uppercase tracking-wider text-slate-400"
-                                                    >Site</span
-                                                >
-                                                <span
-                                                    class="font-medium text-slate-700 dark:text-slate-300"
-                                                    >{endpoint.scope
-                                                        ?.site}</span
-                                                >
-                                            </div>
-                                        </div>
-
-                                        <button
-                                            onclick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                settingsStore.toggleEndpointBookmark(
-                                                    endpoint.id,
-                                                );
-                                            }}
-                                            class="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none"
-                                            title={$settingsStore.interface.starredEndpointIds?.includes(
-                                                endpoint.id,
-                                            )
-                                                ? "Remove from bookmarks"
-                                                : "Add to bookmarks"}
-                                        >
-                                            <span
-                                                class="material-symbols-outlined text-[20px] transition-colors {$settingsStore.interface.starredEndpointIds?.includes(
-                                                    endpoint.id,
-                                                )
-                                                    ? 'text-yellow-400 fill-current icon-filled'
-                                                    : 'text-slate-400 hover:text-yellow-400'}"
-                                            >
-                                                grade
-                                            </span>
-                                        </button>
-                                    </div>
-                                </div>
-                            {/each}
-                        </div>
-                    {/if}
-                </section>
-            {/each}
-        </div>
     {:else}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {#each filteredEndpoints as endpoint}
@@ -582,14 +481,6 @@
                                     >play_arrow</span
                                 >
                             </button>
-                            <!--
-                            <button
-                                onclick={() => goto(`/endpoint/${endpoint.id}`)}
-                                class="p-1 text-slate-400 hover:text-blue-500 transition-colors"
-                            >
-                                <span class="material-symbols-outlined text-[18px]">edit</span>
-                            </button>
-                            -->
                             {#if !isReadOnly && !$appStateStore.isPageLocked}
                                 <button
                                     onclick={() => handleDelete(endpoint.id)}

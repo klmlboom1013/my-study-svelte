@@ -9,6 +9,7 @@
         id?: string;
         isError?: boolean;
         disabled?: boolean;
+        onchange?: (value: string) => void;
     }
 
     let {
@@ -18,6 +19,7 @@
         id = undefined,
         isError = false,
         disabled = false,
+        onchange = undefined,
     }: Props = $props();
 
     let isOpen = $state(false);
@@ -31,6 +33,7 @@
     function select(option: string) {
         value = option;
         isOpen = false;
+        if (onchange) onchange(option);
     }
 
     function handleOutsideClick(event: MouseEvent) {

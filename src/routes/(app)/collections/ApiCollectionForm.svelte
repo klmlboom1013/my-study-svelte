@@ -26,6 +26,7 @@
     let form = $state({
         application: "",
         service: [] as string[],
+        site: [] as string[],
         name: "",
         description: "",
         icon: "folder",
@@ -44,6 +45,20 @@
         )
             return [];
         return selectedApp.services.map((s) => s.name);
+    });
+
+    let availableSites = $derived.by(() => {
+        const selectedApp = $profileStore.myApplications.find(
+            (app) => app.appName === form.application,
+        );
+        if (!selectedApp || form.service.length === 0) return [];
+
+        // Use first selected service to show sites (since multiple services might be confusing for site mapping)
+        const firstService = form.service[0];
+        const context = selectedApp.siteContexts?.find(
+            (c) => c.service === firstService,
+        );
+        return context?.sites || [];
     });
 
     // Alert Modal state
@@ -67,6 +82,11 @@
                 ? Array.isArray(collection.service)
                     ? [...collection.service]
                     : [collection.service]
+                : [];
+            form.site = collection.site
+                ? Array.isArray(collection.site)
+                    ? [...collection.site]
+                    : [collection.site]
                 : [];
             form.name = collection.name;
             form.description = collection.description;
@@ -98,6 +118,7 @@
         const collectionData = {
             application: form.application,
             service: form.service,
+            site: form.site,
             name: form.name,
             description: form.description,
             icon: form.icon,
@@ -164,6 +185,20 @@
                     options={availableServices}
                     bind:value={form.service}
                     placeholder="Select Services"
+                />
+            </div>
+        {/if}
+
+        <!-- Site (Conditional) -->
+        {#if availableSites.length > 0}
+            <div class="flex flex-col gap-1">
+                <span class="text-xs font-semibold text-slate-500 uppercase">
+                    Site
+                </span>
+                <MultiSelectBox
+                    options={availableSites}
+                    bind:value={form.site}
+                    placeholder="Select Sites"
                 />
             </div>
         {/if}

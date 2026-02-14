@@ -230,11 +230,9 @@
     }
 
     function handleSave() {
-        if (!checkDriveConnection()) {
-            alertTitle = "Google Drive Connection Required";
-            alertMessage =
-                "Google Drive is not connected. Please connect your Google account to enable updating endpoints and ensure your data is backed up.";
-            alertOnConfirm = handleGoogleLogin;
+        if (!selectedApplication) {
+            alertTitle = "Validation Error";
+            alertMessage = "Please select an application.";
             isAlertOpen = true;
             return;
         }

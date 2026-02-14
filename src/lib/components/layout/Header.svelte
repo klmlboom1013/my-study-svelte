@@ -15,7 +15,7 @@
         checkDriveConnection,
     } from "$lib/features/auth/services/authService";
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
-    import { profileStore } from "$lib/stores/profileStore";
+    import { settingsStore } from "$lib/stores/settingsStore";
     import { syncService } from "$lib/features/drive/services/syncService";
 
     import type { MouseEventHandler } from "svelte/elements";
@@ -91,21 +91,26 @@
 
     let selectedApp = $state("All");
 
-    // Sync Store -> Local State
+    // Sync Store -> Local State (Application only)
     $effect(() => {
-        selectedApp = $appStateStore.selectedApp;
+        selectedApp = $appStateStore.selectedApp || "All";
     });
 
-    // Sync Local State -> Store (When user changes dropdown)
-    function onAppChange(newValue: string) {
-        appStateStore.update((s) => ({ ...s, selectedApp: newValue }));
-        selectedApp = newValue;
+    // Handle App Change
+    function handleAppChange(val: string) {
+        if (val === selectedApp) return;
+        appStateStore.update((s) => ({
+            ...s,
+            selectedApp: val,
+            selectedService: "All",
+            selectedSite: "All",
+        }));
     }
 
-    // Subscribe to profileStore for applications list
+    // Subscribe to settingsStore for applications list
     let applications = $derived.by(() => {
         const apps =
-            $profileStore.myApplications?.map((app) => app.appName) || [];
+            $settingsStore.applications?.map((app) => app.appName) || [];
         const uniqueApps = Array.from(new Set(apps)).filter(Boolean);
         return ["All", ...uniqueApps];
     });
@@ -283,13 +288,16 @@
     <div class="flex items-center gap-3 justify-end flex-1">
         {#if showSearch}
             <!-- Application Dropdown -->
-            <div class="block lg:block w-32 lg:w-40">
-                <SelectBox
-                    id="header-app-select"
-                    placeholder="Application"
-                    options={applications}
-                    bind:value={selectedApp}
-                />
+            <div class="flex items-center gap-2 transition-all">
+                <div class="block w-28 lg:w-32">
+                    <SelectBox
+                        id="header-app-select"
+                        placeholder="Application"
+                        options={applications}
+                        value={selectedApp}
+                        onchange={handleAppChange}
+                    />
+                </div>
             </div>
 
             <!-- Search Bar -->

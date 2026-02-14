@@ -9,11 +9,16 @@
         authStore,
         loginWithGoogle,
     } from "$lib/features/auth/services/authService";
+    import { ensureDriveConnected } from "$lib/utils/driveGuard";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import Modal from "$lib/components/ui/Modal.svelte";
     import ApiCollectionForm from "./ApiCollectionForm.svelte";
     import { get } from "svelte/store";
     import { collectionExecutionService } from "$lib/features/execution/services/collectionExecutionService";
+
+    import { profileStore } from "$lib/stores/profileStore";
+    import SelectBox from "$lib/components/ui/SelectBox.svelte";
+    import { fade } from "svelte/transition";
 
     // Alert Modal State
     let isAlertOpen = $state(false);
@@ -41,17 +46,108 @@
     // State management for filtering
     let searchQuery = $state("");
 
+    // Local filter states (synced with appStateStore for global persistence)
+    let selectedApp = $derived($appStateStore.selectedApp);
+    let selectedService = $state("All");
+    let selectedSite = $state("All");
+
+    // Initialize local filters from store when app changes
+    $effect(() => {
+        // When selectedApp changes (globally), we might want to reset local filters
+        // But appStateStore already has selectedService/Site.
+        // Let's sync them.
+        selectedService = $appStateStore.selectedService || "All";
+        selectedSite = $appStateStore.selectedSite || "All";
+    });
+
+    function handleAppChange(val: string) {
+        appStateStore.update((s) => ({
+            ...s,
+            selectedApp: val,
+            selectedService: "All",
+            selectedSite: "All",
+        }));
+    }
+
+    function handleServiceChange(val: string) {
+        appStateStore.update((s) => ({
+            ...s,
+            selectedService: val,
+            selectedSite: "All",
+        }));
+    }
+
+    // Derived list of applications
+    let applications = $derived.by(() => {
+        const apps =
+            $settingsStore.applications?.map((app) => app.appName) || [];
+        return ["All", ...Array.from(new Set(apps)).filter(Boolean)];
+    });
+
+    function handleSiteChange(val: string) {
+        appStateStore.update((s) => ({
+            ...s,
+            selectedSite: val,
+        }));
+    }
+
+    // Derived data for filters (Source of truth: settingsStore.applications)
+    let currentAppData = $derived(
+        $settingsStore.applications?.find((app) => app.appName === selectedApp),
+    );
+
+    let services = $derived.by(() => {
+        if (!currentAppData?.services) return ["All"];
+        return ["All", ...currentAppData.services.map((s) => s.name)];
+    });
+
+    let sites = $derived.by(() => {
+        if (
+            !selectedService ||
+            selectedService === "All" ||
+            !currentAppData?.siteContexts
+        )
+            return ["All"];
+
+        // Find service by name to get its potentially different ID/reference
+        const serviceObj = currentAppData.services?.find(
+            (s) => s.name === selectedService,
+        );
+
+        // Try to match by service name OR ID (to fix the blank dropdown bug)
+        const context = currentAppData.siteContexts.find(
+            (c) =>
+                c.service === selectedService ||
+                (serviceObj && c.service === serviceObj.id),
+        );
+
+        return context ? ["All", ...context.sites] : ["All"];
+    });
+
     // Filtered collections based on app and search
     let filteredCollections = $derived.by(() => {
         let list = $settingsStore.apiCollections || [];
-        const headerApp = $appStateStore.selectedApp;
+        // Use local states which are synced with store
+        const qApp = selectedApp;
+        const qSvc = selectedService;
+        const qSite = selectedSite;
 
-        // 1. App Filter (from Header)
-        if (headerApp && headerApp !== "All") {
-            list = list.filter((c) => c.application === headerApp);
+        // 1. App Filter
+        if (qApp && qApp !== "All") {
+            list = list.filter((c) => c.application === qApp);
         }
 
-        // 2. Text Search
+        // 2. Service Filter
+        if (qSvc && qSvc !== "All") {
+            list = list.filter((c) => c.service?.includes(qSvc));
+        }
+
+        // 3. Site Filter
+        if (qSite && qSite !== "All") {
+            list = list.filter((c) => c.site?.includes(qSite));
+        }
+
+        // 4. Text Search
         if (searchQuery) {
             const q = searchQuery.toLowerCase();
             list = list.filter(
@@ -64,14 +160,17 @@
     });
 
     function handleNewCollection() {
+        if (!ensureDriveConnected()) return;
         goto("/collections/new");
     }
 
     function handleEditCollection(id: string) {
+        if (!ensureDriveConnected()) return;
         goto(`/collections/${id}`);
     }
 
     function handleDelete(id: string) {
+        if (!ensureDriveConnected()) return;
         showAlert(
             "Delete Collection",
             "Are you sure you want to delete this collection?",
@@ -84,6 +183,7 @@
     }
 
     function handleDuplicate(col: any) {
+        if (!ensureDriveConnected()) return;
         // Create a deep copy using JSON parse/stringify for simplicity with POJOs
         const newCol = JSON.parse(JSON.stringify(col));
 
@@ -117,9 +217,11 @@
         items={[{ label: "Home", href: "/" }, { label: "API Collections" }]}
     />
 
-    <div class="mb-6">
-        <div class="flex items-end justify-between gap-4 mb-4 md:mb-6">
-            <div>
+    <div class="mb-10">
+        <div
+            class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8"
+        >
+            <div class="flex-1">
                 <h1
                     class="text-3xl font-bold text-slate-900 dark:text-white mb-2"
                 >
@@ -131,12 +233,12 @@
                 </p>
             </div>
 
-            <!-- Desktop Buttons -->
-            <div class="hidden md:flex items-center gap-2 transition-all">
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-3">
                 {#if !$appStateStore.isPageLocked}
                     <button
                         onclick={handleNewCollection}
-                        class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all shrink-0"
+                        class="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-sm transition-all hover:-translate-y-0.5"
                     >
                         <span class="material-symbols-outlined text-[20px]"
                             >add</span
@@ -147,19 +249,81 @@
             </div>
         </div>
 
-        <!-- Mobile Buttons -->
-        <div class="flex md:hidden items-center gap-2 mb-4">
-            {#if !$appStateStore.isPageLocked}
-                <button
-                    onclick={handleNewCollection}
-                    class="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all"
-                >
-                    <span class="material-symbols-outlined text-[20px]"
-                        >add</span
+        <!-- Filter Area -->
+        <div
+            class="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4 border border-slate-200 dark:border-slate-800"
+        >
+            <div class="flex flex-wrap items-center gap-4">
+                <!-- App Selection -->
+                <div class="w-full sm:w-44">
+                    <SelectBox
+                        id="collection-app-select"
+                        placeholder="All Applications"
+                        options={applications}
+                        value={selectedApp}
+                        onchange={handleAppChange}
+                    />
+                </div>
+
+                <!-- Search Box -->
+                <div class="flex-1 min-w-[200px]">
+                    <div class="relative group">
+                        <span
+                            class="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-[20px] text-slate-400 group-focus-within:text-primary transition-colors"
+                        >
+                            search
+                        </span>
+                        <input
+                            type="text"
+                            bind:value={searchQuery}
+                            placeholder="Collection name or description..."
+                            class="w-full bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-xl pl-11 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-700 dark:text-slate-200"
+                        />
+                    </div>
+                </div>
+
+                <!-- Service Dropdown -->
+                {#if services.length > 1}
+                    <div
+                        class="w-full sm:w-44"
+                        transition:fade={{ duration: 150 }}
                     >
-                    <span>New Collection</span>
-                </button>
-            {/if}
+                        <SelectBox
+                            id="collection-service-select"
+                            placeholder="All Services"
+                            options={services}
+                            value={selectedService}
+                            onchange={handleServiceChange}
+                        />
+                    </div>
+                {/if}
+
+                <!-- Site Dropdown -->
+                {#if sites.length > 1}
+                    <div
+                        class="w-full sm:w-44"
+                        transition:fade={{ duration: 150 }}
+                    >
+                        <SelectBox
+                            id="collection-site-select"
+                            placeholder="All Sites"
+                            options={sites}
+                            value={selectedSite}
+                            onchange={handleSiteChange}
+                        />
+                    </div>
+                {/if}
+
+                <div
+                    class="bg-slate-200 dark:bg-slate-700 h-8 w-[1px] hidden lg:block mx-1"
+                ></div>
+
+                <div
+                    class="text-xs font-medium text-slate-400 uppercase tracking-wider pl-1"
+                >
+                    {filteredCollections.length} Results
+                </div>
+            </div>
         </div>
     </div>
 
@@ -197,11 +361,31 @@
                     class="group bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-border-dark p-5 hover:shadow-md transition-shadow relative flex flex-col h-full"
                 >
                     <div class="flex items-start justify-between mb-4">
-                        <span
-                            class="px-2 py-1 rounded text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                        >
-                            {col.application}
-                        </span>
+                        <div class="flex flex-wrap gap-1">
+                            <span
+                                class="px-2 py-1 rounded text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                            >
+                                {col.application}
+                            </span>
+                            {#if col.service && col.service.length > 0}
+                                {#each col.service as svc}
+                                    <span
+                                        class="px-2 py-1 rounded text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                                    >
+                                        {svc}
+                                    </span>
+                                {/each}
+                            {/if}
+                            {#if col.site && col.site.length > 0}
+                                {#each col.site as site}
+                                    <span
+                                        class="px-2 py-1 rounded text-xs font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                                    >
+                                        {site}
+                                    </span>
+                                {/each}
+                            {/if}
+                        </div>
 
                         <div
                             class="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex gap-1"

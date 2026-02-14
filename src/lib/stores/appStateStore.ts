@@ -3,6 +3,8 @@ import { browser } from "$app/environment";
 
 const initialState = {
     selectedApp: "All",
+    selectedService: "All",
+    selectedSite: "All",
     isPageLocked: true, // Default to locked
     globalAlert: null as { title: string; message: string; type?: "alert" | "confirm"; onConfirm?: () => void } | null,
 };
