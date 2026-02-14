@@ -3,12 +3,16 @@
     import "../../app.css";
     import Header from "$lib/components/layout/Header.svelte";
     import SidebarNav from "$lib/components/layout/SidebarNav.svelte";
-    import { onMount } from "svelte";
+    import { onMount, onDestroy } from "svelte";
     import { fade, fly } from "svelte/transition";
     import { afterNavigate, goto } from "$app/navigation";
     import { auth } from "$lib/firebase/firebase";
     import { onAuthStateChanged } from "firebase/auth";
     import { profileStore } from "$lib/stores/profileStore";
+    import { get } from "svelte/store";
+    import { getCookie } from "$lib/utils/cookie";
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
+    import FullLoading from "$lib/components/ui/FullLoading.svelte";
     import {
         authStore,
         loginWithGoogle,
@@ -16,13 +20,6 @@
     } from "$lib/features/auth/services/authService";
     import { driveService } from "$lib/features/drive/services/driveService";
     import { settingsStore } from "$lib/stores/settingsStore";
-    import { endpointService } from "$lib/features/endpoints/services/endpointService";
-    import { get } from "svelte/store";
-    import { getCookie } from "$lib/utils/cookie";
-    import AlertModal from "$lib/components/ui/AlertModal.svelte";
-    import FullLoading from "$lib/components/ui/FullLoading.svelte";
-    import { executionService } from "$lib/features/execution/services/executionService";
-    import { collectionExecutionService } from "$lib/features/execution/services/collectionExecutionService";
     import { syncService } from "$lib/features/drive/services/syncService";
 
     let { children } = $props();
@@ -76,8 +73,11 @@
 
         const authUnsub = authStore.subscribe(async (state) => {
             if (state.accessToken && state.firebaseUser) {
-                try {
-                    // Ask user if they want to restore ALL data or just profile
+                const justLoggedIn = sessionStorage.getItem("justLoggedIn");
+
+                if (justLoggedIn) {
+                    sessionStorage.removeItem("justLoggedIn");
+                    // PROMPT: Full Data Restore (Fresh Login)
                     showAlert(
                         "Restore Full Data",
                         "Do you want to restore all data (including settings and endpoints) from Google Drive?\nClick 'Cancel' to restore only your profile.",
@@ -88,65 +88,54 @@
                                 isFullLoading = true;
                                 loadingMessage =
                                     "Restoring all data from Google Drive...";
-
                                 await syncService.forceRestore();
-
                                 console.log("Full data restored from Drive");
                                 showAlert(
                                     "Restore Complete",
                                     "All data has been successfully restored.",
-                                    "alert",
-                                    undefined,
-                                    undefined,
-                                    "OK",
                                 );
                             } catch (err: any) {
                                 console.error("Full restore failed", err);
                                 showAlert(
                                     "Restore Failed",
                                     `An error occurred during restore: ${err.message}`,
-                                    "alert",
-                                    undefined,
-                                    undefined,
-                                    "OK",
                                 );
                             } finally {
                                 isFullLoading = false;
                             }
                         },
                         async () => {
-                            // Cancel: Profile Only Restore (DEFAULT)
-                            try {
-                                const profile = await driveService.loadProfile(
-                                    state.accessToken as string,
-                                );
-                                if (profile) {
-                                    profile.restoreDateTime =
-                                        new Date().toISOString();
-                                    profileStore.updateProfile(profile);
-                                    console.log(
-                                        "Profile only restored from Drive",
-                                    );
-                                }
-                            } catch (err: any) {
-                                console.error("Profile restore failed", err);
-                            }
+                            // Cancel: Profile Only Restore
+                            await silentProfileRestore(
+                                state.accessToken as string,
+                            );
                         },
                         "Connect",
                         "Cancel",
                     );
-                } catch (e: any) {
-                    console.error("Auto-Restore flow failed", e);
-                    if (e.message && e.message.includes("401")) {
-                        console.log(
-                            "Token expired, triggering auto-refresh...",
-                        );
-                        disconnectGoogle(); // Clear the expired token
-                        handleGoogleConnect(); // Prompt for re-auth
-                    }
+                } else {
+                    // SILENT: Profile Sync (Refresh/Revisit)
+                    await silentProfileRestore(state.accessToken as string);
                 }
             }
         });
+
+        async function silentProfileRestore(token: string) {
+            try {
+                const profile = await driveService.loadProfile(token);
+                if (profile) {
+                    profile.restoreDateTime = new Date().toISOString();
+                    profileStore.updateProfile(profile);
+                    console.log("Profile silently restored from Drive");
+                }
+            } catch (err: any) {
+                console.error("Profile silent sync failed", err);
+                if (err.message && err.message.includes("401")) {
+                    console.log("Token expired during silent sync");
+                    disconnectGoogle();
+                }
+            }
+        }
 
         // Subscribe to profile store to update UI
         const profileUnsub = profileStore.subscribe((data) => {
@@ -307,11 +296,7 @@
             class="hidden lg:flex w-64 bg-white dark:bg-background-dark border-r border-slate-200 dark:border-border-dark flex-col shrink-0"
         >
             <div class="flex-1 overflow-y-auto">
-                <SidebarNav
-                    isCollapsed={false}
-                    {userProfile}
-                    showCollections={true}
-                />
+                <SidebarNav showCollections={true} />
             </div>
         </aside>
 
@@ -365,8 +350,6 @@
             <!-- Drawer Content -->
             <div class="flex-1 overflow-y-auto">
                 <SidebarNav
-                    {userProfile}
-                    showNewButton={true}
                     showCollections={true}
                     allowTextWrap={true}
                     ignoreSettings={true}

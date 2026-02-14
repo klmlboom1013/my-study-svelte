@@ -1,0 +1,787 @@
+
+> my-study-svelte@0.0.1 check
+> svelte-kit sync && svelte-check --tsconfig ./tsconfig.json
+
+Loading svelte-check in workspace: /Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte
+Getting Svelte diagnostics...
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/stores/profileStore.ts:70:29
+Error: 'update' is declared but its value is never read. 
+function createProfileStore() {
+    const { subscribe, set, update } = writable<ProfileData>(initialState);
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/features/execution/services/executionService.ts:40:7
+Error: 'MAX_LOGS' is declared but its value is never read. 
+const LOG_STORAGE_KEY = "execution_logs";
+const MAX_LOGS = 50;
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/auth/UserMenu.svelte:8:5
+Error: 'onMount' is declared but its value is never read. (ts)
+    import { fade } from "svelte/transition";
+    import { onMount } from "svelte";
+    import { goto } from "$app/navigation";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/auth/UserMenu.svelte:12:5
+Error: 'appStateStore' is declared but its value is never read. (ts)
+    import { profileStore } from "$lib/stores/profileStore";
+    import { appStateStore } from "$lib/stores/appStateStore";
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/collection/CollectionStepEditor.svelte:3:9
+Error: 'settingsStore' is declared but its value is never read. (ts)
+    import {
+        settingsStore,
+        type CollectionStep,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/collection/CollectionStepEditor.svelte:9:5
+Error: 'onMount' is declared but its value is never read. (ts)
+    import type { Endpoint } from "$lib/types/endpoint";
+    import { onMount } from "svelte";
+    import { slide } from "svelte/transition";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/collection/CollectionStepEditor.svelte:33:9
+Error: 'presets' is declared but its value is never read. (ts)
+    let endpoint = $state<Endpoint | undefined>(undefined);
+    let presets = $state<any[]>([]);
+    let previousEndpoints = $state<Map<string, Endpoint>>(new Map());
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/collection/CollectionStepEditor.svelte:58:14
+Error: 'handlePresetChange' is declared but its value is never read. (ts)
+
+    function handlePresetChange(presetId: string) {
+        onUpdate({ ...step, presetId });
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/collection/CollectionStepEditor.svelte:116:14
+Error: 'toggleConditionEnabled' is declared but its value is never read. (ts)
+
+    function toggleConditionEnabled(enabled: boolean) {
+        // Legacy support shim: if enabling, ensure we have at least one condition if using new array
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/collection/EndpointSidebar.svelte:13:15
+Error: 'app' is declared but its value is never read. (ts)
+    $effect(() => {
+        const app = $appStateStore.selectedApp;
+        selectedService = "All";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/TypeSelector.svelte:2:14
+Error: 'fade' is declared but its value is never read. (ts)
+<script lang="ts">
+    import { fade, scale } from "svelte/transition";
+    import { clickOutside } from "$lib/utils/clickOutside";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/DataDefinitionTable.svelte:2:5
+Error: 'slide' is declared but its value is never read. (ts)
+<script lang="ts">
+    import { slide } from "svelte/transition";
+    import TypeSelector from "$lib/components/endpoint/TypeSelector.svelte";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/DataDefinitionTable.svelte:6:5
+Error: All imports in import declaration are unused. (ts)
+    import DataDefinitionTable from "$lib/components/endpoint/DataDefinitionTable.svelte";
+    import type {
+        RequestDataField,
+        ResponseDataField,
+    } from "$lib/types/endpoint";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/ExecutionSettings.svelte:4:9
+Error: 'History' is declared but its value is never read. (ts)
+        Save,
+        History,
+        RotateCcw,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/ExecutionSettings.svelte:7:9
+Error: 'CloudUpload' is declared but its value is never read. (ts)
+        Bookmark,
+        CloudUpload,
+        CloudDownload,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/ExecutionSettings.svelte:8:9
+Error: 'CloudDownload' is declared but its value is never read. (ts)
+        CloudUpload,
+        CloudDownload,
+        Trash2,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/ExecutionSettings.svelte:16:20
+Error: 'slide' is declared but its value is never read. (ts)
+    } from "lucide-svelte";
+    import { fade, slide } from "svelte/transition";
+    import type { Endpoint } from "$lib/types/endpoint";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/ExecutionSettings.svelte:17:5
+Error: 'Endpoint' is declared but its value is never read. (ts)
+    import { fade, slide } from "svelte/transition";
+    import type { Endpoint } from "$lib/types/endpoint";
+    import type { ExecutionPreset } from "$lib/features/execution/services/executionService";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/ExecutionSettings.svelte:18:5
+Error: 'ExecutionPreset' is declared but its value is never read. (ts)
+    import type { Endpoint } from "$lib/types/endpoint";
+    import type { ExecutionPreset } from "$lib/features/execution/services/executionService";
+    import { authStore } from "$lib/features/auth/services/authService";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/ExecutionSettings.svelte:19:5
+Error: 'authStore' is declared but its value is never read. (ts)
+    import type { ExecutionPreset } from "$lib/features/execution/services/executionService";
+    import { authStore } from "$lib/features/auth/services/authService";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/ExecutionSettings.svelte:28:9
+Error: 'isMobile' is declared but its value is never read. (ts)
+        executionStage,
+        isMobile,
+        isButtonInView = $bindable(true),
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/ExecutionSettings.svelte:36:9
+Error: 'onClose' is declared but its value is never read. (ts)
+        onStopExecution,
+        onClose,
+        headerRef = $bindable(),
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/ExecutionParameterForm.svelte:3:14
+Error: 'slide' is declared but its value is never read. (ts)
+    import { ChevronDown, Plus, Trash2, Check } from "lucide-svelte";
+    import { slide, fade } from "svelte/transition";
+    import type { RequestDataField } from "$lib/types/endpoint";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/EndpointExecutionModal.svelte:5:5
+Error: 'syncService' is declared but its value is never read. (ts)
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
+    import { syncService } from "$lib/features/drive/services/syncService";
+    import {
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/EndpointExecutionModal.svelte:6:5
+Error: All imports in import declaration are unused. (ts)
+    import { syncService } from "$lib/features/drive/services/syncService";
+    import {
+        authStore,
+        loginWithGoogle,
+        disconnectGoogle,
+    } from "$lib/features/auth/services/authService";
+    import {
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/EndpointExecutionModal.svelte:22:9
+Error: 'decryptData' is declared but its value is never read. (ts)
+        encryptData,
+        decryptData,
+        urlDecodeData,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/EndpointExecutionModal.svelte:23:9
+Error: 'urlDecodeData' is declared but its value is never read. (ts)
+        decryptData,
+        urlDecodeData,
+        urlEncodeData,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/EndpointExecutionModal.svelte:35:9
+Error: 'Code' is declared but its value is never read. (ts)
+    import {
+        Code,
+        Loader2,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/EndpointExecutionModal.svelte:40:9
+Error: 'RotateCcw' is declared but its value is never read. (ts)
+        ArrowUp,
+        RotateCcw,
+        X,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/EndpointExecutionModal.svelte:734:29
+Error: 'e' is declared but its value is never read. (ts)
+
+    function handleFabStart(e: PointerEvent) {
+        isLongPress = false;
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/endpoint/EndpointExecutionModal.svelte:744:27
+Error: 'e' is declared but its value is never read. (ts)
+
+    function handleFabEnd(e: PointerEvent) {
+        clearTimeout(longPressTimer);
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/layout/Header.svelte:2:5
+Error: 'logo' is declared but its value is never read. (ts)
+<script lang="ts">
+    import logo from "$lib/assets/favicon.svg";
+    import { onMount, untrack } from "svelte";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/layout/Header.svelte:40:9
+Error: 'showNotifications' is declared but its value is never read. (ts)
+        showSearch = false,
+        showNotifications = false,
+        showEnvironment = true,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/layout/Header.svelte:41:9
+Error: 'showEnvironment' is declared but its value is never read. (ts)
+        showNotifications = false,
+        showEnvironment = true,
+        showBrand = true,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/layout/Header.svelte:44:9
+Error: 'onToggleSidebar' is declared but its value is never read. (ts)
+        isSidebarOpen = false,
+        onToggleSidebar = () => {},
+        onToggleMobileMenu = () => {},
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/layout/Header.svelte:61:15
+Error: 'path' is declared but its value is never read. (ts)
+        // Track path changes to know if we can go back
+        const path = $page.url.pathname;
+        untrack(() => {
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/layout/Header.svelte:152:14
+Error: 'clearSearch' is declared but its value is never read. (ts)
+
+    function clearSearch() {
+        headerSearchTerm = "";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/layout/SidebarNav.svelte:27:34
+Error: 'ApiCategory' is declared but its value is never read. (ts)
+    import { appStateStore } from "$lib/stores/appStateStore";
+    import { settingsStore, type ApiCategory } from "$lib/stores/settingsStore";
+    import { endpointService } from "$lib/features/endpoints/services/endpointService";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/layout/SidebarNav.svelte:48:5
+Error: 'fade' is declared but its value is never read. (ts)
+    import { syncService } from "$lib/features/drive/services/syncService";
+    import { fade } from "svelte/transition";
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/layout/SidebarNav.svelte:17:9
+Error: 'isCollapsed' is declared but its value is never read. (ts)
+    let {
+        isCollapsed = false,
+        userProfile,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/layout/SidebarNav.svelte:18:9
+Error: 'userProfile' is declared but its value is never read. (ts)
+        isCollapsed = false,
+        userProfile,
+        showNewButton = true,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/layout/SidebarNav.svelte:19:9
+Error: 'showNewButton' is declared but its value is never read. (ts)
+        userProfile,
+        showNewButton = true,
+        showCollections = false,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/layout/SidebarNav.svelte:58:9
+Error: 'filteredCategories' is declared but its value is never read. (ts)
+    // Dynamic API Categories filtering based on selected app
+    let filteredCategories = $derived.by(() => {
+        const allCategories = $settingsStore.apiCategories || [];
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/ui/ComboBox.svelte:11:9
+Error: 'inputRef' is declared but its value is never read. (ts)
+    let isOpen = false;
+    let inputRef: HTMLInputElement;
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/ui/DropdownInput.svelte:27:14
+Error: 'toggle' is declared but its value is never read. (ts)
+
+    function toggle() {
+        if (disabled) return;
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/ui/Input.svelte:8:14
+Error: 'handleInput' is declared but its value is never read. (ts)
+
+    function handleInput(event: Event) {
+        const target = event.target as HTMLInputElement;
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/lib/components/ui/MultiSelectBox.svelte:49:9
+Error: 'displayText' is declared but its value is never read. (ts)
+
+    let displayText = $derived(
+        value.length > 0 ? `${value.length} selected` : placeholder,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/+layout.svelte:18:5
+Error: 'settingsStore' is declared but its value is never read. (ts)
+    import { driveService } from "$lib/features/drive/services/driveService";
+    import { settingsStore } from "$lib/stores/settingsStore";
+    import { endpointService } from "$lib/features/endpoints/services/endpointService";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/+layout.svelte:19:5
+Error: 'endpointService' is declared but its value is never read. (ts)
+    import { settingsStore } from "$lib/stores/settingsStore";
+    import { endpointService } from "$lib/features/endpoints/services/endpointService";
+    import { get } from "svelte/store";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/+layout.svelte:24:5
+Error: 'executionService' is declared but its value is never read. (ts)
+    import FullLoading from "$lib/components/ui/FullLoading.svelte";
+    import { executionService } from "$lib/features/execution/services/executionService";
+    import { collectionExecutionService } from "$lib/features/execution/services/collectionExecutionService";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/+layout.svelte:25:5
+Error: 'collectionExecutionService' is declared but its value is never read. (ts)
+    import { executionService } from "$lib/features/execution/services/executionService";
+    import { collectionExecutionService } from "$lib/features/execution/services/collectionExecutionService";
+    import { syncService } from "$lib/features/drive/services/syncService";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/+layout.svelte:77:15
+Error: 'authUnsub' is declared but its value is never read. (ts)
+
+        const authUnsub = authStore.subscribe(async (state) => {
+            if (state.accessToken && state.firebaseUser) {
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/+layout.svelte:218:14
+Error: 'checkAndPromptGoogleConnect' is declared but its value is never read. (ts)
+
+    function checkAndPromptGoogleConnect() {
+        // 1. Check if user is logged in to App (WPAY)
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/+page.svelte:27:14
+Error: 'handleLogout' is declared but its value is never read. (ts)
+
+    function handleLogout() {
+        deleteCookie("accessToken");
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/+page.svelte:58:9
+Error: 'filteredCategories' is declared but its value is never read. (ts)
+    // Dynamic API Categories filtering based on selected app (for Mobile View)
+    let filteredCategories = $derived.by(() => {
+        const allApps = $settingsStore.applications || [];
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/categories/+page.svelte:7:5
+Error: All imports in import declaration are unused. (ts)
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
+    import {
+        authStore,
+        loginWithGoogle,
+        checkDriveConnection,
+    } from "$lib/features/auth/services/authService";
+    import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/categories/+page.svelte:15:5
+Error: 'get' is declared but its value is never read. (ts)
+    import ApiCategoryForm from "./ApiCategoryForm.svelte";
+    import { get } from "svelte/store";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/+page.svelte:5:5
+Error: 'page' is declared but its value is never read. (ts)
+    import { goto } from "$app/navigation";
+    import { page } from "$app/stores";
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/+page.svelte:7:5
+Error: 'driveService' is declared but its value is never read. (ts)
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
+    import { driveService } from "$lib/features/drive/services/driveService";
+    import {
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/+page.svelte:8:5
+Error: All imports in import declaration are unused. (ts)
+    import { driveService } from "$lib/features/drive/services/driveService";
+    import {
+        authStore,
+        loginWithGoogle,
+    } from "$lib/features/auth/services/authService";
+    import { ensureDriveConnected } from "$lib/utils/driveGuard";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/+page.svelte:14:5
+Error: 'Modal' is declared but its value is never read. (ts)
+    import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
+    import Modal from "$lib/components/ui/Modal.svelte";
+    import ApiCollectionForm from "./ApiCollectionForm.svelte";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/+page.svelte:15:5
+Error: 'ApiCollectionForm' is declared but its value is never read. (ts)
+    import Modal from "$lib/components/ui/Modal.svelte";
+    import ApiCollectionForm from "./ApiCollectionForm.svelte";
+    import { get } from "svelte/store";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/+page.svelte:16:5
+Error: 'get' is declared but its value is never read. (ts)
+    import ApiCollectionForm from "./ApiCollectionForm.svelte";
+    import { get } from "svelte/store";
+    import { collectionExecutionService } from "$lib/features/execution/services/collectionExecutionService";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/+page.svelte:17:5
+Error: 'collectionExecutionService' is declared but its value is never read. (ts)
+    import { get } from "svelte/store";
+    import { collectionExecutionService } from "$lib/features/execution/services/collectionExecutionService";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/+page.svelte:19:5
+Error: 'profileStore' is declared but its value is never read. (ts)
+
+    import { profileStore } from "$lib/stores/profileStore";
+    import SelectBox from "$lib/components/ui/SelectBox.svelte";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/run/[id]/+page.svelte:6:5
+Error: 'driveService' is declared but its value is never read. (ts)
+    import { endpointService } from "$lib/features/endpoints/services/endpointService";
+    import { driveService } from "$lib/features/drive/services/driveService";
+    import {
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/run/[id]/+page.svelte:14:5
+Error: All imports in import declaration are unused. (ts)
+    import { wpayExecutionService } from "$lib/features/execution/services/wpayExecutionService";
+    import {
+        authStore,
+        loginWithGoogle,
+    } from "$lib/features/auth/services/authService";
+    import { testResultService } from "$lib/features/execution/services/testResultService";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/run/[id]/+page.svelte:19:5
+Error: 'appStateStore' is declared but its value is never read. (ts)
+    import { testResultService } from "$lib/features/execution/services/testResultService";
+    import { appStateStore } from "$lib/stores/appStateStore";
+    import { get } from "svelte/store";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/run/[id]/+page.svelte:20:5
+Error: 'get' is declared but its value is never read. (ts)
+    import { appStateStore } from "$lib/stores/appStateStore";
+    import { get } from "svelte/store";
+    import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/run/[id]/+page.svelte:29:9
+Error: 'ChevronRight' is declared but its value is never read. (ts)
+        History,
+        ChevronRight,
+        CheckCircle2,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/run/[id]/+page.svelte:31:9
+Error: 'Circle' is declared but its value is never read. (ts)
+        CheckCircle2,
+        Circle,
+        Loader2,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/run/[id]/+page.svelte:34:9
+Error: 'ArrowLeft' is declared but its value is never read. (ts)
+        AlertCircle,
+        ArrowLeft,
+        ChevronDown,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/run/[id]/+page.svelte:36:9
+Error: 'ChevronUp' is declared but its value is never read. (ts)
+        ChevronDown,
+        ChevronUp,
+        Zap,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/run/[id]/+page.svelte:40:9
+Error: 'Plus' is declared but its value is never read. (ts)
+        Eye,
+        Plus,
+        Trash2,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/run/[id]/+page.svelte:42:9
+Error: 'Bookmark' is declared but its value is never read. (ts)
+        Trash2,
+        Bookmark,
+        X,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/run/[id]/+page.svelte:48:9
+Error: 'CloudUpload' is declared but its value is never read. (ts)
+        Menu,
+        CloudUpload,
+        CloudDownload,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/run/[id]/+page.svelte:49:9
+Error: 'CloudDownload' is declared but its value is never read. (ts)
+        CloudUpload,
+        CloudDownload,
+        ShieldCheck,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/run/[id]/+page.svelte:65:9
+Error: 'Endpoint' is declared but never used. (ts)
+    import type {
+        Endpoint,
+        RequestDataField,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/run/[id]/+page.svelte:90:9
+Error: 'manualGroupId' is declared but its value is never read. (ts)
+    let autoRunStarted = $state(false);
+    let manualGroupId = $state(Date.now().toString());
+    let isInitialized = $state(false);
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/run/[id]/+page.svelte:135:14
+Error: 'showConfirmPromise' is declared but its value is never read. (ts)
+
+    function showConfirmPromise(
+        title: string,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/run/[id]/+page.svelte:149:14
+Error: 'observerAction' is declared but its value is never read. (ts)
+
+    function observerAction(
+        node: HTMLElement,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/collections/run/[id]/+page.svelte:1319:9
+Error: 'executionId' is declared but its value is never read. (ts)
+        autoRun = false,
+        executionId = "manual_run",
+    ) {
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/endpoint/+page.svelte:8:9
+Error: 'authStore' is declared but its value is never read. (ts)
+    import {
+        authStore,
+        loginWithGoogle,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/endpoint/+page.svelte:16:5
+Error: 'get' is declared but its value is never read. (ts)
+    import SelectBox from "$lib/components/ui/SelectBox.svelte";
+    import { get } from "svelte/store";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/endpoint/+page.svelte:20:5
+Error: 'executionService' is declared but its value is never read. (ts)
+    import { appStateStore } from "$lib/stores/appStateStore";
+    import { executionService } from "$lib/features/execution/services/executionService";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/endpoint/[id]/edit/+page.svelte:2:5
+Error: 'onMount' is declared but its value is never read. (ts)
+<script lang="ts">
+    import { onMount } from "svelte";
+    import { goto } from "$app/navigation";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/endpoint/[id]/edit/+page.svelte:17:9
+Error: 'checkDriveConnection' is declared but its value is never read. (ts)
+        loginWithGoogle,
+        checkDriveConnection,
+    } from "$lib/features/auth/services/authService";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/endpoint/[id]/edit/+page.svelte:21:5
+Error: 'TypeSelector' is declared but its value is never read. (ts)
+    import ResponseDataJsonModal from "$lib/components/endpoint/ResponseDataJsonModal.svelte";
+    import TypeSelector from "$lib/components/endpoint/TypeSelector.svelte";
+    import DataDefinitionTable from "$lib/components/endpoint/DataDefinitionTable.svelte";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/endpoint/[id]/edit/+page.svelte:224:20
+Error: 'handleGoogleLogin' is declared but its value is never read. (ts)
+
+    async function handleGoogleLogin() {
+        try {
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/endpoint/new/+page.svelte:16:9
+Error: 'checkDriveConnection' is declared but its value is never read. (ts)
+        loginWithGoogle,
+        checkDriveConnection,
+    } from "$lib/features/auth/services/authService";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/endpoint/new/+page.svelte:21:5
+Error: 'TypeSelector' is declared but its value is never read. (ts)
+    import ResponseDataJsonModal from "$lib/components/endpoint/ResponseDataJsonModal.svelte";
+    import TypeSelector from "$lib/components/endpoint/TypeSelector.svelte";
+    import DataDefinitionTable from "$lib/components/endpoint/DataDefinitionTable.svelte";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/endpoint/new/+page.svelte:159:20
+Error: 'handleGoogleLogin' is declared but its value is never read. (ts)
+
+    async function handleGoogleLogin() {
+        try {
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/profile/+page.svelte:5:5
+Error: 'driveService' is declared but its value is never read. (ts)
+    import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
+    import { driveService } from "$lib/features/drive/services/driveService";
+    import {
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/profile/+page.svelte:6:5
+Error: All imports in import declaration are unused. (ts)
+    import { driveService } from "$lib/features/drive/services/driveService";
+    import {
+        authStore,
+        loginWithGoogle,
+    } from "$lib/features/auth/services/authService";
+    import { profileStore } from "$lib/stores/profileStore"; // Import store for consistent updates
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/profile/+page.svelte:10:5
+Error: 'profileStore' is declared but its value is never read. (ts)
+    } from "$lib/features/auth/services/authService";
+    import { profileStore } from "$lib/stores/profileStore"; // Import store for consistent updates
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/profile/+page.svelte:16:9
+Error: 'company' is declared but its value is never read. (ts)
+    let avatarUrl = $state("");
+    let company = $state("");
+    let team = $state("");
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/profile/+page.svelte:17:9
+Error: 'team' is declared but its value is never read. (ts)
+    let company = $state("");
+    let team = $state("");
+    let jobTitle = $state("");
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/profile/+page.svelte:18:9
+Error: 'jobTitle' is declared but its value is never read. (ts)
+    let team = $state("");
+    let jobTitle = $state("");
+    let role = $state("User");
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/profile/+page.svelte:33:14
+Error: 'showAlert' is declared but its value is never read. (ts)
+
+    function showAlert(title: string, message: string) {
+        alertTitle = title;
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/profile/+page.svelte:41:14
+Error: 'showConfirm' is declared but its value is never read. (ts)
+
+    function showConfirm(title: string, message: string): Promise<boolean> {
+        return new Promise((resolve) => {
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/profile/+page.svelte:49:19
+Error: 'originalOnClose' is declared but its value is never read. (ts)
+            // Handle cancel/close as false
+            const originalOnClose = () => resolve(false);
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/profile/+page.svelte:63:14
+Error: 'showConfirmPromise' is declared but its value is never read. (ts)
+
+    function showConfirmPromise(
+        title: string,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/recent-activity/+page.svelte:10:5
+Error: 'Code' is declared but its value is never read. (ts)
+    import Modal from "$lib/components/ui/Modal.svelte";
+    import { Code } from "lucide-svelte";
+    import { driveService } from "$lib/features/drive/services/driveService";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/recent-activity/+page.svelte:11:5
+Error: 'driveService' is declared but its value is never read. (ts)
+    import { Code } from "lucide-svelte";
+    import { driveService } from "$lib/features/drive/services/driveService";
+    import {
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/recent-activity/+page.svelte:12:5
+Error: All imports in import declaration are unused. (ts)
+    import { driveService } from "$lib/features/drive/services/driveService";
+    import {
+        authStore,
+        loginWithGoogle,
+    } from "$lib/features/auth/services/authService";
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/recent-activity/+page.svelte:17:5
+Error: 'FullLoading' is declared but its value is never read. (ts)
+    import AlertModal from "$lib/components/ui/AlertModal.svelte";
+    import FullLoading from "$lib/components/ui/FullLoading.svelte";
+    import { settingsStore } from "$lib/stores/settingsStore";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/settings/+page.svelte:2:5
+Error: 'page' is declared but its value is never read. (ts)
+<script lang="ts">
+    import { page } from "$app/stores";
+    import { appStateStore } from "$lib/stores/appStateStore";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/settings/+page.svelte:7:9
+Error: 'loginWithGoogle' is declared but its value is never read. (ts)
+        authStore,
+        loginWithGoogle,
+    } from "$lib/features/auth/services/authService";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/settings/+page.svelte:9:5
+Error: 'driveService' is declared but its value is never read. (ts)
+    } from "$lib/features/auth/services/authService";
+    import { driveService } from "$lib/features/drive/services/driveService";
+    import {
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/settings/+page.svelte:12:14
+Error: 'GlobalParameter' is declared but its value is never read. (ts)
+        settingsStore,
+        type GlobalParameter,
+        type ParameterOption,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/settings/+page.svelte:13:14
+Error: 'ParameterOption' is declared but its value is never read. (ts)
+        type GlobalParameter,
+        type ParameterOption,
+        type MidContext,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/settings/+page.svelte:14:14
+Error: 'MidContext' is declared but its value is never read. (ts)
+        type ParameterOption,
+        type MidContext,
+        type SiteContext,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/settings/+page.svelte:19:14
+Error: 'onMount' is declared but its value is never read. (ts)
+    const SERVICE_OPTIONS = ["wpaystd2"];
+    import { onMount, tick } from "svelte";
+    import { get } from "svelte/store";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/settings/+page.svelte:119:9
+Error: 'editingContextId' is declared but its value is never read. (ts)
+    let addingSiteToContextId = $state<string | null>(null);
+    let editingContextId = $state<string | null>(null);
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/settings/+page.svelte:993:14
+Error: 'toggleAppFilter' is declared but its value is never read. (ts)
+
+    function toggleAppFilter(appName: string) {
+        const currentFilters = $settingsStore.recentActivity?.filter || {};
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/settings/+page.svelte:995:15
+Error: 'newVal' is declared but its value is never read. (ts)
+        const currentFilters = $settingsStore.recentActivity?.filter || {};
+        const newVal = !currentFilters[appName]; // Toggle (undefined/false -> true = Disabled? No, Logic needed)
+        // Logc: filter[appName] === false means DISABLED? Or ENABLED?
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/settings/+page.svelte:2279:77
+Error: 'sIdx' is declared but its value is never read. (ts)
+
+                                        {#each appForm.services as service, sIdx}
+                                            <div
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/test-suite/+page.svelte:26:9
+Error: 'Filter' is declared but its value is never read. (ts)
+        Check,
+        Filter,
+        Loader2,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/test-suite/+page.svelte:62:9
+Error: 'currentRunningCollectionId' is declared but its value is never read. (ts)
+    let isRunningAllSuites = $state(false);
+    let currentRunningCollectionId = $state<string | null>(null);
+    let selectedResult = $state<CollectionTestResult | null>(null);
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/test-suite/+page.svelte:344:14
+Error: 'viewResultDetails' is declared but its value is never read. (ts)
+
+    function viewResultDetails(result: CollectionTestResult) {
+        selectedResult = result;
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/test-suite/collections/[id]/+page.svelte:17:9
+Error: 'History' is declared but its value is never read. (ts)
+        Play,
+        History,
+        CheckCircle2,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/test-suite/collections/[id]/+page.svelte:21:9
+Error: 'Calendar' is declared but its value is never read. (ts)
+        Clock,
+        Calendar,
+        BarChart3,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/test-suite/collections/[id]/+page.svelte:23:9
+Error: 'ChevronLeft' is declared but its value is never read. (ts)
+        BarChart3,
+        ChevronLeft,
+        ChevronRight,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/(app)/test-suite/collections/[id]/+page.svelte:24:9
+Error: 'ChevronRight' is declared but its value is never read. (ts)
+        ChevronLeft,
+        ChevronRight,
+        ChevronDown,
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/callback/endpoint/+page.svelte:3:5
+Error: 'page' is declared but its value is never read. (ts)
+    import { onMount } from "svelte";
+    import { page } from "$app/stores";
+    import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/callback/endpoint/+page.svelte:4:5
+Error: 'Breadcrumbs' is declared but its value is never read. (ts)
+    import { page } from "$app/stores";
+    import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/callback/endpoint/+page.svelte:20:9
+Error: 'isSession' is declared but its value is never read. (ts)
+
+    let isSession = false;
+
+/Users/hyunseung/projects/git/klmlboom1013/repository/my-study-svelte/src/routes/callback/endpoint/+page.svelte:27:25
+Error: 'event' is declared but its value is never read. (ts)
+        // 0. Listen for close signal from parent
+        bc.onmessage = (event) => {
+            // Placeholder: parent now manages window lifecycle directly
+
+====================================
+svelte-check found 128 errors and 0 warnings in 30 files

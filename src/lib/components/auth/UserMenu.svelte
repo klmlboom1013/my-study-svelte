@@ -5,11 +5,9 @@
         logout as logoutGoogle,
     } from "$lib/features/auth/services/authService";
     import { fade } from "svelte/transition";
-    import { onMount } from "svelte";
     import { goto } from "$app/navigation";
     import { setCookie } from "$lib/utils/cookie";
     import { profileStore } from "$lib/stores/profileStore";
-    import { appStateStore } from "$lib/stores/appStateStore";
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
 
     // State

@@ -4,11 +4,6 @@
     export let placeholder: string = "";
     export let disabled: boolean = false;
     export let className: string = "";
-
-    function handleInput(event: Event) {
-        const target = event.target as HTMLInputElement;
-        value = type === "number" ? Number(target.value) : target.value;
-    }
 </script>
 
 <input

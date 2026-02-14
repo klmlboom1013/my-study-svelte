@@ -37,7 +37,6 @@ export interface ExecutionLog {
 
 const STORAGE_KEY = "execution_history";
 const LOG_STORAGE_KEY = "execution_logs";
-const MAX_LOGS = 50;
 
 export const executionService = {
     /**

@@ -8,7 +8,6 @@
     export let disabled: boolean = false;
 
     let isOpen = false;
-    let inputRef: HTMLInputElement;
 
     const dispatch = createEventDispatcher();
 
@@ -58,7 +57,6 @@
         border-blue-500 pr-10"
             {placeholder}
             {disabled}
-            bind:this={inputRef}
             bind:value
             on:input={handleInput}
             on:focus={() => (isOpen = true)}

@@ -10,7 +10,6 @@
 
     // Reset service filter when application changes
     $effect(() => {
-        const app = $appStateStore.selectedApp;
         selectedService = "All";
         selectedSite = "All";
     });

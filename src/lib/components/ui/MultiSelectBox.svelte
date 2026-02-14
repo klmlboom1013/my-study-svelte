@@ -46,10 +46,6 @@
         }
     }
 
-    let displayText = $derived(
-        value.length > 0 ? `${value.length} selected` : placeholder,
-    );
-
     // If value length is small, show them?
     // Usually "X selected" is better for multi.
     // Or if < 3 join with comma.

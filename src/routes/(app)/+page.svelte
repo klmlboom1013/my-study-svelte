@@ -1,7 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
-    // import { validateAccessToken } from "$lib/utils/auth/accessToken"; // Removed. used API.
     import { deleteCookie, getCookie } from "$lib/utils/cookie";
     import Footer from "$lib/components/layout/Footer.svelte";
     import { settingsStore } from "$lib/stores/settingsStore";
@@ -25,25 +24,6 @@
         isValid = true;
     });
 
-    function handleLogout() {
-        deleteCookie("accessToken");
-
-        // Cleanup Input Info if isSaveCache is not true
-        const storedData = localStorage.getItem("sign-in-page");
-        if (storedData) {
-            try {
-                const parsedData = JSON.parse(storedData);
-                if (!parsedData.isSaveCache) {
-                    localStorage.removeItem("sign-in-page");
-                }
-            } catch (e) {
-                console.error("Failed to parse sign-in-page data", e);
-            }
-        }
-
-        goto("/signin");
-    }
-
     // Mobile Search Logic
     let mobileSearchTerm = $state("");
 
@@ -52,25 +32,6 @@
             goto(`/endpoint?q=${encodeURIComponent(mobileSearchTerm.trim())}`);
         }
     }
-
-    import { appStateStore } from "$lib/stores/appStateStore";
-
-    // Dynamic API Categories filtering based on selected app (for Mobile View)
-    let filteredCategories = $derived.by(() => {
-        const allApps = $settingsStore.applications || [];
-        const headerApp = $appStateStore.selectedApp;
-        const isAll = !headerApp || headerApp === "All";
-
-        let categories: any[] = [];
-        for (const app of allApps) {
-            if (app.apiCategories) {
-                if (isAll || app.appName === headerApp) {
-                    categories = [...categories, ...app.apiCategories];
-                }
-            }
-        }
-        return categories;
-    });
 
     // Recent Activity Real Data
     let allLogs = $state<ExecutionLog[]>([]);

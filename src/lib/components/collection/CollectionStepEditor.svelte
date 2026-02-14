@@ -1,15 +1,11 @@
 <script lang="ts">
-    import {
-        settingsStore,
-        type CollectionStep,
-    } from "$lib/stores/settingsStore";
+    import { type CollectionStep } from "$lib/stores/settingsStore";
     import { endpointService } from "$lib/features/endpoints/services/endpointService";
     import { executionService } from "$lib/features/execution/services/executionService";
     import type { Endpoint } from "$lib/types/endpoint";
-    import { onMount } from "svelte";
-    import { slide } from "svelte/transition";
     import CollectionConditionFieldSelector from "./CollectionConditionFieldSelector.svelte";
     import AssertionEditor from "./AssertionEditor.svelte";
+    import { slide } from "svelte/transition";
 
     interface Props {
         step: CollectionStep;
@@ -30,17 +26,10 @@
     let isCollapsed = $state(false);
 
     let endpoint = $state<Endpoint | undefined>(undefined);
-    let presets = $state<any[]>([]);
     let previousEndpoints = $state<Map<string, Endpoint>>(new Map());
 
     $effect(() => {
         endpoint = endpointService.getEndpoint(step.endpointId);
-        if (step.endpointId) {
-            presets =
-                executionService.getHistory(step.endpointId).presets || [];
-        } else {
-            presets = [];
-        }
     });
 
     // Load previous endponits
@@ -54,10 +43,6 @@
         });
         previousEndpoints = newMap;
     });
-
-    function handlePresetChange(presetId: string) {
-        onUpdate({ ...step, presetId });
-    }
 
     function getMapping(fieldPath: string) {
         return step.requestMappings?.find((m) => m.fieldPath === fieldPath);
@@ -109,50 +94,6 @@
 
     function toggleCollapse() {
         isCollapsed = !isCollapsed;
-    }
-    // ... (omitted shared lines for safe replacement context, but wait, replace_file_content requires exact match of replaced content)
-    // Actually, I should use MULTI_REPLACE because I'm touching two places: the function definition and the UI loop.
-
-    function toggleConditionEnabled(enabled: boolean) {
-        // Legacy support shim: if enabling, ensure we have at least one condition if using new array
-        if (
-            enabled &&
-            (!step.nextStepConditions || step.nextStepConditions.length === 0)
-        ) {
-            // Migration or init
-            const legacy = step.nextStepCondition || {
-                enabled: true,
-                field: "",
-                value: "",
-                operator: "equals" as const,
-            };
-            onUpdate({
-                ...step,
-                nextStepCondition: undefined, // Clear legacy to avoid confusion? Or keep sync? Let's favor new array.
-                nextStepConditions: [
-                    {
-                        enabled: true,
-                        field: legacy.field,
-                        values: legacy.value ? [legacy.value] : [],
-                        operator: "equals",
-                    },
-                ],
-            });
-        } else if (!enabled) {
-            // Disable all? Or just clear?
-            // The toggle usually implies "Feature Enabled".
-            // If we have a list, maybe we don't need a master toggle, checking if array length > 0 is enough?
-            // But the UI shows a master toggle. Let's treat it as "clearing all" or just hiding the UI?
-            // Existing behavior: toggle enabled flag.
-            // New behavior: If disabled, maybe we clear the array or just valid if there are conditions?
-            // Let's assume the Master Toggle controls visibility/activity of the entire feature.
-            // But we don't have a master 'enabled' field on the step itself for this array.
-            // Let's assume if array exists and length > 0, it is enabled.
-            // So if user turns OFF, we ask "Delete all conditions?".
-            // Actually, let's keep it simple. If valid conditions exist, it's active.
-            // The UI "Enabled" switch might be redundant if we just showing specific conditions.
-            // BUT, to keep UI consistent, let's say "Enabled" means "Has at least one active condition".
-        }
     }
 
     // New Helper Functions

@@ -1,22 +1,11 @@
 <script lang="ts">
     interface Props {
-        isCollapsed?: boolean; // Kept for compatibility but unused/always false
-        userProfile: {
-            name: string;
-            role: string;
-            avatar?: string;
-            image?: string;
-        };
-        showNewButton?: boolean;
         showCollections?: boolean;
         allowTextWrap?: boolean;
         ignoreSettings?: boolean;
     }
 
     let {
-        isCollapsed = false,
-        userProfile,
-        showNewButton = true,
         showCollections = false,
         allowTextWrap = false,
         ignoreSettings = false,
@@ -24,7 +13,7 @@
 
     import { goto } from "$app/navigation";
     import { appStateStore } from "$lib/stores/appStateStore";
-    import { settingsStore, type ApiCategory } from "$lib/stores/settingsStore";
+    import { settingsStore } from "$lib/stores/settingsStore";
     import { endpointService } from "$lib/features/endpoints/services/endpointService";
     import type { Endpoint } from "$lib/types/endpoint";
     import { onMount } from "svelte";
@@ -45,7 +34,6 @@
         loginWithGoogle,
     } from "$lib/features/auth/services/authService";
     import { syncService } from "$lib/features/drive/services/syncService";
-    import { fade } from "svelte/transition";
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
 
     let isSyncing = $state(false);
@@ -55,14 +43,6 @@
     let pendingAction: (() => Promise<void>) | null = null;
 
     // Dynamic API Categories filtering based on selected app
-    let filteredCategories = $derived.by(() => {
-        const allCategories = $settingsStore.apiCategories || [];
-        const headerApp = $appStateStore.selectedApp;
-        const isAll = !headerApp || headerApp === "All";
-
-        if (isAll) return allCategories;
-        return allCategories.filter((cat) => cat.application === headerApp);
-    });
 
     let storedEndpoints = $state<Endpoint[]>([]);
 

@@ -1,5 +1,4 @@
 <script lang="ts">
-    import logo from "$lib/assets/favicon.svg";
     import { onMount, untrack } from "svelte";
     import { fade } from "svelte/transition";
     import { page } from "$app/stores";
@@ -25,11 +24,8 @@
     interface Props {
         showSidebarToggle?: boolean;
         showSearch?: boolean;
-        showNotifications?: boolean;
-        showEnvironment?: boolean;
         showBrand?: boolean;
         isSidebarOpen?: boolean;
-        onToggleSidebar?: MouseEventHandler<HTMLButtonElement>;
         onToggleMobileMenu?: MouseEventHandler<HTMLButtonElement>;
         showUserControls?: boolean;
     }
@@ -37,11 +33,8 @@
     let {
         showSidebarToggle = true,
         showSearch = false,
-        showNotifications = false,
-        showEnvironment = true,
         showBrand = true,
         isSidebarOpen = false,
-        onToggleSidebar = () => {},
         onToggleMobileMenu = () => {},
         showUserControls = true,
     }: Props = $props();
@@ -58,7 +51,7 @@
     let historyCount = $state(0);
     $effect(() => {
         // Track path changes to know if we can go back
-        const path = $page.url.pathname;
+        $page.url.pathname;
         untrack(() => {
             historyCount++;
         });
@@ -147,11 +140,6 @@
         if (event.key === "Enter") {
             updateUrl();
         }
-    }
-
-    function clearSearch() {
-        headerSearchTerm = "";
-        updateUrl();
     }
 
     async function handleGoogleLogin() {

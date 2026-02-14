@@ -167,6 +167,31 @@
         }
     }
 
+    onMount(() => {
+        // Check Google Drive Connection
+        const token = get(authStore).accessToken;
+        if (!token) {
+            showAlert(
+                "Google Drive Connection Required",
+                "Google Drive is not connected. Settings and data sync require a Google Drive connection. Connect now?",
+                "confirm",
+                async () => {
+                    try {
+                        await loginWithGoogle();
+                        // Optional: Refresh or update state if needed, but authStore update should handle it.
+                        showAlert(
+                            "Success",
+                            "Google Drive connected successfully.",
+                        );
+                    } catch (e) {
+                        console.error(e);
+                        showAlert("Error", "Failed to connect Google Drive.");
+                    }
+                },
+            );
+        }
+    });
+
     $effect(() => {
         // Refresh items whenever activeCategory is 'localstorage' or on initial mount
         if (

@@ -67,7 +67,7 @@ const initialState: ProfileData = {
 };
 
 function createProfileStore() {
-    const { subscribe, set, update } = writable<ProfileData>(initialState);
+    const { subscribe, set } = writable<ProfileData>(initialState);
 
     return {
         subscribe,
