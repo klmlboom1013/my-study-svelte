@@ -27,6 +27,7 @@
         executionStage,
         isMobile,
         isButtonInView = $bindable(true),
+        requestValues,
         onLoadPreset,
         onDeletePreset,
         onSavePreset,
@@ -397,7 +398,26 @@
                     class="text-indigo-500/80 dark:text-indigo-400/80 select-none"
                     >/{endpoint?.scope?.site}</span
                 >
-                <span>{endpoint?.uri}</span>
+                {#if endpoint}
+                    {@const displayUri = (endpoint?.uri || "").replace(
+                        /\{([^}]+)\}|:([a-zA-Z0-0_]+)/g,
+                        (
+                            match: string,
+                            p1: string | undefined,
+                            p2: string | undefined,
+                        ) => {
+                            const key = p1 || p2;
+                            if (!key) return match;
+                            const val = requestValues[key];
+                            return val
+                                ? `<span class="text-blue-600 dark:text-blue-400 font-bold underline decoration-blue-500/30 underline-offset-2">${val}</span>`
+                                : `<span class="text-red-500 dark:text-red-400 opacity-70 italic font-medium">{${key}}</span>`;
+                        },
+                    )}
+                    <span>
+                        {@html displayUri}
+                    </span>
+                {/if}
             </div>
         </div>
     </div>

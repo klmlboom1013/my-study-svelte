@@ -356,7 +356,9 @@
                                 type="text"
                                 bind:value={name}
                                 placeholder="e.g. Member Registration"
-                                class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-background-dark/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
+                                class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-border-dark {$appStateStore.isPageLocked
+                                    ? 'bg-slate-50'
+                                    : 'bg-white'} dark:bg-background-dark/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                                 disabled={$appStateStore.isPageLocked}
                             />
                         </div>
@@ -405,7 +407,9 @@
                                 bind:value={description}
                                 rows="2"
                                 placeholder="Briefly describe what this endpoint does..."
-                                class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-background-dark/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none resize-none"
+                                class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-border-dark {$appStateStore.isPageLocked
+                                    ? 'bg-slate-50'
+                                    : 'bg-white'} dark:bg-background-dark/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none resize-none"
                                 disabled={$appStateStore.isPageLocked}
                             ></textarea>
                         </div>
@@ -460,7 +464,9 @@
                                     type="text"
                                     bind:value={uri}
                                     placeholder="/v1/api/..."
-                                    class="flex-1 px-4 py-2.5 rounded-r-lg border-y border-r border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-background-dark/50 text-slate-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
+                                    class="flex-1 px-4 py-2.5 rounded-r-lg border-y border-r border-slate-200 dark:border-border-dark {$appStateStore.isPageLocked
+                                        ? 'bg-slate-50'
+                                        : 'bg-white'} dark:bg-background-dark/50 text-slate-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                                     disabled={$appStateStore.isPageLocked}
                                 />
                             </div>
@@ -474,7 +480,9 @@
                                 URL Parameters
                             </span>
                             <div
-                                class="p-4 bg-slate-50 dark:bg-background-dark/50 rounded-lg border border-slate-200 dark:border-border-dark"
+                                class="p-4 {$appStateStore.isPageLocked
+                                    ? 'bg-slate-50'
+                                    : 'bg-white'} dark:bg-background-dark/50 rounded-lg border border-slate-200 dark:border-border-dark"
                             >
                                 <UrlParameterTable
                                     bind:items={urlParams}
@@ -589,7 +597,9 @@
                 <div class="flex flex-col gap-2">
                     <select
                         bind:value={signatureMethod}
-                        class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-background-dark/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none appearance-none cursor-pointer"
+                        class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-border-dark {$appStateStore.isPageLocked
+                            ? 'bg-slate-50'
+                            : 'bg-white'} dark:bg-background-dark/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none appearance-none cursor-pointer"
                         disabled={$appStateStore.isPageLocked}
                     >
                         <option value="">선택</option>

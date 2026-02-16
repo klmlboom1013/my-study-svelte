@@ -60,6 +60,7 @@
     let responseResult = $state("");
     let responseStatus = $state<number | null>(null);
     let signatureRawString = $state("");
+    let requestUrl = $state("");
     let activeDropdownPath = $state<string | null>(null);
     let executionStage = $state<"READY" | "EXECUTE">("READY");
     let isExecuting = $state(false);
@@ -97,6 +98,60 @@
     const midContexts = $derived(
         $settingsStore.endpoint_parameters.midContexts,
     );
+
+    // Filtered & Combined Fields
+    const allFields = $derived.by(() => {
+        if (!endpoint) return [];
+        const urlParamMap = new Map();
+
+        // 1. URI 템플릿에서 파라미터 추출
+        const uriParams =
+            (endpoint.uri || "").match(/\{([^}]+)\}|:([a-zA-Z0-0_]+)/g) || [];
+        const uriParamNames = uriParams.map((p) => p.replace(/[\{\}:]/g, ""));
+
+        // 2. config.urlParams 처리 (우선순위 1)
+        endpoint.config?.urlParams?.forEach((p) => {
+            urlParamMap.set(p.name, {
+                name: p.name,
+                type: "string",
+                required: p.isRequired,
+                encrypt: p.isEncrypted,
+                encoded: p.isUrlEncoded,
+                description: p.description,
+                location: "URL",
+            });
+        });
+
+        // 3. URI에만 있는 파라미터 추가 (우선순위 2)
+        uriParamNames.forEach((name) => {
+            if (!urlParamMap.has(name)) {
+                urlParamMap.set(name, {
+                    name,
+                    type: "string",
+                    required: true,
+                    encrypt: false,
+                    encoded: false,
+                    location: "URL",
+                });
+            }
+        });
+
+        const urlFieldsList = Array.from(urlParamMap.values());
+        const urlNames = new Set(urlFieldsList.map((f) => f.name));
+
+        // 4. requestData 처리
+        const otherFields = (endpoint.requestData || [])
+            .filter((f) => !urlNames.has(f.name))
+            .map((f) => ({
+                ...f,
+                location: f.location || "Body",
+            }));
+
+        return [...urlFieldsList, ...otherFields];
+    });
+
+    const urlFields = $derived(allFields.filter((f) => f.location === "URL"));
+    const bodyFields = $derived(allFields.filter((f) => f.location !== "URL"));
     const applications = $derived($settingsStore.applications);
 
     async function scrollToBottom() {
@@ -125,6 +180,7 @@
     function handleUserChange() {
         executionStage = "READY";
         jsonResult = "";
+        requestUrl = "";
         responseResult = "";
         responseStatus = null;
     }
@@ -325,12 +381,13 @@
             }
 
             try {
+                // 1. 모든 필드 처리 (암호화 -> 인코딩 -> 서명)
                 let processedValues = encryptData(
                     { ...requestValues },
-                    endpoint.requestData,
+                    allFields,
                     securityContext,
                 );
-                const signatureField = endpoint.requestData.find(
+                const signatureField = allFields.find(
                     (f) => f.name === "signature",
                 );
 
@@ -344,13 +401,13 @@
                     }
                     const encodedValues = urlEncodeData(
                         processedValues,
-                        endpoint.requestData,
+                        allFields,
                     );
                     if (endpoint.signatureMethod && signatureField) {
                         const { signature, rawString } =
                             await generateSignature(
                                 encodedValues,
-                                endpoint.requestData,
+                                allFields,
                                 endpoint.signatureMethod,
                                 securityContext,
                             );
@@ -365,7 +422,7 @@
                 } else {
                     const encodedValues = urlEncodeData(
                         processedValues,
-                        endpoint.requestData,
+                        allFields,
                     );
                     const valForSig =
                         endpoint.method === "POST" &&
@@ -377,7 +434,7 @@
                         const { signature, rawString } =
                             await generateSignature(
                                 valForSig,
-                                endpoint.requestData,
+                                allFields,
                                 endpoint.signatureMethod,
                                 securityContext,
                             );
@@ -385,19 +442,80 @@
                         requestValues[signatureField.name] = signature;
                         signatureRawString = rawString;
                     }
-                    jsonResult =
+
+                    if (
                         endpoint.config?.contentType ===
                         "application/x-www-form-urlencoded"
-                            ? Object.entries(
-                                  urlEncodeData(
-                                      processedValues,
-                                      endpoint.requestData,
-                                  ),
-                              )
-                                  .map(([k, v]) => `${k}=${v}`)
-                                  .join("\n")
-                            : JSON.stringify(processedValues, null, 2);
+                    ) {
+                        // 바디 데이터 섹션에 표시할 데이터 (URL 파라미터 제외)
+                        const bodyEncodedValues = urlEncodeData(
+                            processedValues,
+                            bodyFields,
+                        );
+                        jsonResult = Object.entries(bodyEncodedValues)
+                            .map(([k, v]) => `${k}=${v}`)
+                            .join("\n");
+                    } else {
+                        // JSON의 경우 URL 파라미터를 제외한 바디 데이터만 표시
+                        const bodyPayload: Record<string, any> = {};
+                        bodyFields.forEach((f) => {
+                            if (processedValues[f.name] !== undefined) {
+                                bodyPayload[f.name] = processedValues[f.name];
+                            }
+                        });
+                        jsonResult = JSON.stringify(bodyPayload, null, 2);
+                    }
                 }
+
+                // 2. 최종 호출 URL 계산 (Display용)
+                const finalUrlValues = urlEncodeData(
+                    processedValues,
+                    urlFields,
+                );
+
+                const fullUrlBase = `${selectedDomainPrefix}${endpoint.scope.site ? "/" + endpoint.scope.site : ""}${endpoint.uri}`;
+                const usedKeys = new Set();
+
+                // 플레이스홀더 치환
+                let finalUrl = fullUrlBase.replace(
+                    /\{([^}]+)\}|:([a-zA-Z0-0_]+)/g,
+                    (match, p1, p2) => {
+                        const key = p1 || p2;
+                        const val = finalUrlValues[key];
+                        if (val !== undefined) {
+                            usedKeys.add(key);
+                            return String(val);
+                        }
+                        return match;
+                    },
+                );
+
+                // 남은 URL 파라미터를 쿼리 스트링으로 추가
+                const queryParts: string[] = [];
+                urlFields.forEach((f) => {
+                    if (
+                        !usedKeys.has(f.name) &&
+                        finalUrlValues[f.name] !== undefined &&
+                        finalUrlValues[f.name] !== ""
+                    ) {
+                        const val = finalUrlValues[f.name];
+                        if (f.encoded) {
+                            queryParts.push(`${f.name}=${val}`);
+                        } else {
+                            queryParts.push(
+                                `${f.name}=${encodeURIComponent(String(val))}`,
+                            );
+                        }
+                    }
+                });
+
+                if (queryParts.length > 0) {
+                    finalUrl +=
+                        (finalUrl.includes("?") ? "&" : "?") +
+                        queryParts.join("&");
+                }
+                requestUrl = finalUrl;
+
                 executionStage = "EXECUTE";
                 scrollToBottom();
             } catch (e) {
@@ -421,16 +539,16 @@
                         908,
                         popupName,
                     ) as Window;
-                    const fullUrl = `${selectedDomainPrefix}${endpoint.scope.site ? "/" + endpoint.scope.site : ""}${endpoint.uri}`;
+
+                    // READY 단계에서 미리 계산된 requestUrl 사용
+                    const fullUrl = requestUrl;
+
+                    // 바디 데이터(페이로드) 처리 (URL 파라미터 제외)
                     const payload = urlEncodeData(
-                        encryptData(
-                            requestValues,
-                            endpoint.requestData,
-                            securityContext,
-                        ),
-                        endpoint.requestData,
+                        encryptData(requestValues, bodyFields, securityContext),
+                        bodyFields,
                     );
-                    const sigField = endpoint.requestData.find(
+                    const sigField = allFields.find(
                         (f) => f.name === "signature",
                     );
                     if (sigField)
@@ -505,13 +623,17 @@
             } else {
                 // REST Execution
                 try {
-                    let fullUrl = `${selectedDomainPrefix}${endpoint.scope.site ? "/" + endpoint.scope.site : ""}${endpoint.uri}`;
+                    // READY 단계에서 미리 계산된 requestUrl 사용
+                    let fullUrl = requestUrl;
+
+                    // 바디 데이터 처리 (URL 파라미터 제외)
                     let payload = encryptData(
                         requestValues,
-                        endpoint.requestData,
+                        bodyFields,
                         securityContext,
                     );
-                    const sigField = endpoint.requestData.find(
+
+                    const sigField = allFields.find(
                         (f) => f.name === "signature",
                     );
                     if (sigField)
@@ -537,30 +659,24 @@
                             endpoint.config?.contentType ===
                             "application/x-www-form-urlencoded"
                         ) {
-                            body = new URLSearchParams(
-                                Object.fromEntries(
-                                    Object.entries(payload).map(([k, v]) => [
-                                        k,
-                                        String(v),
-                                    ]),
-                                ),
-                            );
+                            body = new URLSearchParams();
+                            Object.entries(payload).forEach(([k, v]) => {
+                                body.append(k, String(v));
+                            });
                         } else {
                             body = JSON.stringify(payload);
                             if (!headers["Content-Type"])
                                 headers["Content-Type"] = "application/json";
                         }
                     } else {
-                        const qp = new URLSearchParams(
-                            Object.fromEntries(
-                                Object.entries(payload).map(([k, v]) => [
-                                    k,
-                                    String(v),
-                                ]),
-                            ),
-                        ).toString();
-                        if (qp)
-                            fullUrl += (fullUrl.includes("?") ? "&" : "?") + qp;
+                        // GET/DELETE의 경우 나머지 바디 데이터도 쿼리 파라미터로 추가
+                        const qp = new URLSearchParams();
+                        Object.entries(payload).forEach(([k, v]) => {
+                            qp.append(k, String(v));
+                        });
+                        const qs = qp.toString();
+                        if (qs)
+                            fullUrl += (fullUrl.includes("?") ? "&" : "?") + qs;
                     }
 
                     const startTime = performance.now();
@@ -920,6 +1036,7 @@
             {executionStage}
             isMobile={window.innerWidth < 768}
             bind:isButtonInView
+            {requestValues}
             onLoadPreset={(p: ExecutionPreset) => {
                 const base = initializeValues(endpoint.requestData);
                 requestValues = { ...base, ...p.values };
@@ -950,7 +1067,7 @@
             class="p-0 md:p-6 flex flex-col gap-6 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800/50"
         >
             <ExecutionParameterForm
-                fields={endpoint.requestData}
+                fields={allFields}
                 bind:values={requestValues}
                 onUserChange={handleUserChange}
                 {getOptions}
@@ -959,6 +1076,7 @@
 
             <ExecutionResultView
                 {signatureRawString}
+                {requestUrl}
                 {jsonResult}
                 {responseResult}
                 {responseStatus}

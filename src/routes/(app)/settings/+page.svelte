@@ -1912,7 +1912,7 @@
                                 >
                                     {#each filteredMidContexts as ctx}
                                         <tr
-                                            class="hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                                            class="hover:bg-slate-50 dark:hover:bg-slate-800/50 group"
                                         >
                                             <td
                                                 class="px-6 py-4 font-mono font-medium"
@@ -1982,7 +1982,7 @@
                                             <td class="px-6 py-4 text-right">
                                                 {#if !$appStateStore.isPageLocked}
                                                     <div
-                                                        class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        class="flex justify-end gap-1"
                                                     >
                                                         <button
                                                             class="p-1 text-slate-400 hover:text-blue-500 transition-colors"
@@ -2442,7 +2442,7 @@
                                     {#if $settingsStore.applications && $settingsStore.applications.length > 0}
                                         {#each $settingsStore.applications as app}
                                             <tr
-                                                class="hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                                                class="hover:bg-slate-50 dark:hover:bg-slate-800/50 group"
                                             >
                                                 <td class="px-6 py-4">
                                                     <div
@@ -2531,7 +2531,7 @@
                                                 >
                                                     {#if !$appStateStore.isPageLocked}
                                                         <div
-                                                            class="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            class="flex justify-end gap-1"
                                                         >
                                                             <button
                                                                 class="p-1 text-slate-400 hover:text-blue-500 transition-colors"

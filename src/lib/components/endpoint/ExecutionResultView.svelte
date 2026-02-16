@@ -42,9 +42,9 @@
         class="rounded-lg border border-slate-200 dark:border-border-dark overflow-hidden shrink-0 mb-4"
     >
         <div
-            class="px-4 py-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-border-dark font-medium text-sm text-slate-700 dark:text-slate-300 flex justify-between items-center"
+            class="px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-border-dark font-medium text-sm text-slate-700 dark:text-slate-300 flex justify-between items-center"
         >
-            <span>Endpoint URL</span>
+            <span>Request URL</span>
             <button
                 onclick={() => handleCopy(requestUrl, "url")}
                 class="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded transition-colors text-slate-500"
@@ -58,7 +58,7 @@
             </button>
         </div>
         <div
-            class="p-4 bg-white dark:bg-slate-950/50 font-mono text-xs text-slate-600 dark:text-slate-400 break-all"
+            class="p-4 bg-white dark:bg-slate-950/40 font-mono text-xs text-slate-600 dark:text-slate-400 break-all"
         >
             {requestUrl}
         </div>
@@ -71,7 +71,7 @@
         class="rounded-lg border border-slate-200 dark:border-border-dark overflow-hidden shrink-0"
     >
         <div
-            class="px-4 py-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-border-dark font-medium text-sm text-slate-700 dark:text-slate-300 flex justify-between items-center"
+            class="px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-border-dark font-medium text-sm text-slate-700 dark:text-slate-300 flex justify-between items-center"
         >
             <span>Signature Source String</span>
             <button
@@ -87,7 +87,7 @@
             </button>
         </div>
         <div
-            class="p-4 bg-white dark:bg-slate-950/50 font-mono text-sm text-slate-600 dark:text-slate-400 break-all"
+            class="p-4 bg-white dark:bg-slate-950/40 font-mono text-sm text-slate-600 dark:text-slate-400 break-all"
         >
             {signatureRawString}
         </div>
@@ -100,7 +100,7 @@
         class="rounded-lg border border-slate-200 dark:border-border-dark overflow-hidden shrink-0"
     >
         <div
-            class="px-4 py-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-border-dark font-medium text-sm text-slate-700 dark:text-slate-300 flex justify-between items-center"
+            class="px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-border-dark font-medium text-sm text-slate-700 dark:text-slate-300 flex justify-between items-center"
         >
             <span>Request Parameters</span>
             <button
@@ -117,7 +117,7 @@
         </div>
         <div class="relative group/params">
             <pre
-                class="p-4 bg-slate-50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-50 overflow-x-auto text-sm font-mono scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent min-h-[60px] whitespace-pre-wrap break-all">{jsonResult}</pre>
+                class="p-4 bg-white dark:bg-slate-950/40 text-slate-700 dark:text-slate-50 overflow-x-auto text-sm font-mono scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent min-h-[60px] whitespace-pre-wrap break-all">{jsonResult}</pre>
 
             {#if onExecute}
                 <div class="absolute bottom-4 right-4" transition:scale>
@@ -145,7 +145,7 @@
         transition:fade
     >
         <div
-            class="px-4 py-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-border-dark font-medium text-sm flex justify-between items-center"
+            class="px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-border-dark font-medium text-sm flex justify-between items-center"
         >
             <div class="flex items-center gap-2">
                 <span class="text-slate-700 dark:text-slate-300">Response</span>
@@ -173,7 +173,7 @@
             </button>
         </div>
         <pre
-            class="p-4 bg-slate-50 dark:bg-slate-950 text-emerald-600 dark:text-emerald-400 overflow-x-auto text-sm font-mono scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent min-h-[100px]">{responseResult}</pre>
+            class="p-4 bg-white dark:bg-slate-950/40 text-emerald-600 dark:text-emerald-400 overflow-x-auto text-sm font-mono scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent min-h-[100px]">{responseResult}</pre>
     </div>
 {/if}
 

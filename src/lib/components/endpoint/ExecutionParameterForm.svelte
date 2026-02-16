@@ -54,6 +54,13 @@
         );
         onUserChange();
     }
+
+    let urlFields = $derived(
+        fields.filter((f: RequestDataField) => f.location === "URL"),
+    );
+    let otherFields = $derived(
+        fields.filter((f: RequestDataField) => f.location !== "URL"),
+    );
 </script>
 
 {#snippet renderFieldSnippet(
@@ -70,7 +77,7 @@
         </div>
     {:else}
         <div
-            class="grid grid-cols-[90px_1fr] md:grid-cols-3 border-b border-slate-200 dark:border-border-dark last:border-0 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors"
+            class="grid grid-cols-[90px_1fr] md:grid-cols-3 border-b border-slate-200 dark:border-border-dark last:border-0 bg-white dark:bg-slate-950/20 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors"
         >
             <!-- Name Column -->
             <div
@@ -168,7 +175,7 @@
                         id={path}
                         bind:value={currentValues[field.name]}
                         onchange={onUserChange}
-                        class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                        class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                     >
                         <option value={true}>true</option>
                         <option value={false}>false</option>
@@ -186,7 +193,7 @@
                         >
                             <button
                                 type="button"
-                                class="w-full pl-3 pr-10 py-2 text-sm text-left font-normal rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all flex items-center justify-between"
+                                class="w-full pl-3 pr-10 py-2 text-sm text-left font-normal rounded-lg border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all flex items-center justify-between"
                                 onclick={() =>
                                     (activeDropdownPath =
                                         activeDropdownPath === path
@@ -270,7 +277,7 @@
                                 placeholder={field.description ||
                                     `Enter ${field.name}`}
                                 onfocus={() => (activeDropdownPath = path)}
-                                class="w-full pl-3 pr-10 py-2 text-sm font-normal rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-slate-400 placeholder:font-normal"
+                                class="w-full pl-3 pr-10 py-2 text-sm font-normal rounded-lg border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-slate-400 placeholder:font-normal"
                             />
                             <button
                                 type="button"
@@ -342,7 +349,7 @@
                             oninput={onUserChange}
                             placeholder={field.description ||
                                 `Enter ${field.name}`}
-                            class="w-full px-3 py-2 text-sm font-normal rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-slate-400 placeholder:font-normal placeholder:text-xs"
+                            class="w-full px-3 py-2 text-sm font-normal rounded-lg border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-slate-400 placeholder:font-normal placeholder:text-xs"
                         />
                     {/if}
                 {/if}
@@ -351,8 +358,44 @@
     {/if}
 {/snippet}
 
-<div class="flex flex-col">
-    {#each fields as field}
-        {@render renderFieldSnippet(field, values, field.name, 0)}
-    {/each}
+<div class="flex flex-col gap-8">
+    {#if urlFields.length > 0}
+        <div class="flex flex-col gap-4">
+            <div
+                class="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/10 border-l-4 border-blue-500 rounded-r-lg"
+            >
+                <span
+                    class="text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider"
+                    >URL Parameters</span
+                >
+            </div>
+            <div
+                class="flex flex-col border border-slate-200 dark:border-border-dark rounded-xl bg-slate-50/30 dark:bg-slate-950/40"
+            >
+                {#each urlFields as field}
+                    {@render renderFieldSnippet(field, values, field.name, 0)}
+                {/each}
+            </div>
+        </div>
+    {/if}
+
+    {#if otherFields.length > 0}
+        <div class="flex flex-col gap-4">
+            <div
+                class="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-slate-800/50 border-l-4 border-slate-400 rounded-r-lg"
+            >
+                <span
+                    class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider"
+                    >Request Parameters</span
+                >
+            </div>
+            <div
+                class="flex flex-col border border-slate-200 dark:border-border-dark rounded-xl bg-slate-50/30 dark:bg-slate-950/40"
+            >
+                {#each otherFields as field}
+                    {@render renderFieldSnippet(field, values, field.name, 0)}
+                {/each}
+            </div>
+        </div>
+    {/if}
 </div>

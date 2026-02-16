@@ -11,6 +11,7 @@ export interface RequestDataField {
     signingOrder?: number;
     description?: string;
     defaultValue?: string;
+    location?: "URL" | "Body" | "Query" | "Header";
     subFields?: RequestDataField[];
 }
 

@@ -37,37 +37,33 @@
                     class="bg-slate-50 dark:bg-background-dark/50 text-slate-500 uppercase tracking-wider border-y border-slate-200 dark:border-border-dark text-xs"
                 >
                     <tr>
-                        <th class="px-4 py-3 min-w-[150px] font-medium">NAME</th
-                        >
-                        <th class="px-2 py-3 w-[80px] text-center font-medium"
+                        <th class="px-6 py-3 font-medium w-56">NAME</th>
+                        <th class="px-3 py-3 w-32"><!-- TYPE Spacer --></th>
+                        <th class="px-3 py-3 font-medium w-20 text-center"
                             >LEN</th
                         >
-                        <th class="px-2 py-3 w-[60px] text-center font-medium"
+                        <th class="px-3 py-3 font-medium text-center w-16"
                             >REQ</th
                         >
-                        <th class="px-2 py-3 w-[60px] text-center font-medium"
+                        <th class="px-3 py-3 font-medium text-center w-16"
                             >ENC</th
                         >
-                        <th class="px-2 py-3 w-[80px] text-center font-medium"
+                        <th class="px-3 py-3 font-medium text-center w-16"
                             >URLENC</th
                         >
-                        <th class="px-4 py-3 min-w-[200px] font-medium"
-                            >DESCRIPTION</th
-                        >
+                        <th class="px-3 py-3 w-16"><!-- SIGN Spacer --></th>
+                        <th class="px-6 py-3 font-medium">DESCRIPTION</th>
                         {#if !isReadOnly}
-                            <th
-                                class="px-2 py-3 w-[60px] text-center font-medium"
-                                >Action</th
-                            >
+                            <th class="px-3 py-3 font-medium w-32">Action</th>
                         {/if}
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                     {#each items as item, i (i)}
                         <tr
-                            class="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                            class="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
                         >
-                            <td class="px-4 py-2">
+                            <td class="px-6 py-3">
                                 {#if isReadOnly}
                                     <span
                                         class="font-medium text-slate-700 dark:text-slate-300"
@@ -78,20 +74,32 @@
                                         type="text"
                                         bind:value={item.name}
                                         placeholder="Param Key"
-                                        class="w-full bg-transparent border-none outline-none focus:ring-1 focus:ring-primary rounded px-2 py-1"
+                                        class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark {isReadOnly
+                                            ? 'bg-slate-50'
+                                            : 'bg-white'} dark:bg-background-dark text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none"
                                     />
                                 {/if}
                             </td>
-                            <td class="px-2 py-2 text-center">
-                                <input
-                                    type="text"
-                                    bind:value={item.maxLength}
-                                    placeholder={isReadOnly ? "-" : "Len"}
-                                    class="w-full bg-transparent border-none outline-none focus:ring-1 focus:ring-primary rounded px-2 py-1 text-center disabled:opacity-100"
-                                    disabled={isReadOnly}
-                                />
+                            <td class="px-3 py-3 w-32">
+                                <!-- TYPE Spacer -->
                             </td>
-                            <td class="px-2 py-2 text-center">
+                            <td class="px-3 py-3 text-center">
+                                {#if isReadOnly}
+                                    <span
+                                        class="text-xs text-slate-600 dark:text-slate-400"
+                                    >
+                                        {item.maxLength || "-"}
+                                    </span>
+                                {:else}
+                                    <input
+                                        type="text"
+                                        bind:value={item.maxLength}
+                                        placeholder="Len"
+                                        class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none text-center"
+                                    />
+                                {/if}
+                            </td>
+                            <td class="px-3 py-3 text-center">
                                 {#if isReadOnly}
                                     {#if item.isRequired}
                                         <span
@@ -112,7 +120,7 @@
                                     />
                                 {/if}
                             </td>
-                            <td class="px-2 py-2 text-center">
+                            <td class="px-3 py-3 text-center">
                                 {#if isReadOnly}
                                     {#if item.isEncrypted}
                                         <span
@@ -133,7 +141,7 @@
                                     />
                                 {/if}
                             </td>
-                            <td class="px-2 py-2 text-center">
+                            <td class="px-3 py-3 text-center">
                                 {#if isReadOnly}
                                     {#if item.isUrlEncoded}
                                         <span
@@ -154,19 +162,29 @@
                                     />
                                 {/if}
                             </td>
-                            <td class="px-4 py-2">
-                                <input
-                                    type="text"
-                                    bind:value={item.description}
-                                    placeholder={isReadOnly
-                                        ? "-"
-                                        : "Description"}
-                                    class="w-full bg-transparent border-none outline-none focus:ring-1 focus:ring-primary rounded px-2 py-1 disabled:opacity-100"
-                                    disabled={isReadOnly}
-                                />
+                            <td class="px-3 py-3 w-16">
+                                <!-- SIGN Spacer -->
+                            </td>
+                            <td
+                                class="px-6 py-3 text-slate-500 dark:text-slate-400"
+                            >
+                                {#if isReadOnly}
+                                    <span
+                                        class="text-sm text-slate-600 dark:text-slate-400"
+                                    >
+                                        {item.description || "-"}
+                                    </span>
+                                {:else}
+                                    <input
+                                        type="text"
+                                        bind:value={item.description}
+                                        placeholder="Description"
+                                        class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none"
+                                    />
+                                {/if}
                             </td>
                             {#if !isReadOnly}
-                                <td class="px-2 py-2 text-center">
+                                <td class="px-3 py-3 text-center">
                                     <button
                                         onclick={() => removeItem(i)}
                                         class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"

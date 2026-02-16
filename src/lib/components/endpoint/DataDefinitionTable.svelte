@@ -139,7 +139,9 @@
                                 type="text"
                                 bind:value={field.name}
                                 placeholder="Field Name"
-                                class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none"
+                                class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark {isReadOnly
+                                    ? 'bg-slate-50'
+                                    : 'bg-white'} dark:bg-background-dark text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none disabled:opacity-70"
                             />
                         {/if}
                     </td>
@@ -194,7 +196,9 @@
                                 placeholder={field.type === "string"
                                     ? "Len"
                                     : "-"}
-                                class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none disabled:opacity-50 text-center"
+                                class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark {isReadOnly
+                                    ? 'bg-slate-50'
+                                    : 'bg-white'} dark:bg-background-dark text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none disabled:opacity-70 text-center"
                             />
                         {/if}
                     </td>
@@ -278,7 +282,9 @@
                                     type="number"
                                     bind:value={field.signingOrder}
                                     placeholder="-"
-                                    class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white text-center outline-none"
+                                    class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark {isReadOnly
+                                        ? 'bg-slate-50'
+                                        : 'bg-white'} dark:bg-background-dark text-slate-900 dark:text-white text-center outline-none disabled:opacity-70"
                                 />
                             {/if}
                         </td>
@@ -343,7 +349,9 @@
                                     type="number"
                                     bind:value={field.signingOrder}
                                     placeholder="-"
-                                    class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white text-center outline-none"
+                                    class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark {isReadOnly
+                                        ? 'bg-slate-50'
+                                        : 'bg-white'} dark:bg-background-dark text-slate-900 dark:text-white text-center outline-none disabled:opacity-70"
                                 />
                             {/if}
                         </td>
@@ -357,7 +365,9 @@
                                 type="text"
                                 bind:value={field.description}
                                 placeholder="Description"
-                                class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none"
+                                class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark {isReadOnly
+                                    ? 'bg-slate-50'
+                                    : 'bg-white'} dark:bg-background-dark text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none disabled:opacity-70"
                             />
                         {/if}
                     </td>
