@@ -3,12 +3,16 @@
     import { goto } from "$app/navigation";
 
     import { profileStore } from "$lib/stores/profileStore";
+    import { settingsStore } from "$lib/stores/settingsStore";
     import type {
         Endpoint,
         HttpMethod,
         RequestDataField,
         ResponseDataField,
+        RequestDataField,
+        ResponseDataField,
         RequestType,
+        UrlParameter,
     } from "$lib/types/endpoint";
     import { endpointService } from "$lib/features/endpoints/services/endpointService";
     import {
@@ -23,6 +27,8 @@
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import DropdownInput from "$lib/components/ui/DropdownInput.svelte";
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
+    import KeyValueList from "$lib/components/ui/KeyValueList.svelte";
+    import UrlParameterTable from "$lib/components/endpoint/UrlParameterTable.svelte";
 
     let selectedApplication = $state("");
     let name = $state("");
@@ -42,11 +48,9 @@
     let alertMessage = $state("");
     let alertOnConfirm = $state<(() => void) | undefined>(undefined);
 
-    // Initialize with first application if available
+    // Initialize (No auto-selection)
     onMount(() => {
-        if ($profileStore.myApplications.length > 0 && !selectedApplication) {
-            selectedApplication = $profileStore.myApplications[0].appName;
-        }
+        // We keep this empty now as per user request to start with empty values
     });
 
     const selectedAppData = $derived(
@@ -67,14 +71,10 @@
     let customHeaders = $state<{ key: string; value: string }[]>([
         { key: "", value: "" },
     ]);
+    let urlParams = $state<UrlParameter[]>([]);
 
-    function addHeader() {
-        customHeaders = [...customHeaders, { key: "", value: "" }];
-    }
 
-    function removeHeader(index: number) {
-        customHeaders = customHeaders.filter((_, i) => i !== index);
-    }
+
 
     // Derived service options
     let serviceOptions = $derived(
@@ -84,50 +84,38 @@
     // Derived site options based on selected service
     let siteOptions = $derived.by(() => {
         if (!selectedAppData || !useServiceDistinction) return [];
-        const service = selectedAppData.services?.find(
-            (s) => s.name === selectedService,
+
+        // 1. Try to find in profileStore (Current selected app data)
+        let context = selectedAppData.siteContexts?.find(
+            (c) => c.service === selectedService,
         );
-        if (!service) return [];
-        // Domains represent sites/environments. For site selection, we might need a specific list.
-        // For now, let's use the keys of domains as site options if domains exists.
-        return Object.keys(service.domains || {}).filter(
-            (k) => service.domains[k as keyof typeof service.domains],
-        );
+
+        // 2. Fallback: Search in settingsStore if profileStore data is missing or incomplete
+        if (!context || !context.sites || context.sites.length === 0) {
+            const settingsApp = $settingsStore.applications?.find(
+                (app) => app.appName === selectedApplication,
+            );
+            context = settingsApp?.siteContexts?.find(
+                (c) => c.service === selectedService,
+            );
+        }
+
+        return context?.sites || [];
     });
 
-    // Set default service when application changes
+    // Handle service reset when application changes
     $effect(() => {
-        // Only reset if APPLICATION actually changed
         if (selectedApplication !== prevSelectedApplication) {
-            if (useServiceDistinction) {
-                if (
-                    serviceOptions.length > 0 &&
-                    (!selectedService ||
-                        !serviceOptions.includes(selectedService))
-                ) {
-                    selectedService = serviceOptions[0];
-                }
-            } else {
-                selectedService = "";
-                selectedSite = "";
-            }
+            selectedService = "";
+            selectedSite = "";
             prevSelectedApplication = selectedApplication;
         }
     });
 
-    // Set default site when service changes
+    // Handle site reset when service changes
     $effect(() => {
-        // Only reset if SERVICE actually changed
         if (selectedService !== prevSelectedService) {
-            if (
-                useServiceDistinction &&
-                siteOptions.length > 0 &&
-                (!selectedSite || !siteOptions.includes(selectedSite))
-            ) {
-                selectedSite = siteOptions[0];
-            } else if (siteOptions.length === 0) {
-                selectedSite = "";
-            }
+            selectedSite = "";
             prevSelectedService = selectedService;
         }
     });
@@ -181,6 +169,7 @@
                 contentType,
                 charset,
                 customHeaders: customHeaders.filter((h) => h.key && h.value),
+                urlParams: urlParams.filter((p) => p.name),
             },
             signatureMethod,
             requestData,
@@ -378,6 +367,21 @@
                                     class="flex-1 px-4 py-2.5 rounded-r-lg border-y border-r border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-background-dark/50 text-slate-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                                 />
                             </div>
+                            </div>
+                        </div>
+
+                        <!-- URL Parameters -->
+                        <div class="flex flex-col gap-2">
+                             <span
+                                class="text-sm font-medium text-slate-700 dark:text-slate-300"
+                            >
+                                URL Parameters
+                            </span>
+                            <div class="p-0">
+                                <UrlParameterTable
+                                    bind:items={urlParams}
+                                />
+                            </div>
                         </div>
 
                         <div class="flex flex-col gap-6">
@@ -457,44 +461,12 @@
                                             class="text-xs font-bold text-slate-500 uppercase tracking-wider"
                                             >Custom Headers</span
                                         >
-                                        {#each customHeaders as header, i}
-                                            <div
-                                                class="flex gap-2 items-center"
-                                            >
-                                                <input
-                                                    type="text"
-                                                    placeholder="Key"
-                                                    bind:value={header.key}
-                                                    class="flex-1 px-4 py-2 rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
-                                                />
-                                                <input
-                                                    type="text"
-                                                    placeholder="Value"
-                                                    bind:value={header.value}
-                                                    class="flex-1 px-4 py-2 rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
-                                                />
-                                                <button
-                                                    onclick={() =>
-                                                        removeHeader(i)}
-                                                    class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                                                    title="Remove Header"
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-[20px]"
-                                                        >delete</span
-                                                    >
-                                                </button>
-                                            </div>
-                                        {/each}
-                                        <button
-                                            onclick={addHeader}
-                                            class="self-start px-3 py-1.5 text-xs font-bold text-primary hover:text-primary/80 hover:bg-primary/5 rounded-lg transition-colors flex items-center gap-1"
-                                        >
-                                            <span
-                                                class="material-symbols-outlined text-[16px]"
-                                                >add</span
-                                            > Add Custom Header
-                                        </button>
+                                        <KeyValueList
+                                            bind:items={customHeaders}
+                                            keyPlaceholder="Header Key"
+                                            valuePlaceholder="Header Value"
+                                            addButtonText="Add Custom Header"
+                                        />
                                     </div>
                                 </div>
                             {/if}

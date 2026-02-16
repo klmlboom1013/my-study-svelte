@@ -96,10 +96,11 @@
                     >Name {#if !isReadOnly}<span class="text-red-500">*</span
                         >{/if}</th
                 >
-                <th class="px-3 py-3 font-medium w-48"
+                <th class="px-3 py-3 font-medium w-32"
                     >Type {#if !isReadOnly}<span class="text-red-500">*</span
                         >{/if}</th
                 >
+                <th class="px-3 py-3 font-medium w-20 text-center">Len</th>
                 {#if dataType === "Request"}
                     <th class="px-3 py-3 font-medium text-center w-16">Req</th>
                     <th class="px-3 py-3 font-medium text-center w-16">Enc</th>
@@ -142,7 +143,7 @@
                             />
                         {/if}
                     </td>
-                    <td class="px-3 py-3">
+                    <td class="px-3 py-3 w-32">
                         {#if isReadOnly}
                             {#if field.type === "List"}
                                 <button
@@ -166,26 +167,35 @@
                                     class="px-2 py-0.5 rounded-full text-xs bg-slate-100 dark:bg-background-dark text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-border-dark inline-block"
                                 >
                                     {field.type}
-                                    {#if field.type === "string" && field.length}
-                                        ({field.length})
-                                    {/if}
                                 </span>
                             {/if}
                         {:else}
-                            <div class="flex gap-2">
-                                <div class="flex-1">
-                                    <TypeSelector bind:value={field.type} />
-                                </div>
-                                <input
-                                    type="number"
-                                    bind:value={field.length}
-                                    disabled={field.type !== "string"}
-                                    placeholder={field.type === "string"
-                                        ? "Len"
-                                        : "-"}
-                                    class="w-16 px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none disabled:opacity-50 text-center"
-                                />
+                            <div class="w-full">
+                                <TypeSelector bind:value={field.type} />
                             </div>
+                        {/if}
+                    </td>
+                    <td class="px-3 py-3 w-20 text-center">
+                        {#if isReadOnly}
+                            {#if field.type === "string" && field.length}
+                                <span
+                                    class="text-xs text-slate-600 dark:text-slate-400"
+                                >
+                                    {field.length}
+                                </span>
+                            {:else}
+                                <span class="text-xs text-slate-400">-</span>
+                            {/if}
+                        {:else}
+                            <input
+                                type="number"
+                                bind:value={field.length}
+                                disabled={field.type !== "string"}
+                                placeholder={field.type === "string"
+                                    ? "Len"
+                                    : "-"}
+                                class="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white focus:ring-1 focus:ring-primary/50 outline-none disabled:opacity-50 text-center"
+                            />
                         {/if}
                     </td>
 

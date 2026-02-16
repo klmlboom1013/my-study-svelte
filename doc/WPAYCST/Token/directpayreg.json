@@ -5,7 +5,7 @@
     "request": [
         {
             "name": "mid",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -15,7 +15,7 @@
         },
         {
             "name": "wpayUserKey",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": true,
             "encoded": false,
@@ -25,7 +25,7 @@
         },
         {
             "name": "ci",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -35,7 +35,7 @@
         },
         {
             "name": "bankCardCode",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -45,7 +45,7 @@
         },
         {
             "name": "cardRegKey",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": true,
             "encoded": false,
@@ -55,7 +55,7 @@
         },
         {
             "name": "signature",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -67,7 +67,7 @@
     "response": [
         {
             "name": "resultCode",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -77,7 +77,7 @@
         },
         {
             "name": "resultMsg",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": true,
@@ -87,7 +87,7 @@
         },
         {
             "name": "wtid",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -97,7 +97,7 @@
         },
         {
             "name": "wpayUserKey",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": true,
             "decoded": false,
@@ -107,7 +107,7 @@
         },
         {
             "name": "wpayToken",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": true,
             "decoded": false,
@@ -117,7 +117,7 @@
         },
         {
             "name": "bankCardCode",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -127,7 +127,7 @@
         },
         {
             "name": "bankCardNo",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -137,7 +137,7 @@
         },
         {
             "name": "checkFlg",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -147,7 +147,7 @@
         },
         {
             "name": "cardTypeFlg",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -157,7 +157,7 @@
         },
         {
             "name": "cardPdNum",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -167,7 +167,7 @@
         },
         {
             "name": "cardBImgUrl",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": true,
@@ -177,7 +177,7 @@
         },
         {
             "name": "cardName",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": true,

@@ -25,6 +25,15 @@ export interface ResponseDataField {
     subFields?: ResponseDataField[];
 }
 
+export interface UrlParameter {
+    name: string;
+    maxLength?: string;
+    isRequired: boolean;
+    isEncrypted: boolean;
+    isUrlEncoded: boolean;
+    description?: string;
+}
+
 export interface Endpoint {
     id: string;
     name: string;
@@ -43,6 +52,7 @@ export interface Endpoint {
         contentType?: string;
         charset?: string;
         customHeaders?: { key: string; value: string }[];
+        urlParams?: UrlParameter[];
     };
     signatureMethod?: string;
     requestData: RequestDataField[];

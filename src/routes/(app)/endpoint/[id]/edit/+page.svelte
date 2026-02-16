@@ -4,12 +4,14 @@
     import { page } from "$app/stores";
 
     import { profileStore } from "$lib/stores/profileStore";
+    import { settingsStore } from "$lib/stores/settingsStore";
     import type {
         Endpoint,
         HttpMethod,
         RequestDataField,
         ResponseDataField,
         RequestType,
+        UrlParameter,
     } from "$lib/types/endpoint";
     import { endpointService } from "$lib/features/endpoints/services/endpointService";
     import {
@@ -24,6 +26,8 @@
     import DropdownInput from "$lib/components/ui/DropdownInput.svelte";
     import AlertModal from "$lib/components/ui/AlertModal.svelte";
     import { appStateStore } from "$lib/stores/appStateStore";
+    import KeyValueList from "$lib/components/ui/KeyValueList.svelte";
+    import UrlParameterTable from "$lib/components/endpoint/UrlParameterTable.svelte";
 
     // interface Props {
     //    data: {
@@ -84,14 +88,7 @@
     let customHeaders = $state<{ key: string; value: string }[]>([
         { key: "", value: "" },
     ]);
-
-    function addHeader() {
-        customHeaders = [...customHeaders, { key: "", value: "" }];
-    }
-
-    function removeHeader(index: number) {
-        customHeaders = customHeaders.filter((_, i) => i !== index);
-    }
+    let urlParams = $state<UrlParameter[]>([]);
 
     let isBasicOpen = $state(true);
     let isRequestOpen = $state(true);
@@ -106,13 +103,23 @@
     // Derived site options based on selected service
     let siteOptions = $derived.by(() => {
         if (!selectedAppData || !useServiceDistinction) return [];
-        const service = selectedAppData.services?.find(
-            (s) => s.name === selectedService,
+
+        // 1. Try to find in profileStore (Current selected app data)
+        let context = selectedAppData.siteContexts?.find(
+            (c) => c.service === selectedService,
         );
-        if (!service) return [];
-        return Object.keys(service.domains || {}).filter(
-            (k) => service.domains[k as keyof typeof service.domains],
-        );
+
+        // 2. Fallback: Search in settingsStore
+        if (!context || !context.sites || context.sites.length === 0) {
+            const settingsApp = $settingsStore.applications?.find(
+                (app) => app.appName === selectedApplication,
+            );
+            context = settingsApp?.siteContexts?.find(
+                (c) => c.service === selectedService,
+            );
+        }
+
+        return context?.sites || [];
     });
 
     // Load data when endpointId changes
@@ -136,10 +143,10 @@
             selectedSite = endpoint.scope?.site || "";
             signatureMethod = endpoint.signatureMethod || ""; // Load from endpoint
             contentType = endpoint.config?.contentType || "application/json";
-            charset = endpoint.config?.charset || "UTF-8";
             customHeaders = endpoint.config?.customHeaders || [
                 { key: "", value: "" },
             ];
+            urlParams = endpoint.config?.urlParams || [];
             requestData = endpoint.requestData || [];
             responseData = endpoint.responseData || [];
             createdAt = endpoint.createdAt;
@@ -253,6 +260,7 @@
                 contentType,
                 charset,
                 customHeaders: customHeaders.filter((h) => h.key && h.value),
+                urlParams: urlParams.filter((p) => p.name),
             },
             signatureMethod, // Add to save payload
             requestData,
@@ -458,6 +466,23 @@
                             </div>
                         </div>
 
+                        <!-- URL Parameters -->
+                        <div class="flex flex-col gap-2">
+                            <span
+                                class="text-sm font-medium text-slate-700 dark:text-slate-300"
+                            >
+                                URL Parameters
+                            </span>
+                            <div
+                                class="p-4 bg-slate-50 dark:bg-background-dark/50 rounded-lg border border-slate-200 dark:border-border-dark"
+                            >
+                                <UrlParameterTable
+                                    bind:items={urlParams}
+                                    isReadOnly={$appStateStore.isPageLocked}
+                                />
+                            </div>
+                        </div>
+
                         <div class="flex flex-col gap-6">
                             <div class="flex flex-col gap-2">
                                 <span
@@ -539,50 +564,13 @@
                                             class="text-xs font-bold text-slate-500 uppercase tracking-wider"
                                             >Custom Headers</span
                                         >
-                                        {#each customHeaders as header, i}
-                                            <div
-                                                class="flex gap-2 items-center"
-                                            >
-                                                <input
-                                                    type="text"
-                                                    placeholder="Key"
-                                                    bind:value={header.key}
-                                                    class="flex-1 px-4 py-2 rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
-                                                    disabled={$appStateStore.isPageLocked}
-                                                />
-                                                <input
-                                                    type="text"
-                                                    placeholder="Value"
-                                                    bind:value={header.value}
-                                                    class="flex-1 px-4 py-2 rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
-                                                    disabled={$appStateStore.isPageLocked}
-                                                />
-                                                {#if !$appStateStore.isPageLocked}
-                                                    <button
-                                                        onclick={() =>
-                                                            removeHeader(i)}
-                                                        class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                                                        title="Remove Header"
-                                                    >
-                                                        <span
-                                                            class="material-symbols-outlined text-[20px]"
-                                                            >delete</span
-                                                        >
-                                                    </button>
-                                                {/if}
-                                            </div>
-                                        {/each}
-                                        {#if !$appStateStore.isPageLocked}
-                                            <button
-                                                onclick={addHeader}
-                                                class="self-start px-3 py-1.5 text-xs font-bold text-primary hover:text-primary/80 hover:bg-primary/5 rounded-lg transition-colors flex items-center gap-1"
-                                            >
-                                                <span
-                                                    class="material-symbols-outlined text-[16px]"
-                                                    >add</span
-                                                > Add Custom Header
-                                            </button>
-                                        {/if}
+                                        <KeyValueList
+                                            bind:items={customHeaders}
+                                            keyPlaceholder="Header Key"
+                                            valuePlaceholder="Header Value"
+                                            addButtonText="Add Custom Header"
+                                            isReadOnly={$appStateStore.isPageLocked}
+                                        />
                                     </div>
                                 </div>
                             {/if}

@@ -5,6 +5,7 @@
     import type { Endpoint } from "$lib/types/endpoint";
     import Breadcrumbs from "$lib/components/common/Breadcrumbs.svelte";
     import DataDefinitionTable from "$lib/components/endpoint/DataDefinitionTable.svelte";
+    import UrlParameterTable from "$lib/components/endpoint/UrlParameterTable.svelte";
     import EndpointExecutionModal from "$lib/components/endpoint/EndpointExecutionModal.svelte";
     import { appStateStore } from "$lib/stores/appStateStore";
     import {
@@ -283,6 +284,27 @@
                     {/if}
                 </div>
             </div>
+
+            <!-- URL Parameters -->
+            {#if endpoint.config?.urlParams && endpoint.config.urlParams.length > 0}
+                <div
+                    class="p-0 border-b border-slate-100 dark:border-border-dark/50"
+                >
+                    <div class="p-6 pb-2">
+                        <h2
+                            class="text-lg font-semibold text-slate-900 dark:text-white"
+                        >
+                            URL Parameters
+                        </h2>
+                    </div>
+                    <div class="p-4 md:p-6 pt-0 overflow-hidden">
+                        <UrlParameterTable
+                            bind:items={endpoint.config.urlParams}
+                            isReadOnly={true}
+                        />
+                    </div>
+                </div>
+            {/if}
 
             <!-- Data Integrity Verification -->
             {#if endpoint.signatureMethod}

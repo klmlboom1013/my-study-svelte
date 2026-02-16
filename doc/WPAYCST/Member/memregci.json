@@ -5,7 +5,7 @@
     "request": [
         {
             "name": "mid",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -15,7 +15,7 @@
         },
         {
             "name": "userId",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": true,
             "encoded": false,
@@ -25,7 +25,7 @@
         },
         {
             "name": "ci",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": true,
             "encoded": false,
@@ -35,7 +35,7 @@
         },
         {
             "name": "userNm",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": true,
@@ -45,7 +45,7 @@
         },
         {
             "name": "hNum",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": true,
             "encoded": false,
@@ -55,7 +55,7 @@
         },
         {
             "name": "hCorp",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": false,
@@ -65,7 +65,7 @@
         },
         {
             "name": "birthDay",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": true,
             "encoded": false,
@@ -75,7 +75,7 @@
         },
         {
             "name": "socialNo2",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -85,7 +85,7 @@
         },
         {
             "name": "returnUrl",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": true,
@@ -95,7 +95,7 @@
         },
         {
             "name": "signature",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -107,7 +107,7 @@
     "response": [
         {
             "name": "resultCode",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -117,7 +117,7 @@
         },
         {
             "name": "resultMsg",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": true,
@@ -127,7 +127,7 @@
         },
         {
             "name": "wtid",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -137,7 +137,7 @@
         },
         {
             "name": "userId",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": true,
             "decoded": false,
@@ -147,7 +147,7 @@
         },
         {
             "name": "wpayUserKey",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": true,
             "decoded": false,
@@ -157,7 +157,7 @@
         },
         {
             "name": "ci",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": true,
             "decoded": false,
@@ -167,7 +167,7 @@
         },
         {
             "name": "signature",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,

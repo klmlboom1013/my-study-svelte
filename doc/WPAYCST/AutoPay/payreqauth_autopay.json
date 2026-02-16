@@ -5,7 +5,7 @@
     "request": [
         {
             "name": "mid",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -15,7 +15,7 @@
         },
         {
             "name": "wpayUserKey",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": true,
             "encoded": false,
@@ -25,7 +25,7 @@
         },
         {
             "name": "wpayToken",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": true,
             "encoded": false,
@@ -35,7 +35,7 @@
         },
         {
             "name": "ci",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": true,
             "encoded": false,
@@ -45,7 +45,7 @@
         },
         {
             "name": "payMethod",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": false,
@@ -55,7 +55,7 @@
         },
         {
             "name": "bankCardCode",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": false,
@@ -65,7 +65,7 @@
         },
         {
             "name": "oid",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -75,7 +75,7 @@
         },
         {
             "name": "goodsName",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": true,
@@ -85,7 +85,7 @@
         },
         {
             "name": "goodsPrice",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -95,7 +95,7 @@
         },
         {
             "name": "returnUrl",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": true,
@@ -105,7 +105,7 @@
         },
         {
             "name": "billkeyAppFlag",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -115,7 +115,7 @@
         },
         {
             "name": "signature",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -127,7 +127,7 @@
     "response": [
         {
             "name": "resultCode",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -137,7 +137,7 @@
         },
         {
             "name": "resultMsg",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": true,
@@ -147,7 +147,7 @@
         },
         {
             "name": "wtid",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -157,7 +157,7 @@
         },
         {
             "name": "wpayUserKey",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": true,
             "decoded": false,
@@ -167,7 +167,7 @@
         },
         {
             "name": "wpayToken",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": true,
             "decoded": false,
@@ -177,7 +177,7 @@
         },
         {
             "name": "fdsResult",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -187,7 +187,7 @@
         },
         {
             "name": "wpayDomain",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": true,
@@ -197,7 +197,7 @@
         },
         {
             "name": "signature",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,

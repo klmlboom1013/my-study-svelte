@@ -5,7 +5,7 @@
     "request": [
         {
             "name": "mid",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -15,7 +15,7 @@
         },
         {
             "name": "wpayUserKey",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": true,
             "encoded": false,
@@ -25,7 +25,7 @@
         },
         {
             "name": "ci",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": true,
             "encoded": false,
@@ -35,7 +35,7 @@
         },
         {
             "name": "wtid",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -45,7 +45,7 @@
         },
         {
             "name": "tax",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": false,
@@ -55,7 +55,7 @@
         },
         {
             "name": "taxFree",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": false,
@@ -65,7 +65,7 @@
         },
         {
             "name": "cupDeposit",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "encoded": false,
@@ -75,7 +75,7 @@
         },
         {
             "name": "signature",
-            "type": "String",
+            "type": "string",
             "required": true,
             "encrypt": false,
             "encoded": false,
@@ -87,7 +87,7 @@
     "response": [
         {
             "name": "resultCode",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -97,7 +97,7 @@
         },
         {
             "name": "resultMsg",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": true,
@@ -107,7 +107,7 @@
         },
         {
             "name": "wtid",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -117,7 +117,7 @@
         },
         {
             "name": "wpayUserKey",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": true,
             "decoded": false,
@@ -127,7 +127,7 @@
         },
         {
             "name": "wpayToken",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": true,
             "decoded": false,
@@ -137,7 +137,7 @@
         },
         {
             "name": "payMethod",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -147,7 +147,7 @@
         },
         {
             "name": "bankCardCode",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -157,7 +157,7 @@
         },
         {
             "name": "cardIsscoCode",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -167,7 +167,7 @@
         },
         {
             "name": "bankCardNo",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -177,7 +177,7 @@
         },
         {
             "name": "oid",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -187,7 +187,7 @@
         },
         {
             "name": "goodsName",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": true,
@@ -197,7 +197,7 @@
         },
         {
             "name": "buyerName",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": true,
@@ -207,7 +207,7 @@
         },
         {
             "name": "buyerTel",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -217,7 +217,7 @@
         },
         {
             "name": "buyerEmail",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -227,7 +227,7 @@
         },
         {
             "name": "cardQuota",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -237,7 +237,7 @@
         },
         {
             "name": "cardInterest",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -247,7 +247,7 @@
         },
         {
             "name": "tid",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -257,7 +257,7 @@
         },
         {
             "name": "applDate",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -267,7 +267,7 @@
         },
         {
             "name": "applNum",
-            "type": "Number",
+            "type": "number",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -277,7 +277,7 @@
         },
         {
             "name": "applPrice",
-            "type": "Number",
+            "type": "number",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -287,7 +287,7 @@
         },
         {
             "name": "applCardNum",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -297,7 +297,7 @@
         },
         {
             "name": "cardCheckFlag",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -307,7 +307,7 @@
         },
         {
             "name": "partCancelCode",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -317,7 +317,7 @@
         },
         {
             "name": "couponFlag",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -327,7 +327,7 @@
         },
         {
             "name": "couponDiscount",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -337,7 +337,7 @@
         },
         {
             "name": "memberNum",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
@@ -347,7 +347,7 @@
         },
         {
             "name": "cupDeposit",
-            "type": "String",
+            "type": "string",
             "required": false,
             "encrypt": false,
             "decoded": false,
