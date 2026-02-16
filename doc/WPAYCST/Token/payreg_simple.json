@@ -1,0 +1,279 @@
+{
+    "serviceDescription": "WPAY에 신용카드 결제정보를 내카드불러오기로 등록한다.",
+    "uri": "/cst/u/payreg/simple",
+    "method": "POST",
+    "request": [
+        {
+            "name": "seckeypadType",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": false,
+            "description": "보안 키패드 컬러 [G, D, W]",
+            "length": 1,
+            "signingOrder": null
+        },
+        {
+            "name": "themeColor",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": true,
+            "description": "RGB 색상 코드 (#fdb549)",
+            "length": 7,
+            "signingOrder": null
+        },
+        {
+            "name": "mid",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "가맹점 ID",
+            "length": 10,
+            "signingOrder": 1
+        },
+        {
+            "name": "wpayUserKey",
+            "type": "String",
+            "required": true,
+            "encrypt": true,
+            "encoded": false,
+            "description": "WPAY 사용자 KEY [CI 1:1 매칭]",
+            "length": 100,
+            "signingOrder": 2
+        },
+        {
+            "name": "ci",
+            "type": "String",
+            "required": false,
+            "encrypt": true,
+            "encoded": false,
+            "description": "본인인증기관 사용자 고유 식별 값",
+            "length": 100,
+            "signingOrder": 3
+        },
+        {
+            "name": "bankCardCode",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "카드사 코드",
+            "length": 2,
+            "signingOrder": 4
+        },
+        {
+            "name": "cardIsscoCode",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": false,
+            "description": "카드 발급사 코드",
+            "length": 2,
+            "signingOrder": 5
+        },
+        {
+            "name": "returnUrl",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": true,
+            "description": "결과 전달 받을 Callback URL",
+            "length": 256,
+            "signingOrder": 6
+        },
+        {
+            "name": "signature",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "데이터 위변조 검증값",
+            "length": 100,
+            "signingOrder": null
+        }
+    ],
+    "response": [
+        {
+            "name": "resultCode",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": false,
+            "description": "결과코드",
+            "length": 6,
+            "signingOrder": 1
+        },
+        {
+            "name": "resultMsg",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": true,
+            "description": "결과메시지",
+            "length": 150,
+            "signingOrder": 2
+        },
+        {
+            "name": "wtid",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": false,
+            "description": "WPAY 트랜잭션 ID",
+            "length": 40,
+            "signingOrder": 3
+        },
+        {
+            "name": "wpayUserKey",
+            "type": "String",
+            "required": false,
+            "encrypt": true,
+            "decoded": false,
+            "description": "WPAY 사용자 KEY [CI 1:1 매칭]",
+            "length": 100,
+            "signingOrder": 4
+        },
+        {
+            "name": "wpayToken",
+            "type": "String",
+            "required": false,
+            "encrypt": true,
+            "decoded": false,
+            "description": "결제수단 WPAY Token",
+            "length": 100,
+            "signingOrder": 5
+        },
+        {
+            "name": "payMethod",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": false,
+            "description": "결제수단 코드 [01:신용카드]",
+            "length": 2,
+            "signingOrder": 6
+        },
+        {
+            "name": "bankCardCode",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": false,
+            "description": "카드사 코드",
+            "length": 4,
+            "signingOrder": 7
+        },
+        {
+            "name": "bankCardNo",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": false,
+            "description": "마스킹 카드 번호",
+            "length": 40,
+            "signingOrder": 8
+        },
+        {
+            "name": "cardName",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": true,
+            "description": "카드 브랜드 명",
+            "length": 100,
+            "signingOrder": 9
+        },
+        {
+            "name": "majYn",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": false,
+            "description": "주 결제수단 여부(Y/N)",
+            "length": 1,
+            "signingOrder": 10
+        },
+        {
+            "name": "signature",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": false,
+            "description": "데이터 위변조 검증값",
+            "length": 100,
+            "signingOrder": null
+        },
+        {
+            "name": "cardIsscoCode",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": false,
+            "description": "BC카드, PA카드 발급사 코드 ",
+            "length": 2,
+            "signingOrder": null
+        },
+        {
+            "name": "wpayTokenNcnm",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": false,
+            "description": "결제토큰 별칭",
+            "length": 400,
+            "signingOrder": null
+        },
+        {
+            "name": "checkFlg",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": false,
+            "description": "카드유형 [0:신용, 1:체크, 2:선불]",
+            "length": 1,
+            "signingOrder": null
+        },
+        {
+            "name": "cardTypeFlg",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": false,
+            "description": "개인/법카 구분",
+            "length": 1,
+            "signingOrder": null
+        },
+        {
+            "name": "cardPdNum",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": false,
+            "description": "카드 상품번호",
+            "length": 20,
+            "signingOrder": null
+        },
+        {
+            "name": "cardBImgUrl",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": true,
+            "description": "카드 상품 이미지 URL",
+            "length": 256,
+            "signingOrder": null
+        },
+        {
+            "name": "cardPdName",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": true,
+            "description": "카드 상품명",
+            "length": 100,
+            "signingOrder": null
+        }
+    ]
+}

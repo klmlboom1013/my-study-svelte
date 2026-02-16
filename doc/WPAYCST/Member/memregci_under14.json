@@ -1,0 +1,239 @@
+{
+    "serviceDescription": "가맹점에서 WPAY 14세 미만 회원 가입처리를 요청한다.",
+    "uri": "/cst/u/memregci/under14",
+    "method": "POST",
+    "request": [
+        {
+            "name": "mid",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "가맹점 ID",
+            "length": 10,
+            "signingOrder": 1
+        },
+        {
+            "name": "userId",
+            "type": "String",
+            "required": true,
+            "encrypt": true,
+            "encoded": false,
+            "description": "가맹점 사용자 ID",
+            "length": 20,
+            "signingOrder": 2
+        },
+        {
+            "name": "ci",
+            "type": "String",
+            "required": true,
+            "encrypt": true,
+            "encoded": false,
+            "description": "본인인증기관 사용자 고유 식별 값",
+            "length": 100,
+            "signingOrder": 3
+        },
+        {
+            "name": "userNm",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": true,
+            "description": "고객 이름",
+            "length": 100,
+            "signingOrder": 4
+        },
+        {
+            "name": "hNum",
+            "type": "String",
+            "required": true,
+            "encrypt": true,
+            "encoded": false,
+            "description": "고객 휴대폰번호 [\"-\" 제외]",
+            "length": 100,
+            "signingOrder": 5
+        },
+        {
+            "name": "hCorp",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": false,
+            "description": "통신사 [SKT, KFT, LGT, SKR, LGR, KFR)",
+            "length": 3,
+            "signingOrder": 6
+        },
+        {
+            "name": "birthDay",
+            "type": "String",
+            "required": true,
+            "encrypt": true,
+            "encoded": false,
+            "description": "생년월일 8자리",
+            "length": 8,
+            "signingOrder": 7
+        },
+        {
+            "name": "socialNo2",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "주민번호 뒤 첫자리",
+            "length": 1,
+            "signingOrder": 8
+        },
+        {
+            "name": "agreeReqDate",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "최종 동의 요청 일시",
+            "length": 20,
+            "signingOrder": 9
+        },
+        {
+            "name": "agreeReqNum",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "최종 동의 요청 일련번호",
+            "length": 20,
+            "signingOrder": 10
+        },
+        {
+            "name": "agreeYn",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "법정 대리인 동의 여부",
+            "length": 1,
+            "signingOrder": 11
+        },
+        {
+            "name": "repNm",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": true,
+            "description": "법정 대리인 이름",
+            "length": 100,
+            "signingOrder": 12
+        },
+        {
+            "name": "repPhoneNum",
+            "type": "String",
+            "required": true,
+            "encrypt": true,
+            "encoded": false,
+            "description": "법정 대리인 휴대폰번호 [\"-\" 제외]",
+            "length": 100,
+            "signingOrder": 13
+        },
+        {
+            "name": "authDate",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "인증 년월일",
+            "length": 8,
+            "signingOrder": 14
+        },
+        {
+            "name": "returnUrl",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": true,
+            "description": "결과 전달 받을 Callback URL",
+            "length": 256,
+            "signingOrder": 15
+        },
+        {
+            "name": "signature",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "데이터 위변조 검증값",
+            "length": 100,
+            "signingOrder": null
+        }
+    ],
+    "response": [
+        {
+            "name": "resultCode",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": false,
+            "description": "결과코드",
+            "length": 6,
+            "signingOrder": 1
+        },
+        {
+            "name": "resultMsg",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": true,
+            "description": "결과메시지",
+            "length": 150,
+            "signingOrder": 2
+        },
+        {
+            "name": "wtid",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": false,
+            "description": "WPAY 트랜잭션 ID",
+            "length": 40,
+            "signingOrder": 3
+        },
+        {
+            "name": "userId",
+            "type": "String",
+            "required": false,
+            "encrypt": true,
+            "decoded": false,
+            "description": "가맹점 사용자 ID",
+            "length": 20,
+            "signingOrder": 4
+        },
+        {
+            "name": "wpayUserKey",
+            "type": "String",
+            "required": false,
+            "encrypt": true,
+            "decoded": false,
+            "description": "WPAY 사용자 KEY [CI 1:1 매칭]",
+            "length": 100,
+            "signingOrder": 5
+        },
+        {
+            "name": "ci",
+            "type": "String",
+            "required": false,
+            "encrypt": true,
+            "decoded": false,
+            "description": "본인인증기관 사용자 고유 식별 값",
+            "length": 100,
+            "signingOrder": 6
+        },
+        {
+            "name": "signature",
+            "type": "String",
+            "required": false,
+            "encrypt": true,
+            "decoded": false,
+            "description": "데이터 위변조 검증값",
+            "length": 100,
+            "signingOrder": null
+        }
+    ]
+}

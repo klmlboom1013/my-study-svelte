@@ -1,0 +1,139 @@
+{
+    "serviceDescription": "WPAY 토큰을 통해 신용카드 결제 인증 요청을 한다(OTC).",
+    "uri": "/cst/apis/payreqauth/otc",
+    "method": "POST",
+    "request": [
+        {
+            "name": "mid",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "가맹점 ID(Merchant ID)",
+            "length": 10,
+            "signingOrder": 1
+        },
+        {
+            "name": "wpayUserKey",
+            "type": "String",
+            "required": true,
+            "encrypt": true,
+            "encoded": false,
+            "description": "WPAY 사용자 KEY [CI 1:1 매칭]",
+            "length": 100,
+            "signingOrder": 2
+        },
+        {
+            "name": "wpayToken",
+            "type": "String",
+            "required": true,
+            "encrypt": true,
+            "encoded": false,
+            "description": "이니시스에서 발행한 토큰",
+            "length": 100,
+            "signingOrder": 3
+        },
+        {
+            "name": "ci",
+            "type": "String",
+            "required": false,
+            "encrypt": true,
+            "encoded": false,
+            "description": "본인인증기관 사용자 고유 식별 값",
+            "length": 100,
+            "signingOrder": 4
+        },
+        {
+            "name": "payMethod",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": false,
+            "description": "결제수단 코드 [01:신용카드]",
+            "length": 2,
+            "signingOrder": 5
+        },
+        {
+            "name": "bankCardCode",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "encoded": false,
+            "description": "신용카드: 5.2 카드사 코드 참조",
+            "length": 4,
+            "signingOrder": 6
+        },
+        {
+            "name": "signature",
+            "type": "String",
+            "required": true,
+            "encrypt": false,
+            "encoded": false,
+            "description": "데이터 위변조 검증값",
+            "length": 100,
+            "signingOrder": null
+        }
+    ],
+    "response": [
+        {
+            "name": "resultCode",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": false,
+            "description": "결과코드",
+            "length": 6,
+            "signingOrder": null
+        },
+        {
+            "name": "resultMsg",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": true,
+            "description": "결과메시지",
+            "length": 150,
+            "signingOrder": null
+        },
+        {
+            "name": "wtid",
+            "type": "String",
+            "required": false,
+            "encrypt": false,
+            "decoded": false,
+            "description": "WPAY 트랜잭션 ID",
+            "length": 40,
+            "signingOrder": null
+        },
+        {
+            "name": "wpayUserKey",
+            "type": "String",
+            "required": false,
+            "encrypt": true,
+            "decoded": false,
+            "description": "WPAY 사용자 KEY [CI 1:1 매칭]",
+            "length": 100,
+            "signingOrder": null
+        },
+        {
+            "name": "wpayToken",
+            "type": "String",
+            "required": false,
+            "encrypt": true,
+            "decoded": false,
+            "description": "결제수단 WPAY Token",
+            "length": 100,
+            "signingOrder": null
+        },
+        {
+            "name": "otc",
+            "type": "String",
+            "required": false,
+            "encrypt": true,
+            "decoded": false,
+            "description": "오프라인 결제 카드사 OTC (BC:20)",
+            "length": 100,
+            "signingOrder": null
+        }
+    ]
+}
