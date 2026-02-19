@@ -1,38 +1,194 @@
 {
+    "applications": [
+        {
+            "apiCategories": [
+                {
+                    "application": "WPAY",
+                    "color": "#904df5",
+                    "description": "회원 관리",
+                    "icon": "group",
+                    "id": "12a3328f-9ee0-40e9-a58f-4db9b15672dc",
+                    "name": "Membership",
+                    "service": [
+                        "sbuckwpay",
+                        "wpaycst",
+                        "wpaypro",
+                        "wpaystd2",
+                        "wpaystd"
+                    ]
+                }
+            ],
+            "appName": "WPAY",
+            "description": "Simple Payment Service",
+            "domains": {
+                "dev": "",
+                "pFc": "",
+                "pGlb": "",
+                "pKs": "",
+                "stg": ""
+            },
+            "id": "c12950f9-2582-4b92-990e-e344fb76e226",
+            "services": [
+                {
+                    "domains": {
+                        "dev": "https://devwpay.inicis.com",
+                        "pFc": "https://fcwpay.inicis.com",
+                        "pGlb": "https://wpay.inicis.com",
+                        "pKs": "https://kswpay.inicis.com",
+                        "stg": "https://stgwpay.inicis.com"
+                    },
+                    "id": "9d62b11f-6f8a-4f56-9da7-fd6669e90c0e",
+                    "name": "wpaystd"
+                },
+                {
+                    "domains": {
+                        "dev": "https://devwpaystd.inicis.com",
+                        "pFc": "https://fcwpaystd.inicis.com",
+                        "pGlb": "https://wpaystd.inicis.com",
+                        "pKs": "https://kswpaystd.inicis.com",
+                        "stg": "https://stgwpaystd.inicis.com"
+                    },
+                    "id": "d2e22efa-3bdc-4334-8fe7-405cbbf31501",
+                    "name": "wpaystd2"
+                },
+                {
+                    "domains": {
+                        "dev": "https://devwpay.inicis.com",
+                        "pFc": "https://fcwpay.inicis.com",
+                        "pGlb": "https://wpay.inicis.com",
+                        "pKs": "https://kswpay.inicis.com",
+                        "stg": "https://stgwpay.inicis.com"
+                    },
+                    "id": "487b7bf3-a560-4a83-ab4a-deff3849eefa",
+                    "name": "wpaypro"
+                },
+                {
+                    "domains": {
+                        "dev": "https://devwpaycst.inicis.com",
+                        "pFc": "https://fcwpaycst.inicis.com",
+                        "pGlb": "https://wpaycst.inicis.com",
+                        "pKs": "https://kswpaycst.inicis.com",
+                        "stg": "https://stgwpaycst.inicis.com"
+                    },
+                    "id": "6b985115-0236-488a-b809-50b7c6513ba9",
+                    "name": "wpaycst"
+                },
+                {
+                    "domains": {
+                        "dev": "https://devwpayplus.inicis.com",
+                        "pFc": "https://fcwpayplus.inicis.com",
+                        "pGlb": "https://wpayplus.inicis.com",
+                        "pKs": "https://kswpayplus.inicis.com",
+                        "stg": "https://stgwpayplus.inicis.com"
+                    },
+                    "id": "9bbd815c-0e76-481a-b39d-e9f62be82298",
+                    "name": "wpayplus"
+                },
+                {
+                    "domains": {
+                        "dev": "https://devsbuckwpay.inicis.com",
+                        "pFc": "https://fcsbuckwpay.inicis.com",
+                        "pGlb": "https://sbuckwpay.inicis.com",
+                        "pKs": "https://kssbuckwpay.inicis.com",
+                        "stg": "https://stgsbuckwpay.inicis.com"
+                    },
+                    "id": "03b77a91-c270-4884-8e1a-8eb281c17a5f",
+                    "name": "sbuckwpay"
+                }
+            ],
+            "siteContexts": [
+                {
+                    "application": "WPAY",
+                    "id": "12dd01a0-2ae3-4d47-b680-a83c8b7808f5",
+                    "service": "wpaystd2",
+                    "sites": [
+                        "stdwpay"
+                    ]
+                },
+                {
+                    "application": "WPAY",
+                    "id": "5b624df0-0cb2-4203-9fb4-6476590c93fe",
+                    "service": "wpaystd",
+                    "sites": [
+                        "stdwpay"
+                    ]
+                },
+                {
+                    "application": "WPAY",
+                    "id": "43594f30-4e99-49ac-a13e-e3f5bb161465",
+                    "service": "wpaypro",
+                    "sites": [
+                        "ygypay"
+                    ]
+                },
+                {
+                    "application": "WPAY",
+                    "id": "ec5d554f-02de-43b5-a634-32cfd90233a5",
+                    "service": "wpaycst",
+                    "sites": [
+                        "kbstar",
+                        "gspay"
+                    ]
+                },
+                {
+                    "application": "WPAY",
+                    "id": "9c687542-87c2-4035-b70f-1f8a3a1375cb",
+                    "service": "wpayplus",
+                    "sites": [
+                        "stdwpay",
+                        "ygypay",
+                        "gspay",
+                        "kbstar"
+                    ]
+                },
+                {
+                    "application": "WPAY",
+                    "id": "3624b856-60de-405b-bdc7-3b62f0516988",
+                    "service": "sbuckwpay",
+                    "sites": [
+                        "starbucks"
+                    ]
+                }
+            ],
+            "useServiceDistinction": true
+        }
+    ],
     "endpoint_parameters": {
         "globalParameters": [
             {
                 "application": "WPAY",
+                "id": "6e6cf752-c2ca-494d-afaa-f352bd893185",
                 "key": "userId",
-                "value": "wpayTestUser01",
-                "id": "6e6cf752-c2ca-494d-afaa-f352bd893185"
+                "value": "wpayTestUser01"
             },
             {
                 "application": "WPAY",
+                "id": "0ed4fba6-9067-48bb-8fbf-73839bbffb46",
                 "key": "userNm",
-                "value": "이현승",
-                "id": "0ed4fba6-9067-48bb-8fbf-73839bbffb46"
+                "value": "이현승"
             },
             {
                 "application": "WPAY",
+                "id": "456fe316-4824-4b34-9f42-c3842bb4b0ff",
                 "key": "hNum",
-                "value": "01020161017",
-                "id": "456fe316-4824-4b34-9f42-c3842bb4b0ff"
+                "value": "01020161017"
             },
             {
                 "application": "WPAY",
+                "id": "572dde1a-2b0c-4050-9474-f2ef5b744696",
                 "key": "birthDay",
-                "value": "19841013",
-                "id": "572dde1a-2b0c-4050-9474-f2ef5b744696"
+                "value": "19841013"
             },
             {
                 "application": "WPAY",
+                "id": "2f0b8dc7-7381-4dd1-900b-829af9268046",
                 "key": "socialNo2",
-                "value": "1",
-                "id": "2f0b8dc7-7381-4dd1-900b-829af9268046"
+                "value": "1"
             },
             {
                 "application": "WPAY",
+                "id": "c7ade12d-8258-4ffd-884c-4f7e373319c5",
+                "key": "ci",
                 "service": [
                     "wpaystd",
                     "wpaystd2",
@@ -41,67 +197,95 @@
                     "wpayplus",
                     "sbuckwpay"
                 ],
-                "key": "ci",
-                "value": "icqiWsBvWVsZ+hGz+G0wPyGsal4hrND894RqHmXYcWLxKnKvPEo5MGlPHyR943NnXC0mYf4XAPh7Y4nrK23xdg==",
-                "id": "c7ade12d-8258-4ffd-884c-4f7e373319c5"
+                "value": "icqiWsBvWVsZ+hGz+G0wPyGsal4hrND894RqHmXYcWLxKnKvPEo5MGlPHyR943NnXC0mYf4XAPh7Y4nrK23xdg=="
             },
             {
                 "application": "WPAY",
-                "service": [
-                    "wpaystd2"
-                ],
+                "id": "badf8a7a-8d11-4b59-8822-bfc4b2cc167d",
                 "key": "resetCssUrl",
-                "value": "https://stgwpaystd.inicis.com/wpaystd/site/stdwpay/public/css/custom_guide.css",
-                "id": "badf8a7a-8d11-4b59-8822-bfc4b2cc167d"
-            },
-            {
-                "application": "WPAY",
                 "service": [
                     "wpaystd2"
                 ],
+                "value": "https://stgwpaystd.inicis.com/wpaystd/site/stdwpay/public/css/custom_guide.css"
+            },
+            {
+                "application": "WPAY",
+                "id": "c4dd487f-386c-44db-8069-b3dd29ea7fe5",
                 "key": "resetTextUrl",
-                "value": "https://stgwpaystd.inicis.com/wpaystd/site/stdwpay/public/css/custom_text_guide.css",
-                "id": "c4dd487f-386c-44db-8069-b3dd29ea7fe5"
-            },
-            {
-                "application": "WPAY",
                 "service": [
                     "wpaystd2"
                 ],
+                "value": "https://stgwpaystd.inicis.com/wpaystd/site/stdwpay/public/css/custom_text_guide.css"
+            },
+            {
+                "application": "WPAY",
+                "id": "ec2f6f32-c85c-4e5b-8578-e00f710e9127",
                 "key": "customTitle",
-                "value": "HS.LEE PAY",
-                "id": "ec2f6f32-c85c-4e5b-8578-e00f710e9127"
-            },
-            {
-                "application": "WPAY",
                 "service": [
                     "wpaystd2"
                 ],
+                "value": "HS.LEE PAY"
+            },
+            {
+                "application": "WPAY",
+                "id": "4856fb40-0fe0-4ab3-a568-00becac38882",
                 "key": "agreePayNm",
-                "value": "HS.LEE Pay",
-                "id": "4856fb40-0fe0-4ab3-a568-00becac38882"
-            },
-            {
-                "application": "WPAY",
                 "service": [
                     "wpaystd2"
                 ],
+                "value": "HS.LEE Pay"
+            },
+            {
+                "application": "WPAY",
+                "id": "c64f1f30-6bdd-415e-b2ac-e09c8843a949",
                 "key": "agreeUrl",
-                "value": "https://cdn-wpay.inicis.com/wpay/common/agree/memreg/agree1.html",
-                "id": "c64f1f30-6bdd-415e-b2ac-e09c8843a949"
+                "service": [
+                    "wpaystd2"
+                ],
+                "value": "https://cdn-wpay.inicis.com/wpay/common/agree/memreg/agree1.html"
+            },
+            {
+                "application": "WPAY",
+                "id": "0b6c7a10-b9af-408c-adc7-4049704914e9",
+                "key": "themeColor",
+                "service": [
+                    "wpaycst"
+                ],
+                "value": "#fdb549"
+            }
+        ],
+        "midContexts": [
+            {
+                "application": "WPAY",
+                "encIV": "WPAYSTDWPAY00000",
+                "encKey": "rClo7QA4gdgyITHAPWrfXw==",
+                "hashKey": "F3149950A7B6289723F325833F588STD",
+                "id": "b297c25a-7148-4cf2-b59d-b9160625356c",
+                "mid": "INIwpayT03",
+                "name": "test",
+                "service": [
+                    "wpaystd2",
+                    "wpaystd"
+                ]
+            },
+            {
+                "application": "WPAY",
+                "encIV": "WPAYKBSTAR000000",
+                "encKey": "bGLU9Jfg498HTwLpklj+2A==",
+                "hashKey": "F3149950A7B6289723F325833F588KBS",
+                "id": "ce653703-5236-4070-93f8-b0f0864176a5",
+                "mid": "GSpayTest3",
+                "name": "GSPAY",
+                "service": [
+                    "wpaycst",
+                    "wpaystd"
+                ]
             }
         ],
         "parameterOptions": [
             {
-                "id": "4d7453de-5509-40bc-9dc9-a09085901277",
                 "application": "WPAY",
-                "service": [
-                    "wpaystd",
-                    "wpaystd2",
-                    "wpaypro",
-                    "wpayplus",
-                    "wpaycst"
-                ],
+                "id": "4d7453de-5509-40bc-9dc9-a09085901277",
                 "name": "payMethod",
                 "options": [
                     {
@@ -112,18 +296,18 @@
                         "code": "계좌이체",
                         "value": "16"
                     }
-                ]
-            },
-            {
-                "id": "9193af8a-2bbb-42d0-9ee6-b4136c5f40fc",
-                "application": "WPAY",
+                ],
                 "service": [
                     "wpaystd",
                     "wpaystd2",
                     "wpaypro",
                     "wpayplus",
                     "wpaycst"
-                ],
+                ]
+            },
+            {
+                "application": "WPAY",
+                "id": "9193af8a-2bbb-42d0-9ee6-b4136c5f40fc",
                 "name": "cardCode",
                 "options": [
                     {
@@ -162,18 +346,18 @@
                         "code": "NH농협카드",
                         "value": "16"
                     }
-                ]
-            },
-            {
-                "id": "80b7fbb5-7feb-4019-9895-7ea02d02b19f",
-                "application": "WPAY",
+                ],
                 "service": [
                     "wpaystd",
                     "wpaystd2",
                     "wpaypro",
                     "wpayplus",
                     "wpaycst"
-                ],
+                ]
+            },
+            {
+                "application": "WPAY",
+                "id": "80b7fbb5-7feb-4019-9895-7ea02d02b19f",
                 "name": "hCorp",
                 "options": [
                     {
@@ -200,18 +384,18 @@
                         "code": "LGT 알뜰폰",
                         "value": "LGR"
                     }
-                ]
-            },
-            {
-                "id": "2322247f-8b76-426e-800d-7fd1326e86cd",
-                "application": "WPAY",
+                ],
                 "service": [
                     "wpaystd",
                     "wpaystd2",
                     "wpaypro",
                     "wpayplus",
                     "wpaycst"
-                ],
+                ]
+            },
+            {
+                "application": "WPAY",
+                "id": "2322247f-8b76-426e-800d-7fd1326e86cd",
                 "name": "frnrYn",
                 "options": [
                     {
@@ -222,14 +406,18 @@
                         "code": "내국인",
                         "value": "N"
                     }
+                ],
+                "service": [
+                    "wpaystd",
+                    "wpaystd2",
+                    "wpaypro",
+                    "wpayplus",
+                    "wpaycst"
                 ]
             },
             {
-                "id": "f98a2686-b590-4f14-83b6-10df25dc6489",
                 "application": "WPAY",
-                "service": [
-                    "wpaystd2"
-                ],
+                "id": "f98a2686-b590-4f14-83b6-10df25dc6489",
                 "name": "optReadOnly",
                 "options": [
                     {
@@ -248,18 +436,14 @@
                         "code": "ALL (회원가입 readOnly 속성)",
                         "value": "userNm:birthDay:hNum"
                     }
+                ],
+                "service": [
+                    "wpaystd2"
                 ]
             },
             {
-                "id": "44ebd26a-9b51-4648-b7a4-426b9bfdf337",
                 "application": "WPAY",
-                "service": [
-                    "wpaystd",
-                    "wpaystd2",
-                    "wpaypro",
-                    "wpayplus",
-                    "wpaycst"
-                ],
+                "id": "44ebd26a-9b51-4648-b7a4-426b9bfdf337",
                 "name": "flagPin",
                 "options": [
                     {
@@ -270,18 +454,18 @@
                         "code": "핀인증 생략",
                         "value": "N"
                     }
-                ]
-            },
-            {
-                "id": "f83b0a32-31f2-4d5d-9cb1-966e52ecec04",
-                "application": "WPAY",
+                ],
                 "service": [
                     "wpaystd",
                     "wpaystd2",
                     "wpaypro",
                     "wpayplus",
                     "wpaycst"
-                ],
+                ]
+            },
+            {
+                "application": "WPAY",
+                "id": "f83b0a32-31f2-4d5d-9cb1-966e52ecec04",
                 "name": "flagCardPoint",
                 "options": [
                     {
@@ -292,18 +476,18 @@
                         "code": "카드 포인트 미사용",
                         "value": "N"
                     }
-                ]
-            },
-            {
-                "id": "77e04369-b74a-4138-b064-046c4f90e93f",
-                "application": "WPAY",
+                ],
                 "service": [
                     "wpaystd",
                     "wpaystd2",
                     "wpaypro",
                     "wpayplus",
                     "wpaycst"
-                ],
+                ]
+            },
+            {
+                "application": "WPAY",
+                "id": "77e04369-b74a-4138-b064-046c4f90e93f",
                 "name": "arsVersion",
                 "options": [
                     {
@@ -314,18 +498,18 @@
                         "code": "난수",
                         "value": "2"
                     }
-                ]
-            },
-            {
-                "id": "455f52d7-3fc9-4014-b0bd-141a1364d7e9",
-                "application": "WPAY",
+                ],
                 "service": [
                     "wpaystd",
                     "wpaystd2",
                     "wpaypro",
                     "wpayplus",
                     "wpaycst"
-                ],
+                ]
+            },
+            {
+                "application": "WPAY",
+                "id": "455f52d7-3fc9-4014-b0bd-141a1364d7e9",
                 "name": "authNoLength",
                 "options": [
                     {
@@ -340,18 +524,18 @@
                         "code": "난수 4자리",
                         "value": "4"
                     }
-                ]
-            },
-            {
-                "id": "db0ebd30-28c4-4c0d-beb0-803466c4bb04",
-                "application": "WPAY",
+                ],
                 "service": [
                     "wpaystd",
                     "wpaystd2",
                     "wpaypro",
                     "wpayplus",
                     "wpaycst"
-                ],
+                ]
+            },
+            {
+                "application": "WPAY",
+                "id": "db0ebd30-28c4-4c0d-beb0-803466c4bb04",
                 "name": "options",
                 "options": [
                     {
@@ -390,18 +574,18 @@
                         "code": "할부정보 (기준정보 조회)",
                         "value": "UC:MQ:NI"
                     }
-                ]
-            },
-            {
-                "id": "9751d87a-8275-4e73-a019-b5ffbc6f438f",
-                "application": "WPAY",
+                ],
                 "service": [
                     "wpaystd",
                     "wpaystd2",
                     "wpaypro",
                     "wpayplus",
                     "wpaycst"
-                ],
+                ]
+            },
+            {
+                "application": "WPAY",
+                "id": "9751d87a-8275-4e73-a019-b5ffbc6f438f",
                 "name": "status",
                 "options": [
                     {
@@ -412,18 +596,18 @@
                         "code": "해지 (자동결제)",
                         "value": "02"
                     }
+                ],
+                "service": [
+                    "wpaystd",
+                    "wpaystd2",
+                    "wpaypro",
+                    "wpayplus",
+                    "wpaycst"
                 ]
             },
             {
                 "application": "WPAY",
-                "service": [
-                    "wpaystd2",
-                    "wpaypro",
-                    "wpaycst",
-                    "wpayplus",
-                    "sbuckwpay",
-                    "wpaystd"
-                ],
+                "id": "3309a98d-b2eb-4556-aea8-41c7fcc40d25",
                 "name": "wpayUserKey",
                 "options": [
                     {
@@ -435,18 +619,18 @@
                         "value": "DR201807250000067999"
                     }
                 ],
-                "id": "3309a98d-b2eb-4556-aea8-41c7fcc40d25"
-            },
-            {
-                "application": "WPAY",
                 "service": [
-                    "wpaystd",
                     "wpaystd2",
                     "wpaypro",
                     "wpaycst",
                     "wpayplus",
-                    "sbuckwpay"
-                ],
+                    "sbuckwpay",
+                    "wpaystd"
+                ]
+            },
+            {
+                "application": "WPAY",
+                "id": "a30df28a-4020-4638-ae3d-e9ce3a7221ee",
                 "name": "returnUrl",
                 "options": [
                     {
@@ -458,235 +642,102 @@
                         "value": "https://api-test-hub-f8250.web.app/callback/endpoint"
                     }
                 ],
-                "id": "a30df28a-4020-4638-ae3d-e9ce3a7221ee"
-            }
-        ],
-        "midContexts": [
+                "service": [
+                    "wpaystd",
+                    "wpaystd2",
+                    "wpaypro",
+                    "wpaycst",
+                    "wpayplus",
+                    "sbuckwpay"
+                ]
+            },
             {
                 "application": "WPAY",
-                "service": [
-                    "wpaystd2",
-                    "wpaystd"
+                "id": "3347fb3d-ef32-4db3-8bef-d69ab259a346",
+                "name": "seckeypadType",
+                "options": [
+                    {
+                        "code": "Gray",
+                        "value": "G"
+                    },
+                    {
+                        "code": "White",
+                        "value": "W"
+                    },
+                    {
+                        "code": "Black",
+                        "value": "B"
+                    }
                 ],
-                "mid": "INIwpayT03",
-                "encKey": "rClo7QA4gdgyITHAPWrfXw==",
-                "encIV": "WPAYSTDWPAY00000",
-                "hashKey": "F3149950A7B6289723F325833F588STD",
-                "id": "2c529cac-ea98-44ac-9bc5-7b66bc918108"
+                "service": [
+                    "wpaycst"
+                ]
             }
         ]
     },
     "interface": {
-        "sidebar": {
-            "showTestSuite": true,
-            "showEndpoint": true,
-            "showCollections": false,
-            "showCategories": false,
-            "showRecentActivity": false
-        },
-        "dashboard": {
-            "showStats": true,
-            "showRecentActivity": true
-        },
         "bookmarks": [
             {
-                "id": "test-endpoint",
-                "name": "Test Endpoint",
                 "icon": "api",
+                "id": "test-endpoint",
+                "isEnabled": false,
+                "listLimit": 5,
+                "name": "Test Endpoint",
                 "path": "/endpoint",
-                "isEnabled": false,
-                "showNewButton": true,
-                "listLimit": 5
+                "showNewButton": true
             },
             {
-                "id": "api-categories",
-                "name": "Api Categories",
                 "icon": "category",
+                "id": "api-categories",
+                "isEnabled": true,
+                "listLimit": 5,
+                "name": "Api Categories",
                 "path": "/categories",
-                "isEnabled": true,
-                "showNewButton": true,
-                "listLimit": 5
+                "showNewButton": true
             },
             {
-                "id": "test-suite",
-                "name": "Test Suite",
                 "icon": "science",
-                "path": "/test-suite",
+                "id": "test-suite",
                 "isEnabled": false,
-                "showNewButton": true,
-                "listLimit": 5
+                "listLimit": 5,
+                "name": "Test Suite",
+                "path": "/test-suite",
+                "showNewButton": true
             },
             {
-                "id": "api-collections",
-                "name": "API Collections",
                 "icon": "folder_open",
-                "path": "/collections",
+                "id": "api-collections",
                 "isEnabled": true,
-                "showNewButton": true,
-                "listLimit": 5
+                "listLimit": 5,
+                "name": "API Collections",
+                "path": "/collections",
+                "showNewButton": true
             }
         ],
-        "starredEndpointIds": [
-            "5bed4782-7e18-46e9-85c8-a733ca60d792",
-            "ec804433-992e-45ad-a43f-6b8c67443509"
-        ]
+        "dashboard": {
+            "showRecentActivity": true,
+            "showStats": true
+        },
+        "sidebar": {
+            "showCategories": false,
+            "showChatbot": true,
+            "showCollections": false,
+            "showEndpoint": true,
+            "showRecentActivity": false,
+            "showTestSuite": true
+        },
+        "starredEndpointIds": []
     },
-    "applications": [
-        {
-            "id": "c12950f9-2582-4b92-990e-e344fb76e226",
-            "appName": "WPAY",
-            "description": "Simple Payment Service",
-            "useServiceDistinction": true,
-            "domains": {
-                "dev": "",
-                "stg": "",
-                "pGlb": "",
-                "pKs": "",
-                "pFc": ""
-            },
-            "services": [
-                {
-                    "id": "9d62b11f-6f8a-4f56-9da7-fd6669e90c0e",
-                    "name": "wpaystd",
-                    "domains": {
-                        "dev": "https://devwpay.inicis.com",
-                        "stg": "https://stgwpay.inicis.com",
-                        "pGlb": "https://wpay.inicis.com",
-                        "pKs": "https://kswpay.inicis.com",
-                        "pFc": "https://fcwpay.inicis.com"
-                    }
-                },
-                {
-                    "id": "d2e22efa-3bdc-4334-8fe7-405cbbf31501",
-                    "name": "wpaystd2",
-                    "domains": {
-                        "dev": "https://devwpaystd.inicis.com",
-                        "stg": "https://stgwpaystd.inicis.com",
-                        "pGlb": "https://wpaystd.inicis.com",
-                        "pKs": "https://kswpaystd.inicis.com",
-                        "pFc": "https://fcwpaystd.inicis.com"
-                    }
-                },
-                {
-                    "id": "487b7bf3-a560-4a83-ab4a-deff3849eefa",
-                    "name": "wpaypro",
-                    "domains": {
-                        "dev": "https://devwpay.inicis.com",
-                        "stg": "https://stgwpay.inicis.com",
-                        "pGlb": "https://wpay.inicis.com",
-                        "pKs": "https://kswpay.inicis.com",
-                        "pFc": "https://fcwpay.inicis.com"
-                    }
-                },
-                {
-                    "id": "6b985115-0236-488a-b809-50b7c6513ba9",
-                    "name": "wpaycst",
-                    "domains": {
-                        "dev": "https://devwpaycst.inicis.com",
-                        "stg": "https://stgwpaycst.inicis.com",
-                        "pGlb": "https://wpaycst.inicis.com",
-                        "pKs": "https://kswpaycst.inicis.com",
-                        "pFc": "https://fcwpaycst.inicis.com"
-                    }
-                },
-                {
-                    "id": "9bbd815c-0e76-481a-b39d-e9f62be82298",
-                    "name": "wpayplus",
-                    "domains": {
-                        "dev": "https://devwpayplus.inicis.com",
-                        "stg": "https://stgwpayplus.inicis.com",
-                        "pGlb": "https://wpayplus.inicis.com",
-                        "pKs": "https://kswpayplus.inicis.com",
-                        "pFc": "https://fcwpayplus.inicis.com"
-                    }
-                },
-                {
-                    "id": "03b77a91-c270-4884-8e1a-8eb281c17a5f",
-                    "name": "sbuckwpay",
-                    "domains": {
-                        "dev": "https://devsbuckwpay.inicis.com",
-                        "stg": "https://stgsbuckwpay.inicis.com",
-                        "pGlb": "https://sbuckwpay.inicis.com",
-                        "pKs": "https://kssbuckwpay.inicis.com",
-                        "pFc": "https://fcsbuckwpay.inicis.com"
-                    }
-                }
-            ],
-            "siteContexts": [
-                {
-                    "application": "WPAY",
-                    "service": "wpaystd2",
-                    "sites": [
-                        "stdwpay"
-                    ],
-                    "id": "12dd01a0-2ae3-4d47-b680-a83c8b7808f5"
-                },
-                {
-                    "application": "WPAY",
-                    "service": "wpaystd",
-                    "sites": [
-                        "stdwpay"
-                    ],
-                    "id": "5b624df0-0cb2-4203-9fb4-6476590c93fe"
-                },
-                {
-                    "application": "WPAY",
-                    "service": "wpaypro",
-                    "sites": [
-                        "ygypay"
-                    ],
-                    "id": "43594f30-4e99-49ac-a13e-e3f5bb161465"
-                },
-                {
-                    "application": "WPAY",
-                    "service": "wpaycst",
-                    "sites": [
-                        "kbstar",
-                        "gspay"
-                    ],
-                    "id": "ec5d554f-02de-43b5-a634-32cfd90233a5"
-                },
-                {
-                    "application": "WPAY",
-                    "service": "wpayplus",
-                    "sites": [
-                        "stdwpay",
-                        "ygypay",
-                        "gspay",
-                        "kbstar"
-                    ],
-                    "id": "9c687542-87c2-4035-b70f-1f8a3a1375cb"
-                },
-                {
-                    "application": "WPAY",
-                    "service": "sbuckwpay",
-                    "sites": [
-                        "starbucks"
-                    ],
-                    "id": "3624b856-60de-405b-bdc7-3b62f0516988"
-                }
-            ],
-            "apiCategories": [
-                {
-                    "id": "12a3328f-9ee0-40e9-a58f-4db9b15672dc",
-                    "application": "WPAY",
-                    "service": [
-                        "sbuckwpay",
-                        "wpaycst",
-                        "wpaypro",
-                        "wpaystd2",
-                        "wpaystd"
-                    ],
-                    "name": "Membership",
-                    "description": "회원 관리",
-                    "icon": "group",
-                    "color": "#904df5"
-                }
-            ]
-        }
-    ],
     "recentActivity": {
+        "collection": {
+            "collection": false,
+            "endpoint": true
+        },
         "display": {
+            "actions": {
+                "showDelete": false,
+                "showDetails": true
+            },
             "columns": [
                 "endpointName",
                 "application",
@@ -696,21 +747,14 @@
                 "result",
                 "actions"
             ],
-            "timestampFormat": "YY. MM. DD HH24:MI:SS",
             "resultPath": "resultCode",
-            "actions": {
-                "showDetails": true,
-                "showDelete": false
-            }
+            "timestampFormat": "YY. MM. DD HH24:MI:SS"
         },
+        "enabled": true,
         "filter": {
             "WPAY": true
         },
-        "collection": {
-            "endpoint": true,
-            "collection": false
-        },
-        "enabled": true,
+        "itemsPerPage": 5,
         "successCriteria": {
             "WPAY": {
                 "field": "resultCode",
@@ -722,7 +766,6 @@
                     "BACK"
                 ]
             }
-        },
-        "itemsPerPage": 5
+        }
     }
 }

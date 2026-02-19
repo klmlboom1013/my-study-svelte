@@ -9,8 +9,6 @@
         HttpMethod,
         RequestDataField,
         ResponseDataField,
-        RequestDataField,
-        ResponseDataField,
         RequestType,
         UrlParameter,
     } from "$lib/types/endpoint";
@@ -72,9 +70,6 @@
         { key: "", value: "" },
     ]);
     let urlParams = $state<UrlParameter[]>([]);
-
-
-
 
     // Derived service options
     let serviceOptions = $derived(
@@ -367,20 +362,17 @@
                                     class="flex-1 px-4 py-2.5 rounded-r-lg border-y border-r border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-background-dark/50 text-slate-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                                 />
                             </div>
-                            </div>
                         </div>
 
                         <!-- URL Parameters -->
                         <div class="flex flex-col gap-2">
-                             <span
+                            <span
                                 class="text-sm font-medium text-slate-700 dark:text-slate-300"
                             >
                                 URL Parameters
                             </span>
                             <div class="p-0">
-                                <UrlParameterTable
-                                    bind:items={urlParams}
-                                />
+                                <UrlParameterTable bind:items={urlParams} />
                             </div>
                         </div>
 
